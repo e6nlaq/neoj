@@ -1,0 +1,21 @@
+{
+    "name": "neoj",
+    "private": true,
+    "type": "module",
+    "module": "index.ts",
+    "scripts": {
+        "typecheck": "bun check",
+        "build": "rm -rf dist && bun build ./src/index.ts --target bun --outdir dist --packages external --splitting --check --minify"
+    },
+    "devDependencies": {
+        "@types/bun": "latest",
+        "oxfmt": "^0.74.0",
+        "oxlint": "^1.89.0"
+    },
+    "peerDependencies": {
+        "typescript": "^7"
+    },
+    "dependencies": {
+        "tinyclip": "^1.0.3"
+    }
+}
