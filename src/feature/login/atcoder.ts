@@ -8,26 +8,31 @@ const atCoderAuthSchema = v.object({
     revelSession: v.pipe(v.string(), v.nonEmpty()),
 });
 
+export async function isAtCoderLoggedIn(auth: unknown): Promise<boolean> {
+    if (auth === undefined) {
+        return false;
+    }
+
+    const parsedAuth = v.safeParse(atCoderAuthSchema, auth);
+    if (!parsedAuth.success) {
+        throw new Error("Saved AtCoder authentication data is invalid.", {
+            cause: parsedAuth.issues,
+        });
+    }
+
+    return new AtCoderClient().login(parsedAuth.output.revelSession);
+}
+
 export async function loginToAtCoder(): Promise<void> {
     const auth = await readAuth();
     const savedAtCoderAuth = auth.atcoder;
-    if (savedAtCoderAuth !== undefined) {
-        const parsedAuth = v.safeParse(atCoderAuthSchema, savedAtCoderAuth);
-        if (!parsedAuth.success) {
-            throw new Error("Saved AtCoder authentication data is invalid.", {
-                cause: parsedAuth.issues,
-            });
-        }
-
-        const client = new AtCoderClient();
-        if (await client.login(parsedAuth.output.revelSession)) {
-            const shouldContinue = await confirm({
-                message: "Already logged in to AtCoder. Continue with a new session?",
-                default: false,
-            });
-            if (!shouldContinue) {
-                return;
-            }
+    if (await isAtCoderLoggedIn(savedAtCoderAuth)) {
+        const shouldContinue = await confirm({
+            message: "Already logged in to AtCoder. Continue with a new session?",
+            default: false,
+        });
+        if (!shouldContinue) {
+            return;
         }
     }
 
