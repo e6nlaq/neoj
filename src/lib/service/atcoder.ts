@@ -87,12 +87,21 @@ function parseProblem(html: string, url: string): AtCoderProblem {
 
 export class AtCoderClient {
     private session: string | undefined;
+    private csrfTokenValue: string | undefined;
+
+    get csrfToken(): string | undefined {
+        return this.csrfTokenValue;
+    }
 
     async login(revelSession: string): Promise<boolean> {
-        this.session = revelSession;
+        const session = revelSession.trim().replace(/^REVEL_SESSION=/i, "");
+        const decodedSession = decodeURIComponent(session);
+        const csrfToken = decodedSession.match(/(?:^|\0)csrf_token:([^\0]*)/i)?.[1];
+        this.session = session;
+        this.csrfTokenValue = csrfToken || undefined;
 
         const response = await fetch(LOGIN_CHECK_URL, {
-            headers: { Cookie: `REVEL_SESSION=${revelSession}` },
+            headers: { Cookie: `REVEL_SESSION=${session}` },
             redirect: "manual",
         });
         const redirected =
@@ -102,6 +111,7 @@ export class AtCoderClient {
 
         if (redirected || !response.ok) {
             this.session = undefined;
+            this.csrfTokenValue = undefined;
             return false;
         }
 

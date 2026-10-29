@@ -62,6 +62,24 @@ afterEach(() => {
 
 describe("AtCoderClient", () => {
     describe("login", () => {
+        it("retains the csrf_token from the encoded session cookie", async () => {
+            const requests: Array<{ cookie: string | null }> = [];
+            setFetch(async (_input, init) => {
+                requests.push({ cookie: new Headers(init?.headers).get("Cookie") });
+                return new Response(null, { status: 200 });
+            });
+            const client = new AtCoderClient();
+            const session =
+                "REVEL_SESSION=opaque-%00w%3Afalse%00%00csrf_token%3Atest%2Btoken%3D%00";
+
+            await expect(client.login(session)).resolves.toBe(true);
+
+            expect(client.csrfToken).toBe("test+token=");
+            expect(requests).toEqual([
+                { cookie: `REVEL_SESSION=${session.slice("REVEL_SESSION=".length)}` },
+            ]);
+        });
+
         it("sends the session cookie and succeeds without a redirect", async () => {
             const requests: Array<{
                 url: string;
@@ -90,12 +108,17 @@ describe("AtCoderClient", () => {
 
         it("rejects a redirected login and clears the session", async () => {
             const requests: Array<{ url: string; cookie: string | null }> = [];
+            let loginAttempts = 0;
             setFetch(async (input, init) => {
                 requests.push({
                     url: String(input),
                     cookie: new Headers(init?.headers).get("Cookie"),
                 });
                 if (String(input).endsWith("/submit")) {
+                    loginAttempts += 1;
+                    if (loginAttempts === 1) {
+                        return new Response(null, { status: 200 });
+                    }
                     return new Response(null, {
                         status: 302,
                         headers: { Location: "/login" },
@@ -105,10 +128,13 @@ describe("AtCoderClient", () => {
             });
 
             const client = new AtCoderClient();
+            await expect(client.login("opaque-%00csrf_token%3Aold-token%00")).resolves.toBe(true);
+            expect(client.csrfToken).toBe("old-token");
             await expect(client.login("invalid-session")).resolves.toBe(false);
+            expect(client.csrfToken).toBeUndefined();
             await client.getProblem(problemUrl);
 
-            expect(requests[1]?.cookie).toBeNull();
+            expect(requests[2]?.cookie).toBeNull();
         });
     });
 
