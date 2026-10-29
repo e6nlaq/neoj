@@ -12,6 +12,7 @@ export interface AtCoderProblem {
     url: string;
     title: string;
     samples: AtCoderSample[];
+    isContestRunning: boolean;
 }
 
 function parseProblem(html: string, url: string): AtCoderProblem {
@@ -26,6 +27,19 @@ function parseProblem(html: string, url: string): AtCoderProblem {
         const title = window.document.title.trim();
         if (!title) {
             throw new Error("AtCoder problem title was not found in the response.");
+        }
+
+        const contestTimes = statement.ownerDocument.querySelectorAll(".contest-duration time");
+        const startTimeText = contestTimes[0]?.textContent?.trim();
+        const endTimeText = contestTimes[contestTimes.length - 1]?.textContent?.trim();
+        if (!startTimeText || !endTimeText) {
+            throw new Error("AtCoder contest start and end times were not found in the response.");
+        }
+
+        const startTime = Date.parse(startTimeText);
+        const endTime = Date.parse(endTimeText);
+        if (Number.isNaN(startTime) || Number.isNaN(endTime)) {
+            throw new Error("AtCoder contest start or end time is invalid.");
         }
 
         const samples = new Map<number, Partial<AtCoderSample>>();
@@ -61,7 +75,11 @@ function parseProblem(html: string, url: string): AtCoderProblem {
             return { input: sample.input, output: sample.output };
         });
 
-        return { url, title, samples: resultSamples };
+        const now = Date.now();
+        const isContestRunning =
+            new Date(endTime).getUTCFullYear() < 3000 && startTime <= now && now < endTime;
+
+        return { url, title, samples: resultSamples, isContestRunning };
     } finally {
         window.close();
     }

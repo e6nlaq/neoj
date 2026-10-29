@@ -3,10 +3,25 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { AtCoderClient } from "@/lib/service/atcoder";
 
 const problemUrl = "https://atcoder.jp/contests/abc001/tasks/abc001_1";
-const problemHtml = `
+const formatContestTime = (date: Date) =>
+    date.toISOString().replace("T", " ").replace("Z", "+0000");
+const problemHtml = createProblemHtml(
+    formatContestTime(new Date(Date.now() - 60_000)),
+    formatContestTime(new Date(Date.now() + 60_000)),
+);
+
+function createProblemHtml(startTime: string, endTime: string): string {
+    return `
     <html>
         <head><title>A - Sample &amp; Problem</title></head>
         <body>
+            <div id="contest-nav-tabs">
+                <small class="contest-duration">
+                    <time class="fixtime-full">${startTime}</time>
+                    -
+                    <time class="fixtime-full">${endTime}</time>
+                </small>
+            </div>
             <div id="task-statement">
                 <div class="part">
                     <h3>入力例 2</h3>
@@ -32,6 +47,7 @@ const problemHtml = `
         </body>
     </html>
 `;
+}
 
 const originalFetch = globalThis.fetch;
 type FetchHandler = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>;
@@ -105,11 +121,24 @@ describe("AtCoderClient", () => {
             expect(problem).toEqual({
                 url: problemUrl,
                 title: "A - Sample & Problem",
+                isContestRunning: true,
                 samples: [
                     { input: "foo", output: "bar" },
                     { input: "15 & 10", output: "5 < 6" },
                 ],
             });
+        });
+
+        it("returns false when the contest end time is in the year 3000 or later", async () => {
+            const startTime = formatContestTime(new Date(Date.now() - 60_000));
+            const endTime = "3000-01-01 00:00:00+0000";
+            setFetch(
+                async () => new Response(createProblemHtml(startTime, endTime), { status: 200 }),
+            );
+
+            const problem = await new AtCoderClient().getProblem(problemUrl);
+
+            expect(problem.isContestRunning).toBe(false);
         });
 
         it("sends the logged-in session cookie with the problem request", async () => {
