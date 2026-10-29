@@ -2,6 +2,7 @@ import { program } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
 import { version } from "../package.json";
+import { createLoginCommand } from "./feature/login";
 
 if (typeof Bun === "undefined") {
     consola.error("Please run this script with bun.");
@@ -14,15 +15,5 @@ program.configureOutput({
 
 program.name("neoj").version(version).description("A CLI tool for neoj.");
 
-const { createLoginCommand } = await import("./feature/login");
 program.addCommand(createLoginCommand());
-
-program
-    .command("print")
-    .argument("<file>", "ww")
-    .option("-d, --double-sided", "double-sided")
-    .action((targetFile, options) => {
-        // command-arguments and options are fully typed
-        console.log(targetFile, options);
-    });
 program.parse();
