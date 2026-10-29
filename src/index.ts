@@ -1,10 +1,25 @@
-import { writeText } from "tinyclip";
+import { program } from "@commander-js/extra-typings";
+import { consola } from "consola";
 
-import { solve } from "./b";
+import { version } from "../package.json";
 
-console.log("Hello via Bun!");
-
-if (typeof Bun !== "undefined") {
-    console.log(await import("./a").then((m) => m.hello()));
-    await writeText(solve(2).toString());
+if (typeof Bun === "undefined") {
+    consola.error("Please run this script with bun.");
+    process.exit(1);
 }
+
+program.configureOutput({
+    writeErr: (str) => consola.error(str),
+});
+
+program.name("neoj").version(version).description("A CLI tool for neoj.");
+
+program
+    .command("print")
+    .argument("<file>", "ww")
+    .option("-d, --double-sided", "double-sided")
+    .action((targetFile, options) => {
+        // command-arguments and options are fully typed
+        console.log(targetFile, options);
+    });
+program.parse();
