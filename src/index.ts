@@ -14,6 +14,9 @@ program.configureOutput({
 
 program.name("neoj").version(version).description("A CLI tool for neoj.");
 
+const { createLoginCommand } = await import("./feature/login");
+program.addCommand(createLoginCommand());
+
 program
     .command("print")
     .argument("<file>", "ww")

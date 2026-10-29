@@ -7,6 +7,8 @@ Build `neoj` as a modern, feature-rich alternative to `oj`, the competitive-prog
 ## Architecture
 
 - Keep the CLI entry point in `src/index.ts` and platform-specific integrations under `src/lib/service/`.
+- Put user-facing command features under `src/feature/`; load optional command modules dynamically from the CLI entry point.
+- Put shared filesystem and configuration helpers under `src/lib/util/`.
 - Keep platform HTTP and HTML handling in service modules, separate from CLI argument parsing and presentation.
 - Add shared abstractions only when multiple integrations need them; avoid speculative frameworks and one-off indirection.
 - Validate external URLs and responses, and report actionable errors rather than silently returning incomplete results.
