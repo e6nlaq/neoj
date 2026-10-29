@@ -1,0 +1,16 @@
+pre-commit:
+    parallel: false
+    commands:
+        format:
+            run: bun fmt --staged
+        lint:
+            glob: "*.{js,jsx,ts,tsx,mjs,cjs,mts,cts}"
+            run: bun run lint {staged_files}
+        typecheck:
+            glob: "*.{ts,tsx}"
+            run: bun run typecheck
+
+commit-msg:
+    commands:
+        commitlint:
+            run: bunx commitlint --edit {1}

@@ -1,17 +1,13 @@
 {
     "compilerOptions": {
         // Environment setup & latest features
-        "lib": [
-            "ESNext"
-        ],
+        "lib": ["ESNext"],
         "target": "ESNext",
         "module": "Preserve",
         "moduleDetection": "force",
         "jsx": "react-jsx",
         "allowJs": true,
-        "types": [
-            "bun"
-        ],
+        "types": ["bun"],
         // Bundler mode
         "moduleResolution": "bundler",
         "allowImportingTsExtensions": true,
@@ -28,9 +24,7 @@
         "noUnusedParameters": false,
         "noPropertyAccessFromIndexSignature": false,
         "paths": {
-            "@/*": [
-                "./src/*"
-            ]
+            "@/*": ["./src/*"]
         }
     }
 }
