@@ -167,6 +167,20 @@ describe("AtCoderClient", () => {
             expect(problem.isContestRunning).toBe(false);
         });
 
+        it("normalizes CRLF line endings in sample input and output", async () => {
+            const html = problemHtml
+                .replace("15 &amp; 10", "15\r\n&amp; 10")
+                .replace("5 &lt; 6", "5\r\n&lt; 6");
+            setFetch(async () => new Response(html, { status: 200 }));
+
+            const problem = await new AtCoderClient().getProblem(problemUrl);
+
+            expect(problem.samples[1]).toEqual({
+                input: "15\n& 10",
+                output: "5\n< 6",
+            });
+        });
+
         it("sends the logged-in session cookie with the problem request", async () => {
             const requests: Array<{ url: string; cookie: string | null }> = [];
             setFetch(async (input, init) => {

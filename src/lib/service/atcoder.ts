@@ -58,7 +58,7 @@ function parseProblem(html: string, url: string): AtCoderProblem {
             }
 
             const sample = samples.get(sampleNumber) ?? {};
-            const value = pre.textContent?.trim() ?? "";
+            const value = pre.textContent?.trim().replaceAll("\r\n", "\n") ?? "";
             if (/^(入力例|Sample Input)$/i.test(match[1] ?? "")) {
                 sample.input = value;
             } else {
