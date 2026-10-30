@@ -1,4 +1,4 @@
-const res = await fetch("https://atcoder.jp/contests/abc001/tasks/abc001_1", {
+const res = await fetch("https://atcoder.jp/contests/awc0190/submissions/me", {
     headers: { Cookie: `REVEL_SESSION=${process.env.REVEL_SESSION};` },
 });
 

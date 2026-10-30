@@ -20,6 +20,10 @@ Build `neoj` as a modern, feature-rich alternative to `oj`, the competitive-prog
 - Keep tests deterministic: mock network requests instead of depending on live contest sites.
 - Add dependencies only when they materially simplify or enable a needed capability.
 
+## Feature Design
+
+- Before implementing a user-facing feature, use the `grilling` skill to clarify requirements, explore design decisions in rounds, and get explicit confirmation of the resulting specification. Do not start implementation until the user confirms.
+
 ## Validation
 
 Run the relevant checks before finishing changes:

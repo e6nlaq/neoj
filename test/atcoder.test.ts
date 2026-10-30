@@ -5,9 +5,13 @@ import { AtCoderClient } from "@/lib/service/atcoder";
 const problemUrl = "https://atcoder.jp/contests/abc001/tasks/abc001_1";
 const formatContestTime = (date: Date) =>
     date.toISOString().replace("T", " ").replace("Z", "+0000");
+const contestStartTime = new Date(Date.now() - 60_000);
+const contestEndTime = new Date(Date.now() + 60_000);
+const expectedContestStartTime = Temporal.Instant.from(contestStartTime.toISOString());
+const expectedContestEndTime = Temporal.Instant.from(contestEndTime.toISOString());
 const problemHtml = createProblemHtml(
-    formatContestTime(new Date(Date.now() - 60_000)),
-    formatContestTime(new Date(Date.now() + 60_000)),
+    formatContestTime(contestStartTime),
+    formatContestTime(contestEndTime),
 );
 
 function createProblemHtml(startTime: string, endTime: string): string {
@@ -147,7 +151,8 @@ describe("AtCoderClient", () => {
             expect(problem).toEqual({
                 url: problemUrl,
                 title: "A - Sample & Problem",
-                isContestRunning: true,
+                startTime: expectedContestStartTime,
+                endTime: expectedContestEndTime,
                 samples: [
                     { input: "foo", output: "bar" },
                     { input: "15 & 10", output: "5 < 6" },
@@ -155,7 +160,7 @@ describe("AtCoderClient", () => {
             });
         });
 
-        it("returns false when the contest end time is in the year 3000 or later", async () => {
+        it("returns contest times in the year 3000 or later", async () => {
             const startTime = formatContestTime(new Date(Date.now() - 60_000));
             const endTime = "3000-01-01 00:00:00+0000";
             setFetch(
@@ -164,7 +169,7 @@ describe("AtCoderClient", () => {
 
             const problem = await new AtCoderClient().getProblem(problemUrl);
 
-            expect(problem.isContestRunning).toBe(false);
+            expect(problem.endTime).toEqual(Temporal.Instant.from("3000-01-01T00:00:00Z"));
         });
 
         it("normalizes CRLF line endings in sample input and output", async () => {

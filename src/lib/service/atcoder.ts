@@ -12,7 +12,17 @@ export interface AtCoderProblem {
     url: string;
     title: string;
     samples: AtCoderSample[];
-    isContestRunning: boolean;
+    startTime: Temporal.Instant;
+    endTime: Temporal.Instant;
+}
+
+function parseContestTime(value: string): Temporal.Instant {
+    const isoValue = value.replace(" ", "T").replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+    try {
+        return Temporal.Instant.from(isoValue);
+    } catch (error) {
+        throw new Error("AtCoder contest start or end time is invalid.", { cause: error });
+    }
 }
 
 function parseProblem(html: string, url: string): AtCoderProblem {
@@ -36,11 +46,8 @@ function parseProblem(html: string, url: string): AtCoderProblem {
             throw new Error("AtCoder contest start and end times were not found in the response.");
         }
 
-        const startTime = Date.parse(startTimeText);
-        const endTime = Date.parse(endTimeText);
-        if (Number.isNaN(startTime) || Number.isNaN(endTime)) {
-            throw new Error("AtCoder contest start or end time is invalid.");
-        }
+        const startTime = parseContestTime(startTimeText);
+        const endTime = parseContestTime(endTimeText);
 
         const samples = new Map<number, Partial<AtCoderSample>>();
         for (const heading of statement.querySelectorAll("h3")) {
@@ -75,11 +82,13 @@ function parseProblem(html: string, url: string): AtCoderProblem {
             return { input: sample.input, output: sample.output };
         });
 
-        const now = Date.now();
-        const isContestRunning =
-            new Date(endTime).getUTCFullYear() < 3000 && startTime <= now && now < endTime;
-
-        return { url, title, samples: resultSamples, isContestRunning };
+        return {
+            url,
+            title,
+            samples: resultSamples,
+            startTime,
+            endTime,
+        };
     } finally {
         window.close();
     }
