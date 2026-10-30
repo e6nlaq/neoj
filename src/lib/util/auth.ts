@@ -62,3 +62,27 @@ export async function saveAuth(
     };
     await Bun.file(join(dataDirectory, "auth.json")).write(`${JSON.stringify(auth, null, 2)}\n`);
 }
+
+export async function removeAuth(providers: readonly string[]): Promise<void> {
+    const auth = await readAuth();
+    for (const provider of providers) {
+        delete auth[provider];
+    }
+
+    const authFile = Bun.file(join(envPaths("neoj").data, "auth.json"));
+    if (Object.keys(auth).length === 0) {
+        if (await authFile.exists()) {
+            await authFile.delete();
+        }
+        return;
+    }
+
+    await authFile.write(`${JSON.stringify(auth, null, 2)}\n`);
+}
+
+export async function clearAuth(): Promise<void> {
+    const authFile = Bun.file(join(envPaths("neoj").data, "auth.json"));
+    if (await authFile.exists()) {
+        await authFile.delete();
+    }
+}

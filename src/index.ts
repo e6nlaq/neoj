@@ -3,6 +3,7 @@ import { consola } from "consola";
 
 import { version } from "../package.json";
 import { createLoginCommand } from "./feature/login";
+import { createLogoutCommand } from "./feature/logout";
 import { createStatusCommand } from "./feature/status";
 
 if (typeof Bun === "undefined") {
@@ -17,5 +18,6 @@ program.configureOutput({
 program.name("neoj").version(version).description("A CLI tool for neoj.");
 
 program.addCommand(createLoginCommand());
+program.addCommand(createLogoutCommand());
 program.addCommand(createStatusCommand());
 program.parse();
