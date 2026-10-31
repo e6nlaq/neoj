@@ -1,7 +1,9 @@
 import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { join } from "node:path";
 
 import * as v from "valibot";
+
+import { findProjectConfig } from "./project";
 
 export const configSchema = v.strictObject({});
 export type Config = v.InferOutput<typeof configSchema>;
@@ -29,22 +31,6 @@ export function mergeConfig(base: ConfigTable, override: ConfigTable): ConfigTab
     }
 
     return result;
-}
-
-async function findProjectConfig(cwd: string): Promise<string | undefined> {
-    let directory = resolve(cwd);
-    while (true) {
-        const configPath = join(directory, "neoj.toml");
-        if (await Bun.file(configPath).exists()) {
-            return configPath;
-        }
-
-        const parentDirectory = dirname(directory);
-        if (parentDirectory === directory) {
-            return undefined;
-        }
-        directory = parentDirectory;
-    }
 }
 
 async function readConfigFile(path: string): Promise<ConfigTable> {

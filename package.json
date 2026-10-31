@@ -9,7 +9,7 @@
     "module": "index.ts",
     "scripts": {
         "typecheck": "bun check",
-        "build": "rm -rf dist && bun build ./src/index.ts --target bun --outdir dist --packages external --splitting --check --minify",
+        "build": "rm -rf dist && bun build ./src/index.ts --target bun --outdir dist --packages external --splitting --check --minify && bun run scripts/copy-template-assets.ts",
         "neoj": "bun run src/index.ts",
         "format": "bun fmt",
         "lint": "oxlint",

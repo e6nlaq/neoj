@@ -2,6 +2,7 @@ import { program } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
 import { version } from "../package.json";
+import { createInitCommand } from "./feature/init";
 import { createLoginCommand } from "./feature/login";
 import { createLogoutCommand } from "./feature/logout";
 import { createStatusCommand } from "./feature/status";
@@ -17,6 +18,7 @@ program.configureOutput({
 
 program.name("neoj").version(version).description("A CLI tool for neoj.");
 
+program.addCommand(createInitCommand());
 program.addCommand(createLoginCommand());
 program.addCommand(createLogoutCommand());
 program.addCommand(createStatusCommand());

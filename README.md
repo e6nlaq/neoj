@@ -12,6 +12,16 @@ To run:
 bun run index.ts
 ```
 
+To initialize a project from the bundled templates:
+
+```bash
+bun run src/index.ts init
+```
+
+The command uses the nearest ancestor containing `neoj.toml` as the destination,
+or the current directory when no project config is found. Existing files are
+skipped; pass `--force` to overwrite them.
+
 To type check:
 
 ```bash
