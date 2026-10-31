@@ -116,12 +116,16 @@ directory. Project settings override global settings.
 [testcase]
 folder = "test"             # default
 filename = "sample-{}"      # default; {} is replaced by the 1-based sample number
+
+[download]
+show_sample = false         # print downloaded input/output samples after success
 ```
 
 Each sample is written as `<filename>.in` and `<filename>.out`. For example,
 the default creates `sample-1.in` and `sample-1.out`. Downloading replaces the
 configured folder without prompting; a failed problem fetch leaves existing
-tests untouched.
+tests untouched. Set `download.show_sample = true` to print each sample's input
+and output after the files have been written successfully.
 
 If configuration does not match the schema, `neoj` lists every invalid key,
 the reason, and the received value's type along with the config file paths.

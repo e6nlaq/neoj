@@ -5,6 +5,7 @@ import { getAtCoderSession } from "@/feature/login/atcoder";
 import {
     AtCoderClient,
     AtCoderProblemRequestError,
+    type AtCoderSample,
     parseAtCoderProblemUrl,
 } from "@/lib/service/atcoder";
 import { readAuth } from "@/lib/util/auth";
@@ -30,6 +31,13 @@ export async function getProblemWithLoginHint(
     }
 }
 
+export function formatSamples(samples: readonly AtCoderSample[]): string[] {
+    return samples.map(
+        (sample, index) =>
+            `Sample ${index + 1}\nInput:\n${sample.input}\nOutput:\n${sample.output}\n`,
+    );
+}
+
 export async function downloadProblem(url: string): Promise<void> {
     parseAtCoderProblemUrl(url);
     const projectRoot = await requireInitializedProject(process.cwd());
@@ -46,6 +54,12 @@ export async function downloadProblem(url: string): Promise<void> {
     if (result.count === 0) {
         consola.info(`No samples found. Recreated "${result.directory}" as an empty directory.`);
         return;
+    }
+
+    if (config.download.show_sample) {
+        for (const sample of formatSamples(result.samples)) {
+            consola.info(sample);
+        }
     }
 
     consola.success(`Downloaded ${result.count} sample(s) to "${result.directory}".`);

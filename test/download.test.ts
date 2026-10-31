@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { getProblemWithLoginHint } from "@/feature/download";
+import { formatSamples, getProblemWithLoginHint } from "@/feature/download";
 import type { AtCoderProblem } from "@/lib/service/atcoder";
 import { AtCoderProblemRequestError } from "@/lib/service/atcoder";
 import { downloadAtCoderSamples } from "@/lib/util/testcase";
@@ -33,6 +33,17 @@ function createProblem(samples: AtCoderProblem["samples"]): AtCoderProblem {
 }
 
 const config = { folder: "testcases", filename: "sample-{}" };
+
+describe("formatSamples", () => {
+    it("formats sample input and output with numbered headings", () => {
+        expect(
+            formatSamples([
+                { input: "1 2\n", output: "3\n" },
+                { input: "4 5", output: "9" },
+            ]),
+        ).toEqual(["Sample 1\nInput:\n1 2\n\nOutput:\n3\n", "Sample 2\nInput:\n4 5\nOutput:\n9"]);
+    });
+});
 
 describe("getProblemWithLoginHint", () => {
     it("hints to log in only on a 404 while logged out", async () => {
@@ -74,7 +85,7 @@ describe("downloadAtCoderSamples", () => {
 
         await expect(
             downloadAtCoderSamples(problem.url, projectRoot, config, client),
-        ).resolves.toEqual({ directory: target, count: 2 });
+        ).resolves.toEqual({ directory: target, count: 2, samples: problem.samples });
 
         expect((await readdir(target)).sort()).toEqual([
             "sample-1.in",
@@ -97,7 +108,7 @@ describe("downloadAtCoderSamples", () => {
             downloadAtCoderSamples(problem.url, projectRoot, config, {
                 getProblem: async () => problem,
             }),
-        ).resolves.toEqual({ directory: target, count: 0 });
+        ).resolves.toEqual({ directory: target, count: 0, samples: [] });
         await expect(readdir(target)).resolves.toEqual([]);
     });
 

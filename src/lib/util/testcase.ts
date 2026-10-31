@@ -8,6 +8,7 @@ import { hasErrorCode } from "@/lib/util/errors";
 export interface DownloadedSamples {
     directory: string;
     count: number;
+    samples: AtCoderProblem["samples"];
 }
 
 async function validateTargetDirectory(projectRoot: string, folder: string): Promise<string> {
@@ -81,7 +82,7 @@ async function replaceDirectory(
     );
     try {
         for (const file of files) {
-            await writeFile(join(stagingDirectory, file.name), file.contents, {
+            await writeFile(join(stagingDirectory, file.name), file.contents + "\n", {
                 encoding: "utf8",
                 flag: "wx",
             });
@@ -121,5 +122,9 @@ export async function downloadAtCoderSamples(
     const files = getSampleFiles(problem, testcaseConfig.filename);
 
     await replaceDirectory(targetDirectory, files);
-    return { directory: targetDirectory, count: problem.samples.length };
+    return {
+        directory: targetDirectory,
+        count: problem.samples.length,
+        samples: problem.samples,
+    };
 }

@@ -27,6 +27,12 @@ export const configSchema = v.strictObject({
         }),
         { folder: "test", filename: "sample-{}" },
     ),
+    download: v.optional(
+        v.strictObject({
+            show_sample: v.optional(v.boolean(), false),
+        }),
+        { show_sample: false },
+    ),
 });
 
 export type Config = v.InferOutput<typeof configSchema>;

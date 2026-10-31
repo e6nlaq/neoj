@@ -76,6 +76,7 @@ describe("loadConfig", () => {
 
         await expect(loadConfig()).resolves.toEqual({
             testcase: { folder: "test", filename: "sample-{}" },
+            download: { show_sample: false },
         });
     });
 
@@ -122,12 +123,16 @@ describe("loadConfig", () => {
         const { home, project } = await setTemporaryPaths();
         await Bun.write(
             join(home, ".neoj.toml"),
-            '[testcase]\nfolder = "cases"\nfilename = "case-{}"',
+            '[testcase]\nfolder = "cases"\nfilename = "case-{}"\n\n[download]\nshow_sample = true',
         );
-        await Bun.write(join(project, "neoj.toml"), '[testcase]\nfolder = "tests"');
+        await Bun.write(
+            join(project, "neoj.toml"),
+            '[testcase]\nfolder = "tests"\n\n[download]\nshow_sample = false',
+        );
 
         await expect(loadConfig()).resolves.toEqual({
             testcase: { folder: "tests", filename: "case-{}" },
+            download: { show_sample: false },
         });
     });
 
