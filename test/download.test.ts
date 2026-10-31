@@ -35,13 +35,26 @@ function createProblem(samples: AtCoderProblem["samples"]): AtCoderProblem {
 const config = { folder: "testcases", filename: "sample-{}" };
 
 describe("formatSamples", () => {
-    it("formats sample input and output with numbered headings", () => {
+    it("formats sample input and output with numbered headings and a trailing newline", () => {
         expect(
-            formatSamples([
-                { input: "1 2\n", output: "3\n" },
-                { input: "4 5", output: "9" },
-            ]),
-        ).toEqual(["Sample 1\nInput:\n1 2\n\nOutput:\n3\n", "Sample 2\nInput:\n4 5\nOutput:\n9"]);
+            formatSamples(
+                [
+                    { input: "1 2\n", output: "3\n" },
+                    { input: "4 5", output: "9" },
+                ],
+                "test",
+                "sample-{}",
+            ),
+        ).toEqual([
+            "Sample 1\nInput [test/sample-1.in]:\n1 2\n\nOutput [test/sample-1.out]:\n3\n\n",
+            "Sample 2\nInput [test/sample-2.in]:\n4 5\nOutput [test/sample-2.out]:\n9\n",
+        ]);
+    });
+
+    it("uses configured nested paths and normalizes separators for display", () => {
+        expect(formatSamples([{ input: "x", output: "y" }], "cases\\atcoder", "case-{}")).toEqual([
+            "Sample 1\nInput [cases/atcoder/case-1.in]:\nx\nOutput [cases/atcoder/case-1.out]:\ny\n",
+        ]);
     });
 });
 
@@ -72,7 +85,7 @@ describe("getProblemWithLoginHint", () => {
 });
 
 describe("downloadAtCoderSamples", () => {
-    it("replaces the test folder with numbered samples without changing contents", async () => {
+    it("replaces the test folder with numbered samples ending in a newline", async () => {
         const projectRoot = await createProject();
         const target = join(projectRoot, config.folder);
         await mkdir(join(target, "old"), { recursive: true });
@@ -93,8 +106,10 @@ describe("downloadAtCoderSamples", () => {
             "sample-2.in",
             "sample-2.out",
         ]);
-        expect(await Bun.file(join(target, "sample-1.in")).text()).toBe("1 2\n");
-        expect(await Bun.file(join(target, "sample-2.out")).text()).toBe("9");
+        expect(await Bun.file(join(target, "sample-1.in")).text()).toBe("1 2\n\n");
+        expect(await Bun.file(join(target, "sample-1.out")).text()).toBe("3\n\n");
+        expect(await Bun.file(join(target, "sample-2.in")).text()).toBe("4 5\n");
+        expect(await Bun.file(join(target, "sample-2.out")).text()).toBe("9\n");
     });
 
     it("clears the folder and succeeds when the problem has no samples", async () => {

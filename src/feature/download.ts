@@ -31,10 +31,15 @@ export async function getProblemWithLoginHint(
     }
 }
 
-export function formatSamples(samples: readonly AtCoderSample[]): string[] {
+export function formatSamples(
+    samples: readonly AtCoderSample[],
+    folder: string,
+    filenamePattern: string,
+): string[] {
+    const relativeFolder = folder.split(/[\\/]/u).join("/");
     return samples.map(
         (sample, index) =>
-            `Sample ${index + 1}\nInput:\n${sample.input}\nOutput:\n${sample.output}\n`,
+            `Sample ${index + 1}\nInput [${relativeFolder}/${filenamePattern.replace("{}", String(index + 1))}.in]:\n${sample.input}\nOutput [${relativeFolder}/${filenamePattern.replace("{}", String(index + 1))}.out]:\n${sample.output}\n`,
     );
 }
 
@@ -57,7 +62,11 @@ export async function downloadProblem(url: string): Promise<void> {
     }
 
     if (config.download.show_sample) {
-        for (const sample of formatSamples(result.samples)) {
+        for (const sample of formatSamples(
+            result.samples,
+            config.testcase.folder,
+            config.testcase.filename,
+        )) {
             consola.info(sample);
         }
     }
