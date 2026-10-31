@@ -32,13 +32,29 @@ contest platforms.
 
 ## Documentation
 
-| Guide                                                                                          | Contents                                                      |
-| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| [Installation & quick start](https://github.com/e6nlaq/neoj/blob/main/docs/getting-started.md) | Install the CLI with Bun or npm and run your first commands.  |
-| [Platforms](https://github.com/e6nlaq/neoj/blob/main/docs/platforms.md)                        | Platform integrations, login, status, and credential storage. |
-| [Commands](https://github.com/e6nlaq/neoj/blob/main/docs/commands.md)                          | Reference for every command, flag, and generated file.        |
-| [Configuration](https://github.com/e6nlaq/neoj/blob/main/docs/configuration.md)                | Global and project `neoj.toml` options.                       |
-| [Development](https://github.com/e6nlaq/neoj/blob/main/docs/development.md)                    | Build, test, lint, and contribute.                            |
+### Learn
+
+- [Your first problem](https://github.com/e6nlaq/neoj/blob/main/docs/tutorial.md) —
+  go from an empty directory to downloaded sample tests.
+
+### Do
+
+- [Install neoj](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/install.md)
+- [Log in, check status, and log out](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/manage-sessions.md)
+- [Download sample tests](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/download-samples.md)
+- [Configure a project](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/configure-project.md)
+- [Contribute](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/contribute.md)
+
+### Look up
+
+- [CLI reference](https://github.com/e6nlaq/neoj/blob/main/docs/reference/cli.md)
+- [Configuration reference](https://github.com/e6nlaq/neoj/blob/main/docs/reference/configuration.md)
+- [Credential storage](https://github.com/e6nlaq/neoj/blob/main/docs/reference/credentials.md)
+
+### Understand
+
+- [Platforms and integrations](https://github.com/e6nlaq/neoj/blob/main/docs/explanation/platforms.md)
+- [Sessions and credential security](https://github.com/e6nlaq/neoj/blob/main/docs/explanation/sessions.md)
 
 ## License
 
