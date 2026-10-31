@@ -20,6 +20,7 @@ const testcaseFilenameSchema = v.pipe(
 );
 
 export const configSchema = v.strictObject({
+    src: v.optional(v.pipe(v.string(), v.minLength(1))),
     testcase: v.optional(
         v.strictObject({
             folder: v.optional(v.pipe(v.string(), v.minLength(1)), "test"),
@@ -32,6 +33,14 @@ export const configSchema = v.strictObject({
             show_sample: v.optional(v.boolean(), false),
         }),
         { show_sample: false },
+    ),
+    template: v.optional(
+        v.strictObject({
+            enable: v.optional(v.boolean(), false),
+            path: v.optional(v.pipe(v.string(), v.minLength(1))),
+            mode: v.optional(v.picklist(["overlay", "replace"]), "overlay"),
+        }),
+        { enable: false, mode: "overlay" },
     ),
 });
 
@@ -136,6 +145,13 @@ export async function loadConfig(): Promise<Config> {
     const projectConfigPath = await findProjectConfig(process.cwd());
     const globalConfig = await readConfigFile(globalConfigPath);
     const projectConfig = projectConfigPath ? await readConfigFile(projectConfigPath) : {};
+    const projectOnlyKeys = ["src", "template"].filter((key) => key in globalConfig);
+    if (projectOnlyKeys.length > 0) {
+        throw new Error(
+            `Configuration keys ${projectOnlyKeys.map((key) => `"${key}"`).join(", ")} may only be set in a project neoj.toml ("${globalConfigPath}").`,
+        );
+    }
+
     const mergedConfig = mergeConfig(globalConfig, projectConfig);
     const result = v.safeParse(configSchema, mergedConfig);
 
@@ -161,6 +177,21 @@ export async function loadConfig(): Promise<Config> {
             ...issueDetails,
         ].join("\n");
         throw new Error(message, { cause: result.issues });
+    }
+
+    if (result.output.template.enable) {
+        const missingKeys = [];
+        if (result.output.src === undefined) {
+            missingKeys.push("src");
+        }
+        if (result.output.template.path === undefined) {
+            missingKeys.push("template.path");
+        }
+        if (missingKeys.length > 0) {
+            throw new Error(
+                `Configuration in project file "${projectConfigPath ?? "neoj.toml"}" requires ${missingKeys.join(" and ")} when template.enable is true.`,
+            );
+        }
     }
 
     return result.output;

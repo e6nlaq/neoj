@@ -11,6 +11,7 @@ import {
 import { readAuth } from "@/lib/util/auth";
 import { loadConfig } from "@/lib/util/config";
 import { requireInitializedProject } from "@/lib/util/project";
+import { applyProjectTemplate } from "@/lib/util/template-apply";
 import { downloadAtCoderSamples } from "@/lib/util/testcase";
 
 export async function getProblemWithLoginHint(
@@ -55,6 +56,17 @@ export async function downloadProblem(url: string): Promise<void> {
     const result = await downloadAtCoderSamples(url, projectRoot, config.testcase, {
         getProblem: (problemUrl) => getProblemWithLoginHint(problemUrl, client, loggedIn),
     });
+
+    if (config.template.enable) {
+        const templatePath = config.template.path;
+        const sourcePath = config.src;
+        if (templatePath === undefined || sourcePath === undefined) {
+            throw new Error(
+                "Configuration requires src and template.path when template.enable is true.",
+            );
+        }
+        await applyProjectTemplate(projectRoot, templatePath, sourcePath, config.template.mode);
+    }
 
     if (result.count === 0) {
         consola.info(`No samples found. Recreated "${result.directory}" as an empty directory.`);

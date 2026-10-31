@@ -1,4 +1,10 @@
 
 # neoj config file
+src = "src"
+
 [testcase]
 folder = "test"
+
+[template]
+enable = true
+folder = "template"

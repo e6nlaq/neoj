@@ -75,9 +75,27 @@ describe("loadConfig", () => {
         await setTemporaryPaths();
 
         await expect(loadConfig()).resolves.toEqual({
+            src: undefined,
             testcase: { folder: "test", filename: "sample-{}" },
             download: { show_sample: false },
+            template: { enable: false, mode: "overlay" },
         });
+    });
+
+    it("requires src and template.path when template is enabled", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), "[template]\nenable = true\n");
+
+        await expect(loadConfig()).rejects.toThrow(
+            "requires src and template.path when template.enable is true",
+        );
+    });
+
+    it("allows template settings only in the project config", async () => {
+        const { home } = await setTemporaryPaths();
+        await Bun.write(join(home, ".neoj.toml"), "[template]\nenable = true\n");
+
+        await expect(loadConfig()).rejects.toThrow("may only be set in a project neoj.toml");
     });
 
     it("reports invalid TOML in the nearest project config", async () => {
@@ -133,6 +151,7 @@ describe("loadConfig", () => {
         await expect(loadConfig()).resolves.toEqual({
             testcase: { folder: "tests", filename: "case-{}" },
             download: { show_sample: false },
+            template: { enable: false, mode: "overlay" },
         });
     });
 
