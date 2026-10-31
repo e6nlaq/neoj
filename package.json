@@ -3,6 +3,9 @@
     "version": "0.0.1",
     "description": "A CLI for competitive programming workflows",
     "license": "MIT",
+    "author": {
+        "name": "e6nlaq"
+    },
     "repository": {
         "type": "git",
         "url": "git+https://github.com/e6nlaq/neoj.git"
