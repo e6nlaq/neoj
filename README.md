@@ -94,7 +94,10 @@ and reports `Logged in (offline, not verified)` instead.
 The command requires an initialized project with a `neoj.toml` file. It uses the
 nearest project config as the project root; if none is found, run `neoj init`
 first. When a problem returns 404 while AtCoder reports the user as logged out,
-the error suggests trying `neoj login atcoder`.
+the error suggests trying `neoj login atcoder`. After a successful download,
+the command records the problem URL and contest start/end times in
+`.neoj/problem.json`. This file is managed by `neoj` and is replaced on each
+successful download; the `.neoj` directory is ignored by Git.
 
 ## Configuration
 
@@ -124,7 +127,7 @@ show_sample = false # print downloaded input/output samples after success
 
 [template]
 enable = false # default; apply a template after downloading samples
-path = "template" # required when enabled; relative to the project root
+folder = "template" # required when enabled; relative to the project root
 mode = "overlay" # default; "replace" clears src before copying
 ```
 
@@ -134,7 +137,7 @@ configured folder without prompting; a failed problem fetch leaves existing
 tests untouched. Set `download.show_sample = true` to print each sample's input
 and output after the files have been written successfully.
 
-When `template.enable = true`, `src` and `template.path` must both be set to
+When `template.enable = true`, `src` and `template.folder` must both be set to
 relative paths inside the project. Downloading overlays files from the template
 onto `src` by default, replacing matching paths while preserving other files.
 Set `template.mode = "replace"` to remove all contents of `src` before copying.

@@ -9,6 +9,7 @@ export interface DownloadedSamples {
     directory: string;
     count: number;
     samples: AtCoderProblem["samples"];
+    problem: AtCoderProblem;
 }
 
 async function validateTargetDirectory(projectRoot: string, folder: string): Promise<string> {
@@ -126,5 +127,6 @@ export async function downloadAtCoderSamples(
         directory: targetDirectory,
         count: problem.samples.length,
         samples: problem.samples,
+        problem,
     };
 }

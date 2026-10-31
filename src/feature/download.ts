@@ -10,6 +10,7 @@ import {
 } from "@/lib/service/atcoder";
 import { readAuth } from "@/lib/util/auth";
 import { loadConfig } from "@/lib/util/config";
+import { saveProblemMetadata } from "@/lib/util/problem-metadata";
 import { requireInitializedProject } from "@/lib/util/project";
 import { applyProjectTemplate } from "@/lib/util/template-apply";
 import { downloadAtCoderSamples } from "@/lib/util/testcase";
@@ -58,15 +59,17 @@ export async function downloadProblem(url: string): Promise<void> {
     });
 
     if (config.template.enable) {
-        const templatePath = config.template.path;
+        const templateFolder = config.template.folder;
         const sourcePath = config.src;
-        if (templatePath === undefined || sourcePath === undefined) {
+        if (templateFolder === undefined || sourcePath === undefined) {
             throw new Error(
-                "Configuration requires src and template.path when template.enable is true.",
+                "Configuration requires src and template.folder when template.enable is true.",
             );
         }
-        await applyProjectTemplate(projectRoot, templatePath, sourcePath, config.template.mode);
+        await applyProjectTemplate(projectRoot, templateFolder, sourcePath, config.template.mode);
     }
+
+    await saveProblemMetadata(projectRoot, result.problem);
 
     if (result.count === 0) {
         consola.info(`No samples found. Recreated "${result.directory}" as an empty directory.`);

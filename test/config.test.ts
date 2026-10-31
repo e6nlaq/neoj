@@ -82,13 +82,20 @@ describe("loadConfig", () => {
         });
     });
 
-    it("requires src and template.path when template is enabled", async () => {
+    it("requires src and template.folder when template is enabled", async () => {
         const { project } = await setTemporaryPaths();
         await Bun.write(join(project, "neoj.toml"), "[template]\nenable = true\n");
 
         await expect(loadConfig()).rejects.toThrow(
-            "requires src and template.path when template.enable is true",
+            "requires src and template.folder when template.enable is true",
         );
+    });
+
+    it("rejects template.path as an unknown key", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), '[template]\npath = "template"');
+
+        await expect(loadConfig()).rejects.toThrow("template.path: Unknown configuration key.");
     });
 
     it("allows template settings only in the project config", async () => {

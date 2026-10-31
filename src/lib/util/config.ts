@@ -37,7 +37,7 @@ export const configSchema = v.strictObject({
     template: v.optional(
         v.strictObject({
             enable: v.optional(v.boolean(), false),
-            path: v.optional(v.pipe(v.string(), v.minLength(1))),
+            folder: v.optional(v.pipe(v.string(), v.minLength(1))),
             mode: v.optional(v.picklist(["overlay", "replace"]), "overlay"),
         }),
         { enable: false, mode: "overlay" },
@@ -184,8 +184,8 @@ export async function loadConfig(): Promise<Config> {
         if (result.output.src === undefined) {
             missingKeys.push("src");
         }
-        if (result.output.template.path === undefined) {
-            missingKeys.push("template.path");
+        if (result.output.template.folder === undefined) {
+            missingKeys.push("template.folder");
         }
         if (missingKeys.length > 0) {
             throw new Error(

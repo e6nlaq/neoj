@@ -3,14 +3,31 @@ import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { formatSamples, getProblemWithLoginHint } from "@/feature/download";
+import { downloadProblem, formatSamples, getProblemWithLoginHint } from "@/feature/download";
 import type { AtCoderProblem } from "@/lib/service/atcoder";
 import { AtCoderProblemRequestError } from "@/lib/service/atcoder";
 import { downloadAtCoderSamples } from "@/lib/util/testcase";
 
 let testRoot: string | undefined;
+const originalCwd = process.cwd();
+const originalUserProfile = process.env.USERPROFILE;
+const originalHome = process.env.HOME;
+const originalLocalAppData = process.env.LOCALAPPDATA;
 
 afterEach(async () => {
+    process.chdir(originalCwd);
+    for (const [key, value] of [
+        ["USERPROFILE", originalUserProfile],
+        ["HOME", originalHome],
+        ["LOCALAPPDATA", originalLocalAppData],
+    ] as const) {
+        if (value === undefined) {
+            delete process.env[key];
+        } else {
+            process.env[key] = value;
+        }
+    }
+
     if (testRoot !== undefined) {
         await rm(testRoot, { recursive: true, force: true });
         testRoot = undefined;
@@ -98,7 +115,12 @@ describe("downloadAtCoderSamples", () => {
 
         await expect(
             downloadAtCoderSamples(problem.url, projectRoot, config, client),
-        ).resolves.toEqual({ directory: target, count: 2, samples: problem.samples });
+        ).resolves.toEqual({
+            directory: target,
+            count: 2,
+            samples: problem.samples,
+            problem,
+        });
 
         expect((await readdir(target)).sort()).toEqual([
             "sample-1.in",
@@ -123,7 +145,7 @@ describe("downloadAtCoderSamples", () => {
             downloadAtCoderSamples(problem.url, projectRoot, config, {
                 getProblem: async () => problem,
             }),
-        ).resolves.toEqual({ directory: target, count: 0, samples: [] });
+        ).resolves.toEqual({ directory: target, count: 0, samples: [], problem });
         await expect(readdir(target)).resolves.toEqual([]);
     });
 
@@ -188,5 +210,53 @@ describe("downloadAtCoderSamples", () => {
             }),
         ).rejects.toThrow("exists but is not a directory");
         expect(await Bun.file(target).text()).toBe("keep");
+    });
+});
+
+describe("downloadProblem", () => {
+    it("records problem metadata after a successful download with no samples", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await Bun.write(join(projectRoot, "neoj.toml"), "");
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async () =>
+                new Response(
+                    `<html>
+                    <title>A - Example</title>
+                    <div id="task-statement"></div>
+                    <div class="contest-duration">
+                        <time>2026-10-30 00:00:00+0000</time>
+                        <time>2026-10-30 01:00:00+0000</time>
+                    </div>
+                </html>`,
+                    { status: 200 },
+                ),
+        });
+        try {
+            await downloadProblem("https://atcoder.jp/contests/abc300/tasks/abc300_a");
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
+
+        await expect(Bun.file(join(projectRoot, ".neoj", "problem.json")).json()).resolves.toEqual({
+            url: "https://atcoder.jp/contests/abc300/tasks/abc300_a",
+            contestrange: {
+                start: "2026-10-30T00:00:00Z",
+                end: "2026-10-30T01:00:00Z",
+            },
+        });
     });
 });

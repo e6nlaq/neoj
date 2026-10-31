@@ -118,7 +118,7 @@ export async function applyProjectTemplate(
     const templateDirectory = await validateProjectDirectory(
         projectRoot,
         templatePath,
-        "template.path",
+        "template.folder",
     );
     const sourceDirectory = await validateProjectDirectory(projectRoot, sourcePath, "src");
 
@@ -126,24 +126,24 @@ export async function applyProjectTemplate(
         isWithin(templateDirectory, sourceDirectory) ||
         isWithin(sourceDirectory, templateDirectory)
     ) {
-        throw new Error("template.path and src must not overlap.");
+        throw new Error("template.folder and src must not overlap.");
     }
 
     try {
         const templateStats = await lstat(templateDirectory);
         if (!templateStats.isDirectory()) {
-            throw new Error(`template.path "${templateDirectory}" is not a directory.`);
+            throw new Error(`template.folder "${templateDirectory}" is not a directory.`);
         }
     } catch (error) {
         if (hasErrorCode(error, "ENOENT")) {
-            throw new Error(`template.path "${templateDirectory}" does not exist.`, {
+            throw new Error(`template.folder "${templateDirectory}" does not exist.`, {
                 cause: error,
             });
         }
         throw error;
     }
 
-    await assertSafeTree(templateDirectory, "template.path");
+    await assertSafeTree(templateDirectory, "template.folder");
 
     let sourceExists = false;
     try {
