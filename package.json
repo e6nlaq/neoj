@@ -22,7 +22,7 @@
         "consola": "^3.4.2",
         "elysia": "^1.4.30",
         "env-paths": "^4.0.0",
-        "happy-dom": "^21.0.4",
+        "node-html-parser": "^9.0.5",
         "tinyclip": "^1.0.3",
         "valibot": "^1.5.0"
     },

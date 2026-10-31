@@ -1,4 +1,4 @@
-import { Window } from "happy-dom";
+import { parse } from "node-html-parser";
 
 const ATCODER_ORIGIN = "https://atcoder.jp";
 const LOGIN_CHECK_URL = `${ATCODER_ORIGIN}/contests/abc100/submit`;
@@ -26,72 +26,66 @@ function parseContestTime(value: string): Temporal.Instant {
 }
 
 function parseProblem(html: string, url: string): AtCoderProblem {
-    const window = new Window();
-    try {
-        window.document.write(html);
-        const statement = window.document.querySelector("#task-statement");
-        if (!statement) {
-            throw new Error("AtCoder problem statement was not found in the response.");
-        }
-
-        const title = window.document.title.trim();
-        if (!title) {
-            throw new Error("AtCoder problem title was not found in the response.");
-        }
-
-        const contestTimes = statement.ownerDocument.querySelectorAll(".contest-duration time");
-        const startTimeText = contestTimes[0]?.textContent?.trim();
-        const endTimeText = contestTimes[contestTimes.length - 1]?.textContent?.trim();
-        if (!startTimeText || !endTimeText) {
-            throw new Error("AtCoder contest start and end times were not found in the response.");
-        }
-
-        const startTime = parseContestTime(startTimeText);
-        const endTime = parseContestTime(endTimeText);
-
-        const samples = new Map<number, Partial<AtCoderSample>>();
-        for (const heading of statement.querySelectorAll("h3")) {
-            const match = heading.textContent
-                ?.trim()
-                .match(/^(入力例|出力例|Sample Input|Sample Output)\s*(\d+)$/i);
-            if (!match) {
-                continue;
-            }
-
-            const sampleNumber = Number(match[2]);
-            const pre = heading.closest(".part")?.querySelector("pre");
-            if (!pre) {
-                throw new Error(`AtCoder sample ${sampleNumber} content was not found.`);
-            }
-
-            const sample = samples.get(sampleNumber) ?? {};
-            const value = pre.textContent?.trim().replaceAll("\r\n", "\n") ?? "";
-            if (/^(入力例|Sample Input)$/i.test(match[1] ?? "")) {
-                sample.input = value;
-            } else {
-                sample.output = value;
-            }
-            samples.set(sampleNumber, sample);
-        }
-
-        const orderedSamples = [...samples.entries()].sort(([a], [b]) => a - b);
-        const resultSamples = orderedSamples.map(([number, sample]) => {
-            if (sample.input === undefined || sample.output === undefined) {
-                throw new Error(`AtCoder sample ${number} is missing its input or output.`);
-            }
-            return { input: sample.input, output: sample.output };
-        });
-
-        return {
-            url,
-            title,
-            samples: resultSamples,
-            startTime,
-            endTime,
-        };
-    } finally {
-        window.close();
+    const document = parse(html);
+    if (!document.querySelector("#task-statement")) {
+        throw new Error("AtCoder problem statement was not found in the response.");
     }
+
+    const title = document.querySelector("title")?.textContent.trim();
+    if (!title) {
+        throw new Error("AtCoder problem title was not found in the response.");
+    }
+
+    const contestTimes = document.querySelectorAll(".contest-duration time");
+    const startTimeText = contestTimes[0]?.textContent.trim();
+    const endTimeText = contestTimes[contestTimes.length - 1]?.textContent.trim();
+    if (!startTimeText || !endTimeText) {
+        throw new Error("AtCoder contest start and end times were not found in the response.");
+    }
+
+    const startTime = parseContestTime(startTimeText);
+    const endTime = parseContestTime(endTimeText);
+
+    const samples = new Map<number, Partial<AtCoderSample>>();
+    for (const heading of document.querySelectorAll("h3")) {
+        const match = heading.textContent
+            .trim()
+            .match(/^(入力例|出力例|Sample Input|Sample Output)\s*(\d+)$/i);
+        if (!match) {
+            continue;
+        }
+
+        const sampleNumber = Number(match[2]);
+        const pre = heading.closest(".part")?.querySelector("pre");
+        if (!pre) {
+            throw new Error(`AtCoder sample ${sampleNumber} content was not found.`);
+        }
+
+        const sample = samples.get(sampleNumber) ?? {};
+        const value = pre.textContent.trim().replaceAll("\r\n", "\n");
+        if (/^(入力例|Sample Input)$/i.test(match[1] ?? "")) {
+            sample.input = value;
+        } else {
+            sample.output = value;
+        }
+        samples.set(sampleNumber, sample);
+    }
+
+    const orderedSamples = [...samples.entries()].sort(([a], [b]) => a - b);
+    const resultSamples = orderedSamples.map(([number, sample]) => {
+        if (sample.input === undefined || sample.output === undefined) {
+            throw new Error(`AtCoder sample ${number} is missing its input or output.`);
+        }
+        return { input: sample.input, output: sample.output };
+    });
+
+    return {
+        url,
+        title,
+        samples: resultSamples,
+        startTime,
+        endTime,
+    };
 }
 
 export class AtCoderClient {
