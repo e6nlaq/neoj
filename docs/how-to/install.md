@@ -16,8 +16,9 @@ npm install -g neo-oj
 
 ## Requirements
 
-`neoj` requires [Bun](https://bun.com) 1.4 or newer at runtime. Install Bun if it
-is not already available.
+`neoj` requires [Bun](https://bun.com) 1.4 or newer at runtime. If Bun is not
+already available, follow the [Bun installation guide](https://bun.com/docs/installation)
+first.
 
 Verify that the CLI is on your `PATH`:
 

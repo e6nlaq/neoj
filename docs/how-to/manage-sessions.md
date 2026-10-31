@@ -12,8 +12,9 @@ neoj login atcoder
 
 1. Open the platform in your browser and copy the session cookie from DevTools
    (Application → Cookies). For AtCoder, the cookie is `REVEL_SESSION`.
-2. Paste the value into the prompt. Either the raw value or `REVEL_SESSION=...`
-   is accepted.
+2. Paste the value into the prompt. Either the value alone or the whole
+   `REVEL_SESSION=...` pair is accepted, and surrounding whitespace is ignored.
+   Paste only that cookie, not a full cookie header that contains `;`.
 3. `neoj` checks the session against the platform before saving it.
 
 If you are already logged in to that platform, `neoj` asks for confirmation

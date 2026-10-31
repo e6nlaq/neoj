@@ -56,6 +56,13 @@ contest platforms.
 - [Platforms and integrations](https://github.com/e6nlaq/neoj/blob/main/docs/explanation/platforms.md)
 - [Sessions and credential security](https://github.com/e6nlaq/neoj/blob/main/docs/explanation/sessions.md)
 
+## Acknowledgements
+
+`neoj` is inspired by, and learns from, these projects:
+
+- [online-judge-tools/oj](https://github.com/online-judge-tools/oj) — the original `oj` CLI that `neoj` aims to modernize.
+- [sevenc-nanashi/competitive-programming-cli(cpg)](https://github.com/sevenc-nanashi/competitive-programming-cli) — a competitive-programming CLI with a similar focus. Inspired by several ideas.
+
 ## License
 
 [MIT](https://github.com/e6nlaq/neoj/blob/main/LICENSE)
