@@ -123,6 +123,10 @@ the default creates `sample-1.in` and `sample-1.out`. Downloading replaces the
 configured folder without prompting; a failed problem fetch leaves existing
 tests untouched.
 
+If configuration does not match the schema, `neoj` lists every invalid key,
+the reason, and the received value's type along with the config file paths.
+Values themselves are not printed.
+
 ## Authentication data
 
 Saved credentials live in the per-user data directory chosen by

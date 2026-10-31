@@ -91,14 +91,31 @@ describe("loadConfig", () => {
         );
     });
 
-    it("rejects unknown configuration keys", async () => {
+    it("reports all invalid keys, types, and config sources without showing values", async () => {
         const { home, project } = await setTemporaryPaths();
-        await Bun.write(join(home, ".neoj.toml"), "setting = true");
-        await Bun.write(join(project, "neoj.toml"), "");
-
-        await expect(loadConfig()).rejects.toThrow(
-            "Configuration does not match the config schema.",
+        const globalConfigPath = join(home, ".neoj.toml");
+        const projectConfigPath = join(project, "neoj.toml");
+        await Bun.write(globalConfigPath, '[testcase]\nfilename = "PRIVATE/value-{}"');
+        await Bun.write(
+            projectConfigPath,
+            '[testcase]\nfolder = 3\n[unknown]\nkey = "do not show"',
         );
+
+        let errorMessage = "";
+        try {
+            await loadConfig();
+        } catch (error) {
+            errorMessage = error instanceof Error ? error.message : String(error);
+        }
+
+        expect(errorMessage).toContain(globalConfigPath);
+        expect(errorMessage).toContain(projectConfigPath);
+        expect(errorMessage).toContain("unknown");
+        expect(errorMessage).toContain("unknown: Unknown configuration key. (actual type: object)");
+        expect(errorMessage).toContain("testcase.folder");
+        expect(errorMessage).toContain("actual type: number");
+        expect(errorMessage).not.toContain("PRIVATE");
+        expect(errorMessage).not.toContain("do not show");
     });
 
     it("merges global and project testcase settings", async () => {
@@ -119,7 +136,7 @@ describe("loadConfig", () => {
         await Bun.write(join(project, "neoj.toml"), '[testcase]\nfilename = "../case-{}"');
 
         await expect(loadConfig()).rejects.toThrow(
-            "Configuration does not match the config schema.",
+            `testcase.filename: Must contain exactly one {} and be a file name. (actual type: string)`,
         );
     });
 
@@ -128,7 +145,7 @@ describe("loadConfig", () => {
         await Bun.write(join(project, "neoj.toml"), '[testcase]\nfilename = "sample-{}-{}"');
 
         await expect(loadConfig()).rejects.toThrow(
-            "Configuration does not match the config schema.",
+            `testcase.filename: Must contain exactly one {} and be a file name. (actual type: string)`,
         );
     });
 });

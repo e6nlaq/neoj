@@ -31,6 +31,55 @@ export const configSchema = v.strictObject({
 
 export type Config = v.InferOutput<typeof configSchema>;
 
+function getValueType(value: unknown): string {
+    if (value === null) {
+        return "null";
+    }
+    if (Array.isArray(value)) {
+        return "array";
+    }
+
+    return typeof value;
+}
+
+function getIssuePath(issue: v.BaseIssue<unknown>): string {
+    const path = issue.path?.map((item) => String(item.key)).join(".");
+    return path || "<root>";
+}
+
+function getIssueValue(value: unknown, issue: v.BaseIssue<unknown>): unknown {
+    let currentValue = value;
+    for (const item of issue.path ?? []) {
+        if (
+            typeof currentValue !== "object" ||
+            currentValue === null ||
+            !Object.hasOwn(currentValue, String(item.key))
+        ) {
+            return issue.input;
+        }
+        currentValue = Reflect.get(currentValue, String(item.key)) as unknown;
+    }
+
+    return currentValue;
+}
+
+function getIssueReason(issue: v.BaseIssue<unknown>, path: string): string {
+    if (issue.kind === "schema" && issue.type === "strict_object") {
+        return "Unknown configuration key.";
+    }
+    if (issue.kind === "schema") {
+        return `Expected ${issue.expected ?? "a valid value"}.`;
+    }
+    if (path === "testcase.filename" && issue.type === "check") {
+        return "Must contain exactly one {} and be a file name.";
+    }
+    if (path === "testcase.folder" && issue.type === "min_length") {
+        return "Must not be empty.";
+    }
+
+    return "Does not satisfy the field validation rule.";
+}
+
 type ConfigTable = Record<string, unknown>;
 
 function isConfigTable(value: unknown): value is ConfigTable {
@@ -85,9 +134,27 @@ export async function loadConfig(): Promise<Config> {
     const result = v.safeParse(configSchema, mergedConfig);
 
     if (!result.success) {
-        throw new Error("Configuration does not match the config schema.", {
-            cause: result.issues,
+        const sourcePaths: string[] = [];
+        if (await Bun.file(globalConfigPath).exists()) {
+            sourcePaths.push(globalConfigPath);
+        }
+        if (projectConfigPath !== undefined) {
+            sourcePaths.push(projectConfigPath);
+        }
+
+        const issueDetails = result.issues.map((issue) => {
+            const path = getIssuePath(issue);
+            const value = getIssueValue(mergedConfig, issue);
+            return `  - ${path}: ${getIssueReason(issue, path)} (actual type: ${getValueType(value)})`;
         });
+        const sources = sourcePaths.map((path) => `  - ${path}`).join("\n");
+        const message = [
+            "Configuration does not match the config schema after merging these files:",
+            sources || "  - No config files found.",
+            "Issues:",
+            ...issueDetails,
+        ].join("\n");
+        throw new Error(message, { cause: result.issues });
     }
 
     return result.output;
