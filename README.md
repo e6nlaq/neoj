@@ -18,40 +18,39 @@ platforms. AtCoder is the first supported platform.
 - Download AtCoder sample tests into the configured test-case directory.
 - Remove saved credentials for a single platform or all of them.
 
-## Requirements
-
-- [Bun](https://bun.com) 1.4 or newer
-
 ## Installation
 
-`neoj` is not published to npm yet, so install it from source:
+Install the published npm package globally:
 
 ```bash
-git clone https://github.com/e6nlaq/neoj.git
-cd neoj
-bun install
+# Use Bun (recommended)
+bun install -g neoj
+
+# or use npm
+npm install -g neoj
 ```
 
-Run the CLI from the repository:
+`neoj` requires [Bun](https://bun.com) 1.4 or newer at runtime. Install Bun if
+it is not already available, then verify the CLI:
 
 ```bash
-bun run neoj --help
+neoj --help
 ```
 
 ## Quick start
 
 ```bash
 # Copy the project templates into the current directory
-bun run neoj init
+neoj init
 
 # Download AtCoder samples
-bun run neoj d https://atcoder.jp/contests/abc300/tasks/abc300_a
+neoj d https://atcoder.jp/contests/abc300/tasks/abc300_a
 
 # Save an AtCoder session
-bun run neoj login atcoder
+neoj login atcoder
 
 # Check that the saved session is still valid
-bun run neoj status
+neoj status
 ```
 
 ## Commands
@@ -114,19 +113,19 @@ directory. Project settings override global settings. The `src` and `[template]`
 settings are project-only.
 
 ```toml
-src = "src"                  # template destination; required when template.enable = true
+src = "src" # template destination; required when template.enable = true
 
 [testcase]
-folder = "test"             # default
-filename = "sample-{}"      # default; {} is replaced by the 1-based sample number
+folder = "test" # default
+filename = "sample-{}" # default; {} is replaced by the 1-based sample number
 
 [download]
-show_sample = false         # print downloaded input/output samples after success
+show_sample = false # print downloaded input/output samples after success
 
 [template]
-enable = false               # default; apply a template after downloading samples
-path = "template"            # required when enabled; relative to the project root
-mode = "overlay"             # default; "replace" clears src before copying
+enable = false # default; apply a template after downloading samples
+path = "template" # required when enabled; relative to the project root
+mode = "overlay" # default; "replace" clears src before copying
 ```
 
 Each sample is written as `<filename>.in` and `<filename>.out`. For example,

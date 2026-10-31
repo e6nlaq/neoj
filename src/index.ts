@@ -1,3 +1,5 @@
+#!/usr/bin/env bun
+
 import { program } from "@commander-js/extra-typings";
 import { consola } from "consola";
 

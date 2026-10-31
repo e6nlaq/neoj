@@ -1,7 +1,6 @@
 {
     "name": "neoj",
     "version": "0.0.1",
-    "private": true,
     "description": "A CLI for competitive programming workflows, starting with AtCoder.",
     "license": "MIT",
     "repository": {
@@ -11,6 +10,11 @@
     "bin": {
         "neoj": "./dist/index.js"
     },
+    "files": [
+        "dist",
+        "README.md",
+        "LICENSE"
+    ],
     "type": "module",
     "scripts": {
         "typecheck": "bun check",
@@ -19,7 +23,8 @@
         "neoj": "bun run src/index.ts",
         "format": "bun fmt",
         "lint": "oxlint",
-        "prepare": "lefthook install"
+        "prepare": "lefthook install",
+        "prepublishOnly": "bun run build && bun run scripts/prepare-npm-package.ts"
     },
     "dependencies": {
         "@commander-js/extra-typings": "^15.0.0",

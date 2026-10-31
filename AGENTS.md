@@ -24,6 +24,8 @@ Build `neoj` as a modern, feature-rich alternative to `oj`, the competitive-prog
 ## Feature Design
 
 - Before implementing a user-facing feature, use the `grilling` skill to clarify requirements, explore design decisions in rounds, and get explicit confirmation of the resulting specification. Do not start implementation until the user confirms.
+- Pending download-template feature: when `template.enable = true`, `neoj download` should apply a template to the project's `src/` directory. The user wants the replacement strategy configurable: either overwrite only files present in the template (the default), or remove all of `src/` and copy the template. The exact config key for the strategy, template source, and application timing are not yet confirmed; resolve these with the user through grilling before implementation.
+- Existing template assets are under `src/assets/template/`: `src/` contains the starter source file, and `template/` contains the problem solution template. `neoj init` currently copies all bundled template files. Do not assume which asset subtree the download feature should use until confirmed.
 
 ## Validation
 
