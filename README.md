@@ -24,10 +24,10 @@ Install the published npm package globally:
 
 ```bash
 # Use Bun (recommended)
-bun install -g neoj
+bun install -g neo-oj
 
 # or use npm
-npm install -g neoj
+npm install -g neo-oj
 ```
 
 `neoj` requires [Bun](https://bun.com) 1.4 or newer at runtime. Install Bun if

@@ -1,7 +1,7 @@
 {
-    "name": "neoj",
+    "name": "neo-oj",
     "version": "0.0.1",
-    "description": "A CLI for competitive programming workflows, starting with AtCoder.",
+    "description": "A CLI for competitive programming workflows",
     "license": "MIT",
     "repository": {
         "type": "git",
