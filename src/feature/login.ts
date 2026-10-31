@@ -1,7 +1,7 @@
 import { Command } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
-import { platforms } from "./platforms";
+import { platforms } from "@/feature/platforms";
 
 export function createLoginCommand(): Command {
     const login = new Command("login").description("Log in to a competitive programming platform");

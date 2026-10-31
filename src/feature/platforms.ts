@@ -1,4 +1,4 @@
-import { hasAtCoderCredentials, isAtCoderLoggedIn, loginToAtCoder } from "./login/atcoder";
+import { hasAtCoderCredentials, isAtCoderLoggedIn, loginToAtCoder } from "@/feature/login/atcoder";
 
 export const platforms = [
     {

@@ -1,6 +1,6 @@
 import { join } from "node:path";
 
-import { copyTemplateFiles } from "../src/lib/util/template";
+import { copyTemplateFiles } from "@/lib/util/template";
 
 const sourceDirectory = join(import.meta.dir, "..", "src", "assets", "template");
 const destinationDirectory = join(import.meta.dir, "..", "dist", "assets", "template");

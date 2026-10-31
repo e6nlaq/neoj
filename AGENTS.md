@@ -16,6 +16,7 @@ Build `neoj` as a modern, feature-rich alternative to `oj`, the competitive-prog
 ## Code and Dependencies
 
 - Use TypeScript with strict checking and Bun APIs. Preserve existing naming, formatting, and import conventions.
+- Import project modules with the `@/` alias (mapped to `src/` in `tsconfig.json`) instead of `../` relative paths; use relative imports only for files outside `src/`, such as `package.json`.
 - Prefer small, typed interfaces for service results and explicit handling of network failures.
 - Keep tests deterministic: mock network requests instead of depending on live contest sites.
 - Add dependencies only when they materially simplify or enable a needed capability.

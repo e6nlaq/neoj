@@ -3,8 +3,8 @@ import { styleText } from "node:util";
 import { Command } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
-import { readAuth } from "../lib/util/auth";
-import { platforms } from "./platforms";
+import { platforms } from "@/feature/platforms";
+import { readAuth } from "@/lib/util/auth";
 
 export interface PlatformLoginStatus {
     platform: string;

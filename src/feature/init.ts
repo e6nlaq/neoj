@@ -4,9 +4,9 @@ import { dirname, join, resolve } from "node:path";
 import { Command } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
-import { hasErrorCode } from "../lib/util/errors";
-import { findProjectConfig } from "../lib/util/project";
-import { copyTemplateFiles } from "../lib/util/template";
+import { hasErrorCode } from "@/lib/util/errors";
+import { findProjectConfig } from "@/lib/util/project";
+import { copyTemplateFiles } from "@/lib/util/template";
 
 async function findTemplateDirectory(): Promise<string> {
     const candidates = [
