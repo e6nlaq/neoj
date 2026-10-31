@@ -51,7 +51,9 @@ The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messag
 - Do not commit scratch scripts, captured HTML, temporary `.env` files, or other exploration artifacts. Keep them in the git-ignored `tmp/` directory or delete them before committing.
 - Remove dependencies as soon as the code that used them is deleted, and keep `package.json` metadata (`description`, `repository`, `license`, `engines`, scripts) accurate.
 - Never install the package into its own `node_modules` (for example with `bun link` or `bun add neoj`). A self-referencing `node_modules/neoj` nests indefinitely; delete `node_modules` and reinstall if it appears.
-- Keep `README.md` aligned with the actual CLI surface. Update it in the same change that alters commands, flags, or file locations.
+- Keep `README.md` and the pages under `docs/` aligned with the actual CLI
+  surface. Update them in the same change that alters commands, flags, or file
+  locations.
 
 ## Review Checklist
 

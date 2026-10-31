@@ -1,182 +1,45 @@
-# neoj
+<div align="center">
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/e6nlaq/neoj/main/docs/assets/logo.svg">
+    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/e6nlaq/neoj/main/docs/assets/logo-ink.svg">
+    <img src="https://raw.githubusercontent.com/e6nlaq/neoj/main/docs/assets/logo-ink.svg" alt="neoj" width="480">
+  </picture>
+</p>
+
+<p align="center"><strong>A modern CLI for competitive programming workflows</strong></p>
+
+<p align="center"><sub>Built with Bun and TypeScript · Open Source</sub></p>
+
+<p align="center">
+  <a href="https://www.npmjs.com/package/neo-oj"><img src="https://img.shields.io/npm/v/neo-oj?style=flat-square&amp;label=npm&amp;labelColor=24292f&amp;color=24292f" alt="npm version"></a>
+  <a href="https://bun.com"><img src="https://img.shields.io/badge/Bun-1.4%2B-24292f?style=flat-square&amp;labelColor=24292f&amp;logo=bun&amp;logoColor=fff" alt="Bun 1.4+"></a>
+  <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&amp;labelColor=24292f&amp;logo=typescript&amp;logoColor=fff" alt="TypeScript strict"></a>
+  <a href="https://github.com/e6nlaq/neoj/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-24292f?style=flat-square&amp;labelColor=24292f" alt="MIT license"></a>
+</p>
+
+<p align="center"><sub><strong>Early development</strong> — commands, configuration, and output formats may change between releases.</sub></p>
+
+</div>
+
+---
 
 `neoj` is a command-line tool for competitive programming workflows, built with
 [Bun](https://bun.com) and TypeScript. It aims to be a modern alternative to `oj`:
-a clear CLI, a reliable problem workflow, and room to grow into multiple contest
-platforms. AtCoder is the first supported platform.
+a clear CLI, a reliable problem workflow, and a consistent interface across
+contest platforms.
 
-> **Status: early development.** Commands, configuration, and output formats may
-> change between releases.
+## Documentation
 
-## Features
-
-- Log in to AtCoder with your `REVEL_SESSION` cookie and verify the session
-  before it is saved.
-- Report the login status of every supported platform, with an `--offline` mode
-  for environments without network access.
-- Scaffold a project from the bundled templates.
-- Download AtCoder sample tests into the configured test-case directory.
-- Remove saved credentials for a single platform or all of them.
-
-## Installation
-
-Install the published npm package globally:
-
-```bash
-# Use Bun (recommended)
-bun install -g neo-oj
-
-# or use npm
-npm install -g neo-oj
-```
-
-`neoj` requires [Bun](https://bun.com) 1.4 or newer at runtime. Install Bun if
-it is not already available, then verify the CLI:
-
-```bash
-neoj --help
-```
-
-## Quick start
-
-```bash
-# Copy the project templates into the current directory
-neoj init
-
-# Download AtCoder samples
-neoj d https://atcoder.jp/contests/abc300/tasks/abc300_a
-
-# Save an AtCoder session
-neoj login atcoder
-
-# Check that the saved session is still valid
-neoj status
-```
-
-## Commands
-
-| Command                             | Description                                                                |
-| ----------------------------------- | -------------------------------------------------------------------------- |
-| `neoj init [--force]`               | Copy the bundled templates into the current project.                       |
-| `neoj download <url>` (`neoj d`)    | Replace the test-case directory with samples from an AtCoder problem.      |
-| `neoj login <platform>`             | Log in to a platform. Currently supported: `atcoder`.                      |
-| `neoj logout [--service <name...>]` | Log out of the given services, or of every service when no name is given.  |
-| `neoj status [--offline]`           | Show the login status of every platform. `--offline` skips network checks. |
-
-### `neoj init`
-
-The command searches upward from the current directory for a `neoj.toml`. When
-one is found, the templates are written next to it; otherwise the current
-directory is used. Existing files are skipped unless `--force` is given.
-
-The search stops at the repository root (the nearest directory containing
-`.git`), so configuration never leaks in from outside the repository.
-
-### `neoj login atcoder`
-
-1. Open `https://atcoder.jp`, then copy the `REVEL_SESSION` cookie value from your
-   browser's DevTools (Application → Cookies).
-2. Paste the value into the prompt. Either the raw value or `REVEL_SESSION=...`
-   is accepted.
-3. The session is verified against AtCoder before it is saved.
-
-> Treat the session cookie like a password: it grants access to your AtCoder
-> account. Never share it or commit it to a repository.
-
-### `neoj status --offline`
-
-The normal `status` command contacts each platform to check whether the saved
-session is still valid. With `--offline`, `neoj` only reads the saved credentials
-and reports `Logged in (offline, not verified)` instead.
-
-### `neoj download <url>`
-
-The command requires an initialized project with a `neoj.toml` file. It uses the
-nearest project config as the project root; if none is found, run `neoj init`
-first. When a problem returns 404 while AtCoder reports the user as logged out,
-the error suggests trying `neoj login atcoder`. After a successful download,
-the command records the problem URL and contest start/end times in
-`.neoj/problem.json`. This file is managed by `neoj` and is replaced on each
-successful download; the `.neoj` directory is ignored by Git.
-
-## Configuration
-
-`neoj` reads TOML configuration from two locations and merges them, with the
-project file taking precedence over the global file:
-
-| Scope   | Path                                                                                    |
-| ------- | --------------------------------------------------------------------------------------- |
-| Global  | `~/.neoj.toml`                                                                          |
-| Project | `neoj.toml` in the current directory or the nearest ancestor, up to the repository root |
-
-Configure downloaded test cases with a `[testcase]` table. Relative folders are
-resolved from the directory containing the nearest project `neoj.toml` (or the
-current directory when there is no project config), and must remain inside that
-directory. Project settings override global settings. The `src` and `[template]`
-settings are project-only.
-
-```toml
-src = "src" # template destination; required when template.enable = true
-
-[testcase]
-folder = "test" # default
-filename = "sample-{}" # default; {} is replaced by the 1-based sample number
-
-[download]
-show_sample = false # print downloaded input/output samples after success
-
-[template]
-enable = false # default; apply a template after downloading samples
-folder = "template" # required when enabled; relative to the project root
-mode = "overlay" # default; "replace" clears src before copying
-```
-
-Each sample is written as `<filename>.in` and `<filename>.out`. For example,
-the default creates `sample-1.in` and `sample-1.out`. Downloading replaces the
-configured folder without prompting; a failed problem fetch leaves existing
-tests untouched. Set `download.show_sample = true` to print each sample's input
-and output after the files have been written successfully.
-
-When `template.enable = true`, `src` and `template.folder` must both be set to
-relative paths inside the project. Downloading overlays files from the template
-onto `src` by default, replacing matching paths while preserving other files.
-Set `template.mode = "replace"` to remove all contents of `src` before copying.
-Hidden files are included. A missing template directory is an error; an empty
-template directory is allowed.
-
-If configuration does not match the schema, `neoj` lists every invalid key,
-the reason, and the received value's type along with the config file paths.
-Values themselves are not printed.
-
-## Authentication data
-
-Saved credentials live in the per-user data directory chosen by
-[`env-paths`](https://github.com/sindresorhus/env-paths):
-
-| Platform | Path                                                  |
-| -------- | ----------------------------------------------------- |
-| Linux    | `~/.local/share/neoj-nodejs/auth.json`                |
-| macOS    | `~/Library/Application Support/neoj-nodejs/auth.json` |
-| Windows  | `%LOCALAPPDATA%\neoj-nodejs\Data\auth.json`           |
-
-On POSIX systems the file is written with `0600` permissions. Writes are atomic,
-so an interrupted run cannot truncate the existing credentials, and
-`neoj logout` deletes the file once no providers remain.
-
-## Development
-
-```bash
-bun install
-bun test           # unit tests
-bun run format     # format the code
-bun run lint       # lint with Oxlint
-bun run typecheck  # type-check with TypeScript
-bun run build      # bundle the CLI into dist/
-```
-
-Commits follow [Conventional Commits](https://www.conventionalcommits.org/). The
-pre-commit hook runs formatting, linting, and type checking.
+| Guide                                                                                          | Contents                                                      |
+| ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| [Installation & quick start](https://github.com/e6nlaq/neoj/blob/main/docs/getting-started.md) | Install the CLI with Bun or npm and run your first commands.  |
+| [Platforms](https://github.com/e6nlaq/neoj/blob/main/docs/platforms.md)                        | Platform integrations, login, status, and credential storage. |
+| [Commands](https://github.com/e6nlaq/neoj/blob/main/docs/commands.md)                          | Reference for every command, flag, and generated file.        |
+| [Configuration](https://github.com/e6nlaq/neoj/blob/main/docs/configuration.md)                | Global and project `neoj.toml` options.                       |
+| [Development](https://github.com/e6nlaq/neoj/blob/main/docs/development.md)                    | Build, test, lint, and contribute.                            |
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://github.com/e6nlaq/neoj/blob/main/LICENSE)

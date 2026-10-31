@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 484 120" role="img" aria-labelledby="title description">
+  <title id="title">neoj logo</title>
+  <desc id="description">Four white square tiles, each reduced by one to three straight cuts to form the letters n, e, o, and j. The letters are the positive remains of the squares, and every cut starts at an outer edge: a rectangular notch makes the n, two slots and a short third cut make the e with an inset crossbar, two clipped corners make the o, and a corner cut plus a horizontal slot make the j, separating its dot.</desc>
+  <g fill="#fff">
+    <!-- n: one rectangular notch from the bottom -->
+    <path transform="translate(10 10)" d="M0 0H100V100H68V30H32V100H0Z"/>
+    <!-- e: two slots from the right, plus a short cut that shortens the crossbar -->
+    <path transform="translate(134 10)" d="M0 0H100V18H32V41H86V59H32V82H100V100H0Z"/>
+    <!-- o: two triangular corner cuts -->
+    <path transform="translate(256 10)" d="M30 0H100V70L70 100H0V30Z"/>
+    <!-- j: a corner cut and a horizontal slot that separates the dot -->
+    <path transform="translate(374 10)" d="M68 46H100V100H0V78H68Z"/>
+    <path transform="translate(374 10)" d="M68 0H100V28H68Z"/>
+  </g>
+</svg>

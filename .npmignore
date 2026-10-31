@@ -5,6 +5,7 @@
 /src/
 /test/
 /tmp/
+/docs/
 
 /.env*
 /.oxfmtrc.json
