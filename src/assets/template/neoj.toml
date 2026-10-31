@@ -1,2 +1,4 @@
 
 # neoj config file
+[testcase]
+folder = "test"
