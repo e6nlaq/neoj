@@ -71,10 +71,12 @@ describe("mergeConfig", () => {
 });
 
 describe("loadConfig", () => {
-    it("returns an empty config when both files are missing", async () => {
+    it("returns the default testcase config when both files are missing", async () => {
         await setTemporaryPaths();
 
-        await expect(loadConfig()).resolves.toEqual({});
+        await expect(loadConfig()).resolves.toEqual({
+            testcase: { folder: "test", filename: "sample-{}" },
+        });
     });
 
     it("reports invalid TOML in the nearest project config", async () => {
@@ -89,7 +91,7 @@ describe("loadConfig", () => {
         );
     });
 
-    it("validates the merged config against the current empty schema", async () => {
+    it("rejects unknown configuration keys", async () => {
         const { home, project } = await setTemporaryPaths();
         await Bun.write(join(home, ".neoj.toml"), "setting = true");
         await Bun.write(join(project, "neoj.toml"), "");
@@ -99,10 +101,34 @@ describe("loadConfig", () => {
         );
     });
 
-    it("retains an empty project TOML table without requiring a global config", async () => {
-        const { project } = await setTemporaryPaths();
-        await Bun.write(join(project, "neoj.toml"), "");
+    it("merges global and project testcase settings", async () => {
+        const { home, project } = await setTemporaryPaths();
+        await Bun.write(
+            join(home, ".neoj.toml"),
+            '[testcase]\nfolder = "cases"\nfilename = "case-{}"',
+        );
+        await Bun.write(join(project, "neoj.toml"), '[testcase]\nfolder = "tests"');
 
-        await expect(loadConfig()).resolves.toEqual({});
+        await expect(loadConfig()).resolves.toEqual({
+            testcase: { folder: "tests", filename: "case-{}" },
+        });
+    });
+
+    it("rejects invalid testcase filename patterns", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), '[testcase]\nfilename = "../case-{}"');
+
+        await expect(loadConfig()).rejects.toThrow(
+            "Configuration does not match the config schema.",
+        );
+    });
+
+    it("requires exactly one filename placeholder", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), '[testcase]\nfilename = "sample-{}-{}"');
+
+        await expect(loadConfig()).rejects.toThrow(
+            "Configuration does not match the config schema.",
+        );
     });
 });

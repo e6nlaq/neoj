@@ -15,6 +15,7 @@ platforms. AtCoder is the first supported platform.
 - Report the login status of every supported platform, with an `--offline` mode
   for environments without network access.
 - Scaffold a project from the bundled templates.
+- Download AtCoder sample tests into the configured test-case directory.
 - Remove saved credentials for a single platform or all of them.
 
 ## Requirements
@@ -43,6 +44,9 @@ bun run neoj --help
 # Copy the project templates into the current directory
 bun run neoj init
 
+# Download AtCoder samples
+bun run neoj d https://atcoder.jp/contests/abc300/tasks/abc300_a
+
 # Save an AtCoder session
 bun run neoj login atcoder
 
@@ -55,6 +59,7 @@ bun run neoj status
 | Command                             | Description                                                                |
 | ----------------------------------- | -------------------------------------------------------------------------- |
 | `neoj init [--force]`               | Copy the bundled templates into the current project.                       |
+| `neoj download <url>` (`neoj d`)    | Replace the test-case directory with samples from an AtCoder problem.      |
 | `neoj login <platform>`             | Log in to a platform. Currently supported: `atcoder`.                      |
 | `neoj logout [--service <name...>]` | Log out of the given services, or of every service when no name is given.  |
 | `neoj status [--offline]`           | Show the login status of every platform. `--offline` skips network checks. |
@@ -95,8 +100,21 @@ project file taking precedence over the global file:
 | Global  | `~/.neoj.toml`                                                                          |
 | Project | `neoj.toml` in the current directory or the nearest ancestor, up to the repository root |
 
-Configuration keys are still being defined; the schema is currently empty, so a
-file with any key is rejected.
+Configure downloaded test cases with a `[testcase]` table. Relative folders are
+resolved from the directory containing the nearest project `neoj.toml` (or the
+current directory when there is no project config), and must remain inside that
+directory. Project settings override global settings.
+
+```toml
+[testcase]
+folder = "test"             # default
+filename = "sample-{}"      # default; {} is replaced by the 1-based sample number
+```
+
+Each sample is written as `<filename>.in` and `<filename>.out`. For example,
+the default creates `sample-1.in` and `sample-1.out`. Downloading replaces the
+configured folder without prompting; a failed problem fetch leaves existing
+tests untouched.
 
 ## Authentication data
 

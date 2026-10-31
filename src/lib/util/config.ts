@@ -5,7 +5,30 @@ import * as v from "valibot";
 
 import { findProjectConfig } from "./project";
 
-export const configSchema = v.strictObject({});
+const testcaseFilenameSchema = v.pipe(
+    v.string(),
+    v.check((pattern) => {
+        const invalidFileNameCharacters = '<>:"/\\|?*';
+        return (
+            pattern.split("{}").length === 2 &&
+            !Array.from(pattern).some(
+                (character) =>
+                    invalidFileNameCharacters.includes(character) || character.charCodeAt(0) < 32,
+            )
+        );
+    }, "testcase.filename must contain exactly one {} and be a file name."),
+);
+
+export const configSchema = v.strictObject({
+    testcase: v.optional(
+        v.strictObject({
+            folder: v.optional(v.pipe(v.string(), v.minLength(1)), "test"),
+            filename: v.optional(testcaseFilenameSchema, "sample-{}"),
+        }),
+        { folder: "test", filename: "sample-{}" },
+    ),
+});
+
 export type Config = v.InferOutput<typeof configSchema>;
 
 type ConfigTable = Record<string, unknown>;
