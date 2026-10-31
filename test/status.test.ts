@@ -42,7 +42,7 @@ describe("getLoginStatuses", () => {
         ).resolves.toEqual([{ platform: "atcoder", displayName: "AtCoder", status: "logged-in" }]);
         expect(requests).toEqual([
             {
-                url: "https://atcoder.jp/contests/abc100/submit",
+                url: "https://atcoder.jp/settings",
                 cookie: "REVEL_SESSION=saved-session",
             },
         ]);
@@ -60,13 +60,50 @@ describe("getLoginStatuses", () => {
                 platform: "atcoder",
                 displayName: "AtCoder",
                 status: "error",
-                error: "network unavailable",
+                error: "Failed to connect to AtCoder.",
             },
         ]);
     });
 
     it("reports malformed saved credentials as an error", async () => {
         await expect(getLoginStatuses({ atcoder: { revelSession: 42 } })).resolves.toEqual([
+            {
+                platform: "atcoder",
+                displayName: "AtCoder",
+                status: "error",
+                error: "Saved AtCoder authentication data is invalid.",
+            },
+        ]);
+    });
+
+    it("uses saved credentials without contacting the service in offline mode", async () => {
+        let fetched = false;
+        setFetch(async () => {
+            fetched = true;
+            return new Response(null, { status: 200 });
+        });
+
+        await expect(
+            getLoginStatuses({ atcoder: { revelSession: "saved-session" } }, true),
+        ).resolves.toEqual([{ platform: "atcoder", displayName: "AtCoder", status: "logged-in" }]);
+        expect(fetched).toBe(false);
+    });
+
+    it("reports no saved credentials in offline mode", async () => {
+        let fetched = false;
+        setFetch(async () => {
+            fetched = true;
+            return new Response(null, { status: 200 });
+        });
+
+        await expect(getLoginStatuses({}, true)).resolves.toEqual([
+            { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
+        ]);
+        expect(fetched).toBe(false);
+    });
+
+    it("reports malformed saved credentials as an error in offline mode", async () => {
+        await expect(getLoginStatuses({ atcoder: { revelSession: 42 } }, true)).resolves.toEqual([
             {
                 platform: "atcoder",
                 displayName: "AtCoder",

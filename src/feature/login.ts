@@ -12,8 +12,12 @@ export function createLoginCommand(): Command {
             .description(provider.description)
             .action(async () => {
                 try {
-                    await provider.login();
-                    consola.success(`Logged in to ${provider.displayName}.`);
+                    const loggedIn = await provider.login();
+                    if (loggedIn) {
+                        consola.success(`Logged in to ${provider.displayName}.`);
+                    } else {
+                        consola.info("Login cancelled.");
+                    }
                 } catch (error) {
                     consola.error(error instanceof Error ? error.message : String(error));
                     process.exitCode = 1;

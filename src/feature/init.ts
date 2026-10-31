@@ -52,14 +52,11 @@ export function createInitCommand(): Command {
                     force,
                 );
 
+                const summary = `Copied ${result.copied.length} template file(s) to "${destinationDirectory}".`;
                 if (result.errors.length === 0) {
-                    consola.success(
-                        `Copied ${result.copied.length} template file(s) to "${destinationDirectory}".`,
-                    );
+                    consola.success(summary);
                 } else {
-                    consola.info(
-                        `Copied ${result.copied.length} template file(s) to "${destinationDirectory}".`,
-                    );
+                    consola.info(summary);
                 }
 
                 if (result.skipped.length > 0) {

@@ -13,7 +13,7 @@ if (typeof Bun === "undefined") {
 }
 
 program.configureOutput({
-    writeErr: (str) => consola.error(str),
+    writeErr: (str) => consola.error(str.trimEnd()),
 });
 
 program.name("neoj").version(version).description("A CLI tool for neoj.");

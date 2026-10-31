@@ -15,11 +15,15 @@ export interface PlatformLoginStatus {
 
 export async function getLoginStatuses(
     auth: Record<string, unknown>,
+    offline = false,
 ): Promise<PlatformLoginStatus[]> {
     const statuses: PlatformLoginStatus[] = [];
     for (const platform of platforms) {
         try {
-            const loggedIn = await platform.isLoggedIn(auth[platform.name]);
+            const savedAuth = auth[platform.name];
+            const loggedIn = offline
+                ? platform.hasCredentials(savedAuth)
+                : await platform.isLoggedIn(savedAuth);
             statuses.push({
                 platform: platform.name,
                 displayName: platform.displayName,
@@ -41,10 +45,11 @@ export async function getLoginStatuses(
 export function createStatusCommand(): Command {
     return new Command("status")
         .description("Check login status for all supported services")
-        .action(async () => {
+        .option("--offline", "Use saved credentials without contacting the services")
+        .action(async ({ offline }) => {
             try {
                 const auth = await readAuth();
-                const statuses = await getLoginStatuses(auth);
+                const statuses = await getLoginStatuses(auth, offline);
                 for (const result of statuses) {
                     if (result.status === "error") {
                         consola.error(
@@ -58,7 +63,9 @@ export function createStatusCommand(): Command {
                         result.status === "logged-in"
                             ? styleText("green", "Logged in")
                             : styleText("red", "Not logged in");
-                    consola.info(`${result.displayName}: ${status}`);
+                    const note =
+                        offline && result.status === "logged-in" ? " (offline, not verified)" : "";
+                    consola.info(`${result.displayName}: ${status}${note}`);
                 }
             } catch (error) {
                 consola.error(error instanceof Error ? error.message : String(error));

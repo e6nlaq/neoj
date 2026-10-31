@@ -63,4 +63,24 @@ describe("authentication data", () => {
         await expect(saveAuth("atcoder", { revelSession: "session" })).rejects.toThrow();
         await expect(Bun.file(authFilePath).text()).resolves.toBe("invalid json");
     });
+
+    it("reports the authentication file path when the JSON is invalid", async () => {
+        const authFilePath = await setTemporaryDataDirectory();
+        await Bun.write(authFilePath, "invalid json");
+
+        await expect(readAuth()).rejects.toThrow(
+            `Failed to parse authentication file "${authFilePath}".`,
+        );
+    });
+
+    it("writes credentials atomically without leaving a temporary file", async () => {
+        const authFilePath = await setTemporaryDataDirectory();
+
+        await saveAuth("atcoder", { revelSession: "session" });
+
+        expect(await Bun.file(`${authFilePath}.tmp`).exists()).toBe(false);
+        await expect(Bun.file(authFilePath).text()).resolves.toBe(
+            `${JSON.stringify({ atcoder: { revelSession: "session" } }, null, 2)}\n`,
+        );
+    });
 });

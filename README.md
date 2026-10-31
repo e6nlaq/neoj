@@ -1,33 +1,132 @@
 # neoj
 
-To install dependencies:
+`neoj` is a command-line tool for competitive programming workflows, built with
+[Bun](https://bun.com) and TypeScript. It aims to be a modern alternative to `oj`:
+a clear CLI, a reliable problem workflow, and room to grow into multiple contest
+platforms. AtCoder is the first supported platform.
+
+> **Status: early development.** Commands, configuration, and output formats may
+> change between releases.
+
+## Features
+
+- Log in to AtCoder with your `REVEL_SESSION` cookie and verify the session
+  before it is saved.
+- Report the login status of every supported platform, with an `--offline` mode
+  for environments without network access.
+- Scaffold a project from the bundled templates.
+- Remove saved credentials for a single platform or all of them.
+
+## Requirements
+
+- [Bun](https://bun.com) 1.4 or newer
+
+## Installation
+
+`neoj` is not published to npm yet, so install it from source:
 
 ```bash
+git clone https://github.com/e6nlaq/neoj.git
+cd neoj
 bun install
 ```
 
-To run:
+Run the CLI from the repository:
 
 ```bash
-bun run index.ts
+bun run neoj --help
 ```
 
-To initialize a project from the bundled templates:
+## Quick start
 
 ```bash
-bun run src/index.ts init
+# Copy the project templates into the current directory
+bun run neoj init
+
+# Save an AtCoder session
+bun run neoj login atcoder
+
+# Check that the saved session is still valid
+bun run neoj status
 ```
 
-The command uses the nearest ancestor containing `neoj.toml` as the destination,
-or the current directory when no project config is found. Existing files are
-skipped; pass `--force` to overwrite them.
+## Commands
 
-To type check:
+| Command                             | Description                                                                |
+| ----------------------------------- | -------------------------------------------------------------------------- |
+| `neoj init [--force]`               | Copy the bundled templates into the current project.                       |
+| `neoj login <platform>`             | Log in to a platform. Currently supported: `atcoder`.                      |
+| `neoj logout [--service <name...>]` | Log out of the given services, or of every service when no name is given.  |
+| `neoj status [--offline]`           | Show the login status of every platform. `--offline` skips network checks. |
+
+### `neoj init`
+
+The command searches upward from the current directory for a `neoj.toml`. When
+one is found, the templates are written next to it; otherwise the current
+directory is used. Existing files are skipped unless `--force` is given.
+
+The search stops at the repository root (the nearest directory containing
+`.git`), so configuration never leaks in from outside the repository.
+
+### `neoj login atcoder`
+
+1. Open `https://atcoder.jp`, then copy the `REVEL_SESSION` cookie value from your
+   browser's DevTools (Application → Cookies).
+2. Paste the value into the prompt. Either the raw value or `REVEL_SESSION=...`
+   is accepted.
+3. The session is verified against AtCoder before it is saved.
+
+> Treat the session cookie like a password: it grants access to your AtCoder
+> account. Never share it or commit it to a repository.
+
+### `neoj status --offline`
+
+The normal `status` command contacts each platform to check whether the saved
+session is still valid. With `--offline`, `neoj` only reads the saved credentials
+and reports `Logged in (offline, not verified)` instead.
+
+## Configuration
+
+`neoj` reads TOML configuration from two locations and merges them, with the
+project file taking precedence over the global file:
+
+| Scope   | Path                                                                                    |
+| ------- | --------------------------------------------------------------------------------------- |
+| Global  | `~/.neoj.toml`                                                                          |
+| Project | `neoj.toml` in the current directory or the nearest ancestor, up to the repository root |
+
+Configuration keys are still being defined; the schema is currently empty, so a
+file with any key is rejected.
+
+## Authentication data
+
+Saved credentials live in the per-user data directory chosen by
+[`env-paths`](https://github.com/sindresorhus/env-paths):
+
+| Platform | Path                                                  |
+| -------- | ----------------------------------------------------- |
+| Linux    | `~/.local/share/neoj-nodejs/auth.json`                |
+| macOS    | `~/Library/Application Support/neoj-nodejs/auth.json` |
+| Windows  | `%LOCALAPPDATA%\neoj-nodejs\Data\auth.json`           |
+
+On POSIX systems the file is written with `0600` permissions. Writes are atomic,
+so an interrupted run cannot truncate the existing credentials, and
+`neoj logout` deletes the file once no providers remain.
+
+## Development
 
 ```bash
-bun check
+bun install
+bun test           # unit tests
+bun run format     # format the code
+bun run lint       # lint with Oxlint
+bun run typecheck  # type-check with TypeScript
+bun run build      # bundle the CLI into dist/
 ```
 
-Run `bun fmt` to format the code.
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/). The
+pre-commit hook runs formatting, linting, and type checking.
 
-This project was created using `bun init` in bun v1.4.4. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## License
+
+[MIT](LICENSE)

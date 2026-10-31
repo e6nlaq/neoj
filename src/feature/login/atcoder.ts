@@ -1,16 +1,16 @@
 import { confirm, password } from "@inquirer/prompts";
 import * as v from "valibot";
 
-import { AtCoderClient } from "../../lib/service/atcoder";
+import { AtCoderClient, normalizeRevelSession } from "../../lib/service/atcoder";
 import { readAuth, saveAuth } from "../../lib/util/auth";
 
 const atCoderAuthSchema = v.object({
     revelSession: v.pipe(v.string(), v.nonEmpty()),
 });
 
-export async function isAtCoderLoggedIn(auth: unknown): Promise<boolean> {
+function getSavedSession(auth: unknown): string | undefined {
     if (auth === undefined) {
-        return false;
+        return undefined;
     }
 
     const parsedAuth = v.safeParse(atCoderAuthSchema, auth);
@@ -20,10 +20,23 @@ export async function isAtCoderLoggedIn(auth: unknown): Promise<boolean> {
         });
     }
 
-    return new AtCoderClient().login(parsedAuth.output.revelSession);
+    return parsedAuth.output.revelSession;
 }
 
-export async function loginToAtCoder(): Promise<void> {
+export function hasAtCoderCredentials(auth: unknown): boolean {
+    return getSavedSession(auth) !== undefined;
+}
+
+export async function isAtCoderLoggedIn(auth: unknown): Promise<boolean> {
+    const savedSession = getSavedSession(auth);
+    if (savedSession === undefined) {
+        return false;
+    }
+
+    return new AtCoderClient().login(savedSession);
+}
+
+export async function loginToAtCoder(): Promise<boolean> {
     const auth = await readAuth();
     const savedAtCoderAuth = auth.atcoder;
     if (await isAtCoderLoggedIn(savedAtCoderAuth)) {
@@ -32,7 +45,7 @@ export async function loginToAtCoder(): Promise<void> {
             default: false,
         });
         if (!shouldContinue) {
-            return;
+            return false;
         }
     }
 
@@ -42,11 +55,12 @@ export async function loginToAtCoder(): Promise<void> {
         validate: (value) => value.trim().length > 0 || "REVEL_SESSION cannot be empty.",
     });
 
-    const session = revelSession.trim();
+    const session = normalizeRevelSession(revelSession);
     const client = new AtCoderClient();
     if (!(await client.login(session))) {
         throw new Error("AtCoder login failed. Check that the REVEL_SESSION cookie is valid.");
     }
 
     await saveAuth("atcoder", { revelSession: session });
+    return true;
 }

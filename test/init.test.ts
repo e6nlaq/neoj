@@ -44,6 +44,40 @@ describe("findProjectConfig", () => {
 
         await expect(findProjectConfig(projectDirectory)).resolves.toBeUndefined();
     });
+
+    it("stops searching at the repository root", async () => {
+        const root = await createTestRoot();
+        const repository = join(root, "repository");
+        const cwd = join(repository, "project", "nested");
+        await mkdir(cwd, { recursive: true });
+        await mkdir(join(repository, ".git"), { recursive: true });
+        await Bun.write(join(root, "neoj.toml"), "");
+
+        await expect(findProjectConfig(cwd)).resolves.toBeUndefined();
+    });
+
+    it("finds a config at the repository root", async () => {
+        const root = await createTestRoot();
+        const repository = join(root, "repository");
+        const cwd = join(repository, "project");
+        await mkdir(cwd, { recursive: true });
+        await mkdir(join(repository, ".git"), { recursive: true });
+        const configPath = join(repository, "neoj.toml");
+        await Bun.write(configPath, "");
+
+        await expect(findProjectConfig(cwd)).resolves.toBe(configPath);
+    });
+
+    it("treats a .git file as a repository root for worktrees", async () => {
+        const root = await createTestRoot();
+        const repository = join(root, "worktree");
+        const cwd = join(repository, "nested");
+        await mkdir(cwd, { recursive: true });
+        await Bun.write(join(repository, ".git"), "gitdir: ../main/.git/worktrees/worktree");
+        await Bun.write(join(root, "neoj.toml"), "");
+
+        await expect(findProjectConfig(cwd)).resolves.toBeUndefined();
+    });
 });
 
 describe("copyTemplateFiles", () => {

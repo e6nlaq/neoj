@@ -1,4 +1,5 @@
 import { constants } from "node:fs";
+import type { Stats } from "node:fs";
 import { copyFile, lstat, mkdir, readdir } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 
@@ -48,7 +49,7 @@ export async function copyTemplateFiles(
         try {
             await mkdir(dirname(destination), { recursive: true });
 
-            let existing;
+            let existing: Stats | undefined;
             try {
                 existing = await lstat(destination);
             } catch (error) {

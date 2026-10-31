@@ -1,4 +1,20 @@
+import { lstat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
+
+import { hasErrorCode } from "./errors";
+
+async function isGitRoot(directory: string): Promise<boolean> {
+    try {
+        // .git is a directory in a normal checkout and a file in a worktree.
+        await lstat(join(directory, ".git"));
+        return true;
+    } catch (error) {
+        if (!hasErrorCode(error, "ENOENT") && !hasErrorCode(error, "ENOTDIR")) {
+            throw error;
+        }
+        return false;
+    }
+}
 
 export async function findProjectConfig(cwd: string): Promise<string | undefined> {
     let directory = resolve(cwd);
@@ -9,7 +25,8 @@ export async function findProjectConfig(cwd: string): Promise<string | undefined
         }
 
         const parentDirectory = dirname(directory);
-        if (parentDirectory === directory) {
+        // Projects never inherit configuration from outside their repository.
+        if (parentDirectory === directory || (await isGitRoot(directory))) {
             return undefined;
         }
         directory = parentDirectory;

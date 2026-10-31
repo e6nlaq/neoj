@@ -52,7 +52,7 @@ describe("loginToAtCoder", () => {
         await saveAuth("atcoder", { revelSession: "saved-session" });
         setFetch(async () => new Response(null, { status: 200 }));
 
-        await loginToAtCoder();
+        await expect(loginToAtCoder()).resolves.toBe(false);
 
         expect(confirmPrompt).toHaveBeenCalledWith({
             message: "Already logged in to AtCoder. Continue with a new session?",
@@ -70,7 +70,7 @@ describe("loginToAtCoder", () => {
         confirmPrompt.mockImplementation(async () => true);
         setFetch(async () => new Response(null, { status: 200 }));
 
-        await loginToAtCoder();
+        await expect(loginToAtCoder()).resolves.toBe(true);
 
         expect(passwordPrompt).toHaveBeenCalledTimes(1);
         await expect(readAuth()).resolves.toEqual({
@@ -88,12 +88,24 @@ describe("loginToAtCoder", () => {
                 : new Response(null, { status: 200 });
         });
 
-        await loginToAtCoder();
+        await expect(loginToAtCoder()).resolves.toBe(true);
 
         expect(confirmPrompt).not.toHaveBeenCalled();
         expect(passwordPrompt).toHaveBeenCalledTimes(1);
         await expect(readAuth()).resolves.toEqual({
             atcoder: { revelSession: "new-session" },
+        });
+    });
+
+    it("normalizes a pasted cookie value before saving it", async () => {
+        await setupDataDirectory();
+        passwordPrompt.mockImplementation(async () => "  REVEL_SESSION=opaque%00session  ");
+        setFetch(async () => new Response(null, { status: 200 }));
+
+        await expect(loginToAtCoder()).resolves.toBe(true);
+
+        await expect(readAuth()).resolves.toEqual({
+            atcoder: { revelSession: "opaque%00session" },
         });
     });
 });

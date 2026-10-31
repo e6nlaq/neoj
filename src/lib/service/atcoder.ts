@@ -1,7 +1,15 @@
 import { parse } from "node-html-parser";
 
 const ATCODER_ORIGIN = "https://atcoder.jp";
-const LOGIN_CHECK_URL = `${ATCODER_ORIGIN}/contests/abc100/submit`;
+// /settings redirects to /login while unauthenticated, so it is a stable login check.
+const LOGIN_CHECK_URL = `${ATCODER_ORIGIN}/settings`;
+const REQUEST_TIMEOUT_MS = 15_000;
+const USER_AGENT = "neoj (+https://github.com/e6nlaq/neoj)";
+// Cookie-header-safe value: printable text without separators that would split
+// the header or inject another cookie. Control characters are checked separately
+// so the pattern stays free of literal control escapes.
+const REVEL_SESSION_PATTERN = /^[^\s;,"\\]+$/;
+const CONTROL_CHARACTER_PATTERN = /\p{Cc}/u;
 
 export interface AtCoderSample {
     input: string;
@@ -22,6 +30,32 @@ function parseContestTime(value: string): Temporal.Instant {
         return Temporal.Instant.from(isoValue);
     } catch (error) {
         throw new Error("AtCoder contest start or end time is invalid.", { cause: error });
+    }
+}
+
+export function normalizeRevelSession(value: string): string {
+    const session = value.trim().replace(/^REVEL_SESSION=/i, "");
+    if (session.length === 0) {
+        throw new Error("REVEL_SESSION cannot be empty.");
+    }
+    if (!REVEL_SESSION_PATTERN.test(session) || CONTROL_CHARACTER_PATTERN.test(session)) {
+        throw new Error("REVEL_SESSION contains invalid characters.");
+    }
+
+    try {
+        decodeURIComponent(session);
+    } catch (error) {
+        throw new Error("REVEL_SESSION is not valid percent-encoding.", { cause: error });
+    }
+
+    return session;
+}
+
+async function request(url: URL | string, init: RequestInit): Promise<Response> {
+    try {
+        return await fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
+    } catch (error) {
+        throw new Error("Failed to connect to AtCoder.", { cause: error });
     }
 }
 
@@ -97,14 +131,17 @@ export class AtCoderClient {
     }
 
     async login(revelSession: string): Promise<boolean> {
-        const session = revelSession.trim().replace(/^REVEL_SESSION=/i, "");
+        const session = normalizeRevelSession(revelSession);
         const decodedSession = decodeURIComponent(session);
         const csrfToken = decodedSession.match(/(?:^|\0)csrf_token:([^\0]*)/i)?.[1];
         this.session = session;
         this.csrfTokenValue = csrfToken || undefined;
 
-        const response = await fetch(LOGIN_CHECK_URL, {
-            headers: { Cookie: `REVEL_SESSION=${session}` },
+        // Unauthenticated requests to /settings redirect to /login, so a plain 200
+        // means the session is valid. This does not detect a 200 sign-in page;
+        // switch to a DOM marker if AtCoder changes that behavior.
+        const response = await request(LOGIN_CHECK_URL, {
+            headers: { Cookie: `REVEL_SESSION=${session}`, "User-Agent": USER_AGENT },
             redirect: "manual",
         });
         const redirected =
@@ -131,11 +168,12 @@ export class AtCoderClient {
         }
 
         const headers = new Headers();
+        headers.set("User-Agent", USER_AGENT);
         if (this.session !== undefined) {
             headers.set("Cookie", `REVEL_SESSION=${this.session}`);
         }
 
-        const response = await fetch(problemUrl, { headers, redirect: "manual" });
+        const response = await request(problemUrl, { headers, redirect: "manual" });
         if (response.status >= 300 && response.status < 400) {
             throw new Error(`AtCoder redirected the problem request (${response.status}).`);
         }

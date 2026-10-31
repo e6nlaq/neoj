@@ -1,4 +1,4 @@
-import { isAtCoderLoggedIn, loginToAtCoder } from "./login/atcoder";
+import { hasAtCoderCredentials, isAtCoderLoggedIn, loginToAtCoder } from "./login/atcoder";
 
 export const platforms = [
     {
@@ -7,5 +7,6 @@ export const platforms = [
         description: "Log in to AtCoder",
         login: loginToAtCoder,
         isLoggedIn: isAtCoderLoggedIn,
+        hasCredentials: hasAtCoderCredentials,
     },
 ];

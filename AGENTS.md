@@ -7,7 +7,7 @@ Build `neoj` as a modern, feature-rich alternative to `oj`, the competitive-prog
 ## Architecture
 
 - Keep the CLI entry point in `src/index.ts` and platform-specific integrations under `src/lib/service/`.
-- Put user-facing command features under `src/feature/`; load optional command modules dynamically from the CLI entry point.
+- Put user-facing command features under `src/feature/`; wire commands in the CLI entry point with explicit imports, which Bun bundles into a single CLI.
 - Put shared filesystem and configuration helpers under `src/lib/util/`.
 - Keep platform HTTP and HTML handling in service modules, separate from CLI argument parsing and presentation.
 - Add shared abstractions only when multiple integrations need them; avoid speculative frameworks and one-off indirection.
@@ -35,3 +35,26 @@ Run the relevant checks before finishing changes:
 - `bun run build` — build the CLI when changes affect packaging or runtime output
 
 The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messages follow Conventional Commits.
+
+## Security and Credentials
+
+- Treat contest session cookies as account credentials. Never print them to logs, error messages, or test output, and never commit them or a populated `.env`.
+- Write credential files atomically (temporary file in the same directory, then rename) so an interrupted run cannot truncate saved data. Create the directory with `0700` and the file with `0600`, ignoring permission failures on platforms that do not support them.
+- Normalize and validate credential input in one place at the boundary: strip the cookie name, reject unexpected characters and malformed percent-encoding, and report which check failed.
+- Do not construct HTTP headers by interpolating unvalidated user input.
+
+## Repository Hygiene
+
+- Do not commit scratch scripts, captured HTML, temporary `.env` files, or other exploration artifacts. Keep them in the git-ignored `tmp/` directory or delete them before committing.
+- Remove dependencies as soon as the code that used them is deleted, and keep `package.json` metadata (`description`, `repository`, `license`, `engines`, scripts) accurate.
+- Never install the package into its own `node_modules` (for example with `bun link` or `bun add neoj`). A self-referencing `node_modules/neoj` nests indefinitely; delete `node_modules` and reinstall if it appears.
+- Keep `README.md` aligned with the actual CLI surface. Update it in the same change that alters commands, flags, or file locations.
+
+## Review Checklist
+
+- Network requests need a timeout, a descriptive `User-Agent`, and a wrapper that turns transport failures into domain errors with an actionable message.
+- Every read-modify-write of a credential file must be atomic, and validation errors must name the file or cookie involved.
+- CLI `.action` callbacks should delegate to exported functions so behavior can be tested without spawning the CLI.
+- Verify login state with a stable endpoint and a documented signal; avoid hard-coding a single contest page, and document the heuristic's limits when it is not exhaustive.
+- When a command can work without the network, offer an offline path and label the result as unverified instead of failing.
+- Add or update tests for each behavior change, including the failure paths (invalid input, malformed saved data, network errors).

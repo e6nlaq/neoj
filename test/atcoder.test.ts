@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import { AtCoderClient } from "@/lib/service/atcoder";
+import { AtCoderClient, normalizeRevelSession } from "@/lib/service/atcoder";
 
 const problemUrl = "https://atcoder.jp/contests/abc001/tasks/abc001_1";
 const formatContestTime = (date: Date) =>
@@ -64,6 +64,33 @@ afterEach(() => {
     globalThis.fetch = originalFetch;
 });
 
+describe("normalizeRevelSession", () => {
+    it("strips the cookie name and surrounding whitespace", () => {
+        expect(normalizeRevelSession("  REVEL_SESSION=abc%00def/+=  ")).toBe("abc%00def/+=");
+    });
+
+    it("rejects an empty value", () => {
+        expect(() => normalizeRevelSession("REVEL_SESSION=")).toThrow(
+            "REVEL_SESSION cannot be empty.",
+        );
+    });
+
+    it("rejects characters that cannot appear in a cookie", () => {
+        expect(() => normalizeRevelSession("abc;def")).toThrow(
+            "REVEL_SESSION contains invalid characters.",
+        );
+        expect(() => normalizeRevelSession("abc\ndef")).toThrow(
+            "REVEL_SESSION contains invalid characters.",
+        );
+    });
+
+    it("rejects malformed percent-encoding", () => {
+        expect(() => normalizeRevelSession("abc%")).toThrow(
+            "REVEL_SESSION is not valid percent-encoding.",
+        );
+    });
+});
+
 describe("AtCoderClient", () => {
     describe("login", () => {
         it("retains the csrf_token from the encoded session cookie", async () => {
@@ -103,7 +130,7 @@ describe("AtCoderClient", () => {
 
             expect(requests).toEqual([
                 {
-                    url: "https://atcoder.jp/contests/abc100/submit",
+                    url: "https://atcoder.jp/settings",
                     cookie: "REVEL_SESSION=test-session",
                     redirect: "manual",
                 },
@@ -118,7 +145,7 @@ describe("AtCoderClient", () => {
                     url: String(input),
                     cookie: new Headers(init?.headers).get("Cookie"),
                 });
-                if (String(input).endsWith("/submit")) {
+                if (String(input).endsWith("/settings")) {
                     loginAttempts += 1;
                     if (loginAttempts === 1) {
                         return new Response(null, { status: 200 });
@@ -139,6 +166,44 @@ describe("AtCoderClient", () => {
             await client.getProblem(problemUrl);
 
             expect(requests[2]?.cookie).toBeNull();
+        });
+
+        it("rejects an invalid session before contacting AtCoder", async () => {
+            let fetched = false;
+            setFetch(async () => {
+                fetched = true;
+                return new Response(null, { status: 200 });
+            });
+
+            await expect(new AtCoderClient().login("abc;def")).rejects.toThrow(
+                "REVEL_SESSION contains invalid characters.",
+            );
+            expect(fetched).toBe(false);
+        });
+
+        it("sends a User-Agent header and a request timeout", async () => {
+            let requestInit: RequestInit | undefined;
+            setFetch(async (_input, init) => {
+                requestInit = init;
+                return new Response(null, { status: 200 });
+            });
+
+            await new AtCoderClient().login("test-session");
+
+            expect(new Headers(requestInit?.headers).get("User-Agent")).toBe(
+                "neoj (+https://github.com/e6nlaq/neoj)",
+            );
+            expect(requestInit?.signal).toBeInstanceOf(AbortSignal);
+        });
+
+        it("reports connection failures as actionable errors", async () => {
+            setFetch(async () => {
+                throw new TypeError("fetch failed");
+            });
+
+            await expect(new AtCoderClient().login("test-session")).rejects.toThrow(
+                "Failed to connect to AtCoder.",
+            );
         });
     });
 
