@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import { AtCoderClient, normalizeRevelSession } from "@/lib/service/atcoder";
+import {
+    AtCoderClient,
+    AtCoderProblemRequestError,
+    normalizeRevelSession,
+} from "@/lib/service/atcoder";
 
 const problemUrl = "https://atcoder.jp/contests/abc001/tasks/abc001_1";
 const formatContestTime = (date: Date) =>
@@ -288,9 +292,13 @@ describe("AtCoderClient", () => {
         it("throws when the problem request fails", async () => {
             setFetch(async () => new Response("Not found", { status: 404 }));
 
-            await expect(new AtCoderClient().getProblem(problemUrl)).rejects.toThrow(
-                "AtCoder problem request failed (404).",
+            await expect(new AtCoderClient().getProblem(problemUrl)).rejects.toBeInstanceOf(
+                AtCoderProblemRequestError,
             );
+            await expect(new AtCoderClient().getProblem(problemUrl)).rejects.toMatchObject({
+                message: "AtCoder problem request failed (404).",
+                status: 404,
+            });
         });
     });
 });

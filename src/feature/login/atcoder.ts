@@ -8,7 +8,7 @@ const atCoderAuthSchema = v.object({
     revelSession: v.pipe(v.string(), v.nonEmpty()),
 });
 
-function getSavedSession(auth: unknown): string | undefined {
+export function getAtCoderSession(auth: unknown): string | undefined {
     if (auth === undefined) {
         return undefined;
     }
@@ -24,11 +24,11 @@ function getSavedSession(auth: unknown): string | undefined {
 }
 
 export function hasAtCoderCredentials(auth: unknown): boolean {
-    return getSavedSession(auth) !== undefined;
+    return getAtCoderSession(auth) !== undefined;
 }
 
 export async function isAtCoderLoggedIn(auth: unknown): Promise<boolean> {
-    const savedSession = getSavedSession(auth);
+    const savedSession = getAtCoderSession(auth);
     if (savedSession === undefined) {
         return false;
     }

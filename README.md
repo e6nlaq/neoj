@@ -90,6 +90,13 @@ The normal `status` command contacts each platform to check whether the saved
 session is still valid. With `--offline`, `neoj` only reads the saved credentials
 and reports `Logged in (offline, not verified)` instead.
 
+### `neoj download <url>`
+
+The command requires an initialized project with a `neoj.toml` file. It uses the
+nearest project config as the project root; if none is found, run `neoj init`
+first. When a problem returns 404 while AtCoder reports the user as logged out,
+the error suggests trying `neoj login atcoder`.
+
 ## Configuration
 
 `neoj` reads TOML configuration from two locations and merges them, with the

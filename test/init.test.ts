@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { findProjectConfig } from "@/lib/util/project";
+import { findProjectConfig, requireInitializedProject } from "@/lib/util/project";
 import { copyTemplateFiles } from "@/lib/util/template";
 
 let testRoot: string | undefined;
@@ -77,6 +77,34 @@ describe("findProjectConfig", () => {
         await Bun.write(join(root, "neoj.toml"), "");
 
         await expect(findProjectConfig(cwd)).resolves.toBeUndefined();
+    });
+});
+
+describe("requireInitializedProject", () => {
+    it("uses the nearest initialized project config as the project root", async () => {
+        const root = await createTestRoot();
+        const repository = join(root, "repository");
+        const cwd = join(repository, "nested", "deeper");
+        const projectDirectory = join(repository, "nested");
+        await mkdir(join(repository, ".git"), { recursive: true });
+        await mkdir(cwd, { recursive: true });
+        await Bun.write(join(repository, "neoj.toml"), "");
+        await Bun.write(join(projectDirectory, "neoj.toml"), "");
+
+        await expect(requireInitializedProject(cwd)).resolves.toBe(projectDirectory);
+    });
+
+    it("requires a project config and does not accept a global config", async () => {
+        const root = await createTestRoot();
+        const repository = join(root, "repository");
+        const cwd = join(repository, "nested");
+        await mkdir(join(repository, ".git"), { recursive: true });
+        await mkdir(cwd, { recursive: true });
+        await Bun.write(join(root, ".neoj.toml"), "");
+
+        await expect(requireInitializedProject(cwd)).rejects.toThrow(
+            'Project is not initialized. Run "neoj init"',
+        );
     });
 });
 

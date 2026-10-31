@@ -3,7 +3,9 @@ import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import { getProblemWithLoginHint } from "@/feature/download";
 import type { AtCoderProblem } from "@/lib/service/atcoder";
+import { AtCoderProblemRequestError } from "@/lib/service/atcoder";
 import { downloadAtCoderSamples } from "@/lib/util/testcase";
 
 let testRoot: string | undefined;
@@ -31,6 +33,32 @@ function createProblem(samples: AtCoderProblem["samples"]): AtCoderProblem {
 }
 
 const config = { folder: "testcases", filename: "sample-{}" };
+
+describe("getProblemWithLoginHint", () => {
+    it("hints to log in only on a 404 while logged out", async () => {
+        const notFound = {
+            getProblem: async () => Promise.reject(new AtCoderProblemRequestError(404)),
+        };
+
+        await expect(getProblemWithLoginHint("url", notFound, false)).rejects.toMatchObject({
+            message:
+                'AtCoder problem request failed (404). If the problem requires an account, try "neoj login atcoder".',
+        });
+        await expect(getProblemWithLoginHint("url", notFound, true)).rejects.toMatchObject({
+            message: "AtCoder problem request failed (404).",
+        });
+    });
+
+    it("does not add the login hint to other errors", async () => {
+        const forbidden = {
+            getProblem: async () => Promise.reject(new AtCoderProblemRequestError(403)),
+        };
+
+        await expect(getProblemWithLoginHint("url", forbidden, false)).rejects.toMatchObject({
+            message: "AtCoder problem request failed (403).",
+        });
+    });
+});
 
 describe("downloadAtCoderSamples", () => {
     it("replaces the test folder with numbered samples without changing contents", async () => {

@@ -24,6 +24,13 @@ export interface AtCoderProblem {
     endTime: Temporal.Instant;
 }
 
+export class AtCoderProblemRequestError extends Error {
+    constructor(readonly status: number) {
+        super(`AtCoder problem request failed (${status}).`);
+        this.name = "AtCoderProblemRequestError";
+    }
+}
+
 function parseContestTime(value: string): Temporal.Instant {
     const isoValue = value.replace(" ", "T").replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
     try {
@@ -49,6 +56,18 @@ export function normalizeRevelSession(value: string): string {
     }
 
     return session;
+}
+
+export function parseAtCoderProblemUrl(value: string): URL {
+    const problemUrl = new URL(value);
+    if (
+        problemUrl.origin !== ATCODER_ORIGIN ||
+        !/^\/contests\/[^/]+\/tasks\/[^/]+\/?$/.test(problemUrl.pathname)
+    ) {
+        throw new TypeError("Expected an AtCoder contest task URL.");
+    }
+
+    return problemUrl;
 }
 
 async function request(url: URL | string, init: RequestInit): Promise<Response> {
@@ -159,13 +178,7 @@ export class AtCoderClient {
     }
 
     async getProblem(url: string): Promise<AtCoderProblem> {
-        const problemUrl = new URL(url);
-        if (
-            problemUrl.origin !== ATCODER_ORIGIN ||
-            !/^\/contests\/[^/]+\/tasks\/[^/]+\/?$/.test(problemUrl.pathname)
-        ) {
-            throw new TypeError("Expected an AtCoder contest task URL.");
-        }
+        const problemUrl = parseAtCoderProblemUrl(url);
 
         const headers = new Headers();
         headers.set("User-Agent", USER_AGENT);
@@ -178,7 +191,7 @@ export class AtCoderClient {
             throw new Error(`AtCoder redirected the problem request (${response.status}).`);
         }
         if (!response.ok) {
-            throw new Error(`AtCoder problem request failed (${response.status}).`);
+            throw new AtCoderProblemRequestError(response.status);
         }
 
         const html = await response.text();
