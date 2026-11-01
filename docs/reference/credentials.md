@@ -14,16 +14,29 @@ directory chosen by [`env-paths`](https://github.com/sindresorhus/env-paths).
 ## Format
 
 The file is a JSON object keyed by platform name. Each value is an object of
-that platform's credentials; AtCoder stores its session cookie as
-`revelSession`.
+that platform's credentials:
+
+- AtCoder stores its session cookie as `revelSession`.
+- yukicoder stores either a CLI token (`method: "token"`, `token`, `expiresAt`)
+  or an account API key (`method: "api-key"`, `apiKey`). The CLI token expires
+  24 hours after it is issued; an expired token is treated as logged out.
 
 ```json
 {
     "atcoder": {
         "revelSession": "..."
+    },
+    "yukicoder": {
+        "method": "token",
+        "token": "ysb_...",
+        "expiresAt": "2026-11-02T00:00:00Z"
     }
 }
 ```
+
+The yukicoder token is used as a `Bearer` credential and is only valid for
+submitting and checking the logged-in user. An API key has broader access and
+should be treated the same way as a password.
 
 The file is rewritten whenever a session is saved or removed, and deleted once
 no platform sessions remain.

@@ -1,5 +1,8 @@
 import { parse } from "node-html-parser";
 
+import type { Problem, ProblemSample } from "@/lib/service/problem";
+import { isTimeoutError } from "@/lib/util/errors";
+
 const ATCODER_ORIGIN = "https://atcoder.jp";
 // /settings redirects to /login while unauthenticated, so it is a stable login check.
 const LOGIN_CHECK_URL = `${ATCODER_ORIGIN}/settings`;
@@ -11,14 +14,9 @@ const USER_AGENT = "neoj (+https://github.com/e6nlaq/neoj)";
 const REVEL_SESSION_PATTERN = /^[^\s;,"\\]+$/;
 const CONTROL_CHARACTER_PATTERN = /\p{Cc}/u;
 
-export interface AtCoderSample {
-    input: string;
-    output: string;
-}
+export type AtCoderSample = ProblemSample;
 
-export interface AtCoderProblem {
-    url: string;
-    title: string;
+export interface AtCoderProblem extends Problem {
     samples: AtCoderSample[];
     startTime: Temporal.Instant;
     endTime: Temporal.Instant;
@@ -74,6 +72,12 @@ async function request(url: URL | string, init: RequestInit): Promise<Response> 
     try {
         return await fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });
     } catch (error) {
+        if (isTimeoutError(error)) {
+            throw new Error(
+                `AtCoder request timed out after ${REQUEST_TIMEOUT_MS / 1000} seconds. Check your connection and try again.`,
+                { cause: error },
+            );
+        }
         throw new Error("Failed to connect to AtCoder.", { cause: error });
     }
 }

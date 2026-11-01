@@ -1,26 +1,55 @@
 # Log in, check status, and log out
 
-Sessions are stored per platform, so you can stay logged in to each one
-independently. `neoj` verifies a session before saving it and never prints the
-cookie back.
+Credentials are stored per platform, so you can stay logged in to each one
+independently. `neoj` verifies a credential before saving it and never prints it
+back.
 
-## Log in to a platform
+## Log in to AtCoder
 
 ```bash
 neoj login atcoder
 ```
 
-1. Open the platform in your browser and copy the session cookie from DevTools
+1. Open AtCoder in your browser and copy the session cookie from DevTools
    (Application → Cookies). For AtCoder, the cookie is `REVEL_SESSION`.
 2. Paste the value into the prompt. Either the value alone or the whole
    `REVEL_SESSION=...` pair is accepted, and surrounding whitespace is ignored.
    Paste only that cookie, not a full cookie header that contains `;`.
-3. `neoj` checks the session against the platform before saving it.
+3. `neoj` checks the session against AtCoder before saving it.
+
+## Log in to yukicoder
+
+The default method uses a CLI token that is only allowed to submit and to check
+the current user. It expires after 24 hours.
+
+```bash
+neoj login yukicoder
+```
+
+1. `neoj` asks yukicoder for a device code and prints a URL and a short code.
+2. `neoj` opens `https://yukicoder.me/device` in your browser when
+   `login.open_browser = true` (the default). Approve the request there.
+3. `neoj` polls yukicoder until it receives the token, then saves the token and
+   its expiry time.
+
+If you cannot open a browser (for example over SSH), open the printed URL
+manually. Set `login.open_browser = false` in `~/.neoj.toml` to disable the
+automatic launch.
+
+To use your account API key instead:
+
+```bash
+neoj login yukicoder --method api-key
+```
+
+Paste the API key from your yukicoder profile. An API key has broader access than
+the CLI token, so treat it like a password.
 
 If you are already logged in to that platform, `neoj` asks for confirmation
-before replacing the saved session.
+before replacing the saved credentials. yukicoder tokens that have already
+expired are replaced without asking.
 
-> Treat a session cookie like a password: it grants access to your account on
+> Treat every credential like a password: it grants access to your account on
 > that platform. Never share it or commit it to a repository.
 
 ## Check the login status
@@ -29,8 +58,9 @@ before replacing the saved session.
 neoj status
 ```
 
-`status` reports every supported platform, whether or not you have saved a
-session for it.
+`status` reports every supported platform, whether or not you have saved
+credentials for it. An expired yukicoder CLI token is reported as logged out
+without contacting the service.
 
 Add `--offline` to skip network requests:
 

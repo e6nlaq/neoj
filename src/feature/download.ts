@@ -1,40 +1,18 @@
 import { Command } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
-import { getAtCoderSession } from "@/feature/login/atcoder";
-import {
-    AtCoderClient,
-    AtCoderProblemRequestError,
-    type AtCoderSample,
-    parseAtCoderProblemUrl,
-} from "@/lib/service/atcoder";
-import { readAuth } from "@/lib/util/auth";
+import { findProblemSource } from "@/feature/problem-sources";
+import type { ProblemSample } from "@/lib/service/problem";
 import { loadConfig } from "@/lib/util/config";
 import { saveProblemMetadata } from "@/lib/util/problem-metadata";
 import { requireInitializedProject } from "@/lib/util/project";
 import { applyProjectTemplate } from "@/lib/util/template-apply";
-import { downloadAtCoderSamples } from "@/lib/util/testcase";
+import { downloadSamples } from "@/lib/util/testcase";
 
-export async function getProblemWithLoginHint(
-    url: string,
-    client: Pick<AtCoderClient, "getProblem">,
-    loggedIn: boolean,
-) {
-    try {
-        return await client.getProblem(url);
-    } catch (error) {
-        if (error instanceof AtCoderProblemRequestError && error.status === 404 && !loggedIn) {
-            throw new Error(
-                `${error.message} If the problem requires an account, try "neoj login atcoder".`,
-                { cause: error },
-            );
-        }
-        throw error;
-    }
-}
+export { getProblemWithLoginHint } from "@/feature/problem-sources";
 
 export function formatSamples(
-    samples: readonly AtCoderSample[],
+    samples: readonly ProblemSample[],
     folder: string,
     filenamePattern: string,
 ): string[] {
@@ -46,16 +24,12 @@ export function formatSamples(
 }
 
 export async function downloadProblem(url: string): Promise<void> {
-    parseAtCoderProblemUrl(url);
+    const source = findProblemSource(url);
     const projectRoot = await requireInitializedProject(process.cwd());
     const config = await loadConfig();
-    const auth = await readAuth();
-    const client = new AtCoderClient();
-    const savedSession = getAtCoderSession(auth.atcoder);
-    const loggedIn = savedSession === undefined ? false : await client.login(savedSession);
 
-    const result = await downloadAtCoderSamples(url, projectRoot, config.testcase, {
-        getProblem: (problemUrl) => getProblemWithLoginHint(problemUrl, client, loggedIn),
+    const result = await downloadSamples(url, projectRoot, config.testcase, {
+        getProblem: (problemUrl) => source.fetchProblem(problemUrl),
     });
 
     if (config.template.enable) {
@@ -93,7 +67,7 @@ export function createDownloadCommand(): Command<[string]> {
     return new Command("download")
         .alias("d")
         .description("Download problem samples into the test-case directory")
-        .argument("<url>", "AtCoder problem URL")
+        .argument("<url>", "Problem URL from a supported platform")
         .action(async (url) => {
             try {
                 await downloadProblem(url);

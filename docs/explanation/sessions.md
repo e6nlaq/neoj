@@ -1,14 +1,16 @@
 # Sessions and credential security
 
-`neoj` authenticates by reusing a browser session cookie. That choice keeps the
-CLI simple and avoids storing a password, but it means the credential is exactly
-as powerful as a logged-in browser tab.
+`neoj` stores credentials per platform. AtCoder uses a browser session cookie;
+yukicoder uses a submit-only CLI token from the browser device flow or an account
+API key. That keeps the CLI simple and avoids storing a password, but it means
+each credential is exactly as powerful as what the platform grants it.
 
 ## Verify before saving
 
-A pasted cookie is checked against the platform before it is written to disk. A
-typo or an expired session fails immediately instead of producing confusing
-errors later.
+A pasted cookie or API key is checked against the platform before it is written
+to disk. A typo or an expired yukicoder token fails immediately instead of
+producing confusing errors later. yukicoder CLI tokens are saved with their
+expiry time and treated as logged out once that time passes.
 
 ## Keep the blast radius small
 
@@ -28,13 +30,15 @@ prints the cookie in logs or error messages.
 
 ## What this does not protect against
 
-- A session cookie grants full access to the account until it expires; there is
-  no per-command scope.
+- An AtCoder session cookie grants full access to the account until it expires;
+  there is no per-command scope. A yukicoder API key has broad access as well.
+  The yukicoder CLI token is limited to submitting and checking the current user,
+  and expires after 24 hours, but it is still a secret while valid.
 - Malware or another process running as your user can read the file.
-- A cookie copied into a repository, issue, or chat is compromised even after
+- A credential copied into a repository, issue, or chat is compromised even after
   you log out elsewhere.
 
-Treat the cookie like a password and log out when you no longer need it.
+Treat every credential like a password and log out when you no longer need it.
 
 ## Related
 

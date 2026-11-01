@@ -8,6 +8,7 @@ Build `neoj` as a modern, feature-rich alternative to `oj`, the competitive-prog
 
 - Keep the CLI entry point in `src/index.ts` and platform-specific integrations under `src/lib/service/`.
 - Put user-facing command features under `src/feature/`; wire commands in the CLI entry point with explicit imports, which Bun bundles into a single CLI.
+- Treat contest-window metadata (`event-timer`) as AtCoder-specific. AtCoder uses Turnstile outside contest windows, so submission automation is only reliable during a contest; do not store or rely on contest windows for yukicoder.
 - Put shared filesystem and configuration helpers under `src/lib/util/`.
 - Keep platform HTTP and HTML handling in service modules, separate from CLI argument parsing and presentation.
 - Add shared abstractions only when multiple integrations need them; avoid speculative frameworks and one-off indirection.
@@ -63,3 +64,7 @@ The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messag
 - Verify login state with a stable endpoint and a documented signal; avoid hard-coding a single contest page, and document the heuristic's limits when it is not exhaustive.
 - When a command can work without the network, offer an offline path and label the result as unverified instead of failing.
 - Add or update tests for each behavior change, including the failure paths (invalid input, malformed saved data, network errors).
+
+## Responce
+
+Please responce in Japanese for the user.

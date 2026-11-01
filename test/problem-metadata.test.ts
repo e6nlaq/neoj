@@ -44,6 +44,29 @@ describe("saveProblemMetadata", () => {
         await expect(readdir(join(projectRoot, ".neoj"))).resolves.toEqual(["problem.json"]);
     });
 
+    it("omits the contest window when the problem does not provide one", async () => {
+        const projectRoot = await createProject();
+
+        await saveProblemMetadata(projectRoot, {
+            url: "https://yukicoder.me/problems/no/480",
+        });
+
+        await expect(Bun.file(join(projectRoot, ".neoj", "problem.json")).json()).resolves.toEqual({
+            url: "https://yukicoder.me/problems/no/480",
+        });
+    });
+
+    it("rejects a partial contest window", async () => {
+        const projectRoot = await createProject();
+
+        await expect(
+            saveProblemMetadata(projectRoot, {
+                url: "https://yukicoder.me/problems/no/480",
+                startTime: Temporal.Instant.from("2026-10-30T00:00:00Z"),
+            }),
+        ).rejects.toThrow("Problem contest range requires both a start and an end time.");
+    });
+
     it("overwrites problem metadata while preserving other files in .neoj", async () => {
         const projectRoot = await createProject();
         const metadataDirectory = join(projectRoot, ".neoj");

@@ -6,7 +6,7 @@ import { join, resolve } from "node:path";
 import { downloadProblem, formatSamples, getProblemWithLoginHint } from "@/feature/download";
 import type { AtCoderProblem } from "@/lib/service/atcoder";
 import { AtCoderProblemRequestError } from "@/lib/service/atcoder";
-import { downloadAtCoderSamples } from "@/lib/util/testcase";
+import { downloadSamples } from "@/lib/util/testcase";
 
 let testRoot: string | undefined;
 const originalCwd = process.cwd();
@@ -101,7 +101,7 @@ describe("getProblemWithLoginHint", () => {
     });
 });
 
-describe("downloadAtCoderSamples", () => {
+describe("downloadSamples", () => {
     it("replaces the test folder with numbered samples ending in a newline", async () => {
         const projectRoot = await createProject();
         const target = join(projectRoot, config.folder);
@@ -113,9 +113,7 @@ describe("downloadAtCoderSamples", () => {
         ]);
         const client = { getProblem: async () => problem };
 
-        await expect(
-            downloadAtCoderSamples(problem.url, projectRoot, config, client),
-        ).resolves.toEqual({
+        await expect(downloadSamples(problem.url, projectRoot, config, client)).resolves.toEqual({
             directory: target,
             count: 2,
             samples: problem.samples,
@@ -142,7 +140,7 @@ describe("downloadAtCoderSamples", () => {
         const problem = createProblem([]);
 
         await expect(
-            downloadAtCoderSamples(problem.url, projectRoot, config, {
+            downloadSamples(problem.url, projectRoot, config, {
                 getProblem: async () => problem,
             }),
         ).resolves.toEqual({ directory: target, count: 0, samples: [], problem });
@@ -156,7 +154,7 @@ describe("downloadAtCoderSamples", () => {
         await Bun.write(join(target, "existing.in"), "keep");
 
         await expect(
-            downloadAtCoderSamples("https://atcoder.jp/invalid", projectRoot, config, {
+            downloadSamples("https://atcoder.jp/invalid", projectRoot, config, {
                 getProblem: async () => {
                     throw new Error("network unavailable");
                 },
@@ -181,7 +179,7 @@ describe("downloadAtCoderSamples", () => {
             resolve(projectRoot, "outside"),
         ]) {
             await expect(
-                downloadAtCoderSamples(
+                downloadSamples(
                     "https://atcoder.jp/invalid",
                     projectRoot,
                     { ...config, folder },
@@ -205,7 +203,7 @@ describe("downloadAtCoderSamples", () => {
         await Bun.write(target, "keep");
 
         await expect(
-            downloadAtCoderSamples("https://atcoder.jp/invalid", projectRoot, config, {
+            downloadSamples("https://atcoder.jp/invalid", projectRoot, config, {
                 getProblem: async () => createProblem([]),
             }),
         ).rejects.toThrow("exists but is not a directory");
@@ -258,5 +256,74 @@ describe("downloadProblem", () => {
                 end: "2026-10-30T01:00:00Z",
             },
         });
+    });
+
+    it("downloads yukicoder samples without storing a contest window", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await Bun.write(join(projectRoot, "neoj.toml"), "");
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async () =>
+                new Response(
+                    `<html>
+                    <head><title> No.480 合計 - yukicoder</title></head>
+                    <body>
+                        <div id="content" data-problem-id="1480">
+                            <div class="sample">
+                                <div class="paragraph">
+                                    <h6>入力</h6><pre>3</pre>
+                                    <h6>出力</h6><pre>6</pre>
+                                </div>
+                            </div>
+                            <div class="sample">
+                                <div class="paragraph">
+                                    <h6>入力</h6><pre>1</pre>
+                                    <h6>出力</h6><pre>1</pre>
+                                </div>
+                            </div>
+                        </div>
+                        <event-timer start-time="2017-02-10T22:20:00+09:00" end-time="2017-02-11T00:20:00+09:00"></event-timer>
+                    </body>
+                </html>`,
+                    { status: 200 },
+                ),
+        });
+        try {
+            await downloadProblem("https://yukicoder.me/problems/no/480");
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
+
+        await expect(
+            readdir(join(projectRoot, "test")).then((entries) => entries.sort()),
+        ).resolves.toEqual(["sample-1.in", "sample-1.out", "sample-2.in", "sample-2.out"]);
+        await expect(Bun.file(join(projectRoot, "test", "sample-1.in")).text()).resolves.toBe(
+            "3\n",
+        );
+        await expect(Bun.file(join(projectRoot, "test", "sample-2.out")).text()).resolves.toBe(
+            "1\n",
+        );
+        await expect(Bun.file(join(projectRoot, ".neoj", "problem.json")).json()).resolves.toEqual({
+            url: "https://yukicoder.me/problems/no/480",
+        });
+    });
+
+    it("rejects unsupported problem URLs", async () => {
+        await expect(downloadProblem("https://example.com/problems/no/480")).rejects.toThrow(
+            "Expected a problem URL from a supported platform (AtCoder, yukicoder).",
+        );
     });
 });

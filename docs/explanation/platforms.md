@@ -24,7 +24,14 @@ stay the same and only the registry grows.
 the URL parser decides which integration handles it. The parser rejects URLs that
 do not belong to a supported platform rather than attempting a best-effort fetch.
 
-AtCoder is the registered platform today, which is why the examples use it.
+AtCoder and yukicoder are the registered platforms. They authenticate
+differently:
+
+- AtCoder reuses a browser session cookie (`REVEL_SESSION`).
+- yukicoder uses either a submit-only CLI token obtained through the browser
+  device flow, or an account API key stored as a `Bearer` credential.
+
+Every credential is verified before `neoj` saves it.
 
 ## Terminology
 

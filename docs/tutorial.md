@@ -1,7 +1,7 @@
 # Your first problem
 
 This tutorial takes you from an empty directory to sample tests on disk. It takes
-a few minutes and uses AtCoder, the platform `neoj` ships with.
+a few minutes and uses AtCoder, one of the platforms `neoj` ships with.
 
 ## Before you start
 
@@ -32,6 +32,12 @@ The bundled configuration enables templates, so the next step also copies
 
 ```bash
 neoj d https://atcoder.jp/contests/abc300/tasks/abc300_a
+```
+
+yukicoder problem URLs work the same way:
+
+```bash
+neoj d https://yukicoder.me/problems/no/480
 ```
 
 `neoj` fetches the problem, writes each sample into `test/`, and records the

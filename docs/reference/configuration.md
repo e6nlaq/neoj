@@ -20,6 +20,16 @@ Destination directory for the solution template, resolved from the project root.
 It is required when `template.enable = true`, must stay inside the project, must
 not pass through a symbolic link, and must not overlap `template.folder`.
 
+### `login.open_browser`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Open the browser automatically during the yukicoder CLI-token device flow. The
+command always prints the verification URL and code, so login still works when
+this is `false` or when the browser cannot be opened (for example over SSH).
+
 ### `testcase.folder`
 
 | Type        | Default | Scope             |
@@ -92,6 +102,9 @@ How the template is applied to `src`:
 
 ```toml
 src = "src"
+
+[login]
+open_browser = true
 
 [testcase]
 folder = "test"

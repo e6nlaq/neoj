@@ -71,6 +71,7 @@ export async function readAuth(): Promise<Record<string, unknown>> {
 export async function saveAuth(
     provider: string,
     credentials: Record<string, string>,
+    options: { replace?: boolean } = {},
 ): Promise<void> {
     const auth = await readAuth();
     const existingProviderAuth = auth[provider];
@@ -85,11 +86,20 @@ export async function saveAuth(
         providerAuth = result.output;
     }
 
-    auth[provider] = {
-        ...providerAuth,
-        ...credentials,
-    };
+    auth[provider] = options.replace
+        ? { ...credentials }
+        : {
+              ...providerAuth,
+              ...credentials,
+          };
     await writeAuth(auth);
+}
+
+export async function replaceAuth(
+    provider: string,
+    credentials: Record<string, string>,
+): Promise<void> {
+    await saveAuth(provider, credentials, { replace: true });
 }
 
 export async function removeAuth(providers: readonly string[]): Promise<void> {

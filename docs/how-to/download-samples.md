@@ -5,8 +5,18 @@ neoj download <url>
 neoj d <url>          # alias
 ```
 
-The command accepts an AtCoder contest task URL and replaces the configured
-test-case directory with the problem's samples.
+The command accepts an AtCoder or yukicoder problem URL and replaces the
+configured test-case directory with the problem's samples.
+
+```bash
+neoj d https://atcoder.jp/contests/abc300/tasks/abc300_a
+neoj d https://yukicoder.me/problems/no/480
+```
+
+For yukicoder, `neoj` accepts both `/problems/no/<number>` and
+`/problems/<problem-id>` URLs. Only public problems can be downloaded: the
+yukicoder CLI token and API key cannot authenticate the HTML problem page, so
+private problems are not supported yet.
 
 ## Before you run it
 
@@ -21,7 +31,8 @@ repository root, so you can run it from a subdirectory of the project.
 2. Replaces the test-case folder (`test/` by default) with `sample-*.in` and
    `sample-*.out` files, one pair per sample.
 3. Applies the project template to `src/` when `template.enable = true`.
-4. Records the problem URL and contest window in `.neoj/problem.json`.
+4. Records the problem URL in `.neoj/problem.json`. For AtCoder, the contest
+   window is recorded as well; yukicoder problems store only the URL.
 
 The summary reports how many samples were written. Set
 `download.show_sample = true` to print each sample's contents as well.
@@ -30,10 +41,11 @@ The summary reports how many samples were written. Set
 
 - A failed fetch leaves the existing test cases untouched; the folder is only
   replaced after the problem has been retrieved.
-- When the problem returns 404 and you are not logged in, the error suggests
-  running `neoj login atcoder`.
-- A problem without samples recreates the test-case folder as an empty
-  directory.
+- When an AtCoder problem returns 404 and you are not logged in, the error
+  suggests running `neoj login atcoder`.
+- A yukicoder URL that does not point to an existing problem is reported as a
+  missing problem page, even though the site responds with HTTP 200.
+- A problem without samples recreates the test-case folder as an empty directory.
 
 ## Related
 

@@ -209,6 +209,16 @@ describe("AtCoderClient", () => {
                 "Failed to connect to AtCoder.",
             );
         });
+
+        it("reports timeouts as timeouts", async () => {
+            setFetch(async () => {
+                throw new DOMException("The operation timed out.", "TimeoutError");
+            });
+
+            await expect(new AtCoderClient().login("test-session")).rejects.toThrow(
+                "AtCoder request timed out after 15 seconds. Check your connection and try again.",
+            );
+        });
     });
 
     describe("getProblem", () => {

@@ -21,6 +21,12 @@ const testcaseFilenameSchema = v.pipe(
 
 export const configSchema = v.strictObject({
     src: v.optional(v.pipe(v.string(), v.minLength(1))),
+    login: v.optional(
+        v.strictObject({
+            open_browser: v.optional(v.boolean(), true),
+        }),
+        { open_browser: true },
+    ),
     testcase: v.optional(
         v.strictObject({
             folder: v.optional(v.pipe(v.string(), v.minLength(1)), "test"),

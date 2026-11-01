@@ -6,3 +6,10 @@ export function hasErrorCode(error: unknown, code: string): boolean {
         error.code === code
     );
 }
+
+export function isTimeoutError(error: unknown): boolean {
+    return (
+        (error instanceof Error && error.name === "TimeoutError") ||
+        hasErrorCode(error, "ETIMEDOUT")
+    );
+}

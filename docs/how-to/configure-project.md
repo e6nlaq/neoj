@@ -10,6 +10,17 @@
 Project values win over global values. `src` and `[template]` are project-only;
 setting either in the global file is an error.
 
+## Control the browser during login
+
+```toml
+[login]
+open_browser = true
+```
+
+This controls the yukicoder CLI-token device flow. When it is `true` (the
+default), `neoj` opens the verification page in your browser. The URL and code
+are printed either way, so set it to `false` on headless or SSH sessions.
+
 ## Change the test folder or file names
 
 ```toml

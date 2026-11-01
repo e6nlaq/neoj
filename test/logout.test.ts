@@ -102,7 +102,7 @@ describe("logoutServices", () => {
         await saveAuth("atcoder", { revelSession: "atcoder-session" });
 
         await expect(logoutServices(["atcoder", "unknown"])).rejects.toThrow(
-            "Unsupported service: unknown. Supported services: atcoder.",
+            "Unsupported service: unknown. Supported services: atcoder, yukicoder.",
         );
 
         expect(confirmPrompt).not.toHaveBeenCalled();

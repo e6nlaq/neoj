@@ -76,6 +76,7 @@ describe("loadConfig", () => {
 
         await expect(loadConfig()).resolves.toEqual({
             src: undefined,
+            login: { open_browser: true },
             testcase: { folder: "test", filename: "sample-{}" },
             download: { show_sample: false },
             template: { enable: false, mode: "overlay" },
@@ -156,6 +157,7 @@ describe("loadConfig", () => {
         );
 
         await expect(loadConfig()).resolves.toEqual({
+            login: { open_browser: true },
             testcase: { folder: "tests", filename: "case-{}" },
             download: { show_sample: false },
             template: { enable: false, mode: "overlay" },

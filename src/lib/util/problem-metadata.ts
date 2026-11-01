@@ -2,12 +2,12 @@ import { randomUUID } from "node:crypto";
 import { lstat, mkdir, open, rename, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import type { AtCoderProblem } from "@/lib/service/atcoder";
+import type { Problem } from "@/lib/service/problem";
 import { hasErrorCode } from "@/lib/util/errors";
 
 export async function saveProblemMetadata(
     projectRoot: string,
-    problem: Pick<AtCoderProblem, "url" | "startTime" | "endTime">,
+    problem: Pick<Problem, "url" | "startTime" | "endTime">,
 ): Promise<void> {
     const root = resolve(projectRoot);
     const metadataDirectory = join(root, ".neoj");
@@ -38,13 +38,19 @@ export async function saveProblemMetadata(
     }
 
     const temporaryPath = join(metadataDirectory, `.problem-${randomUUID()}.tmp`);
-    const metadata = {
-        url: problem.url,
-        contestrange: {
+    const metadata: {
+        url: string;
+        contestrange?: { start: string; end: string };
+    } = { url: problem.url };
+    if ((problem.startTime === undefined) !== (problem.endTime === undefined)) {
+        throw new Error("Problem contest range requires both a start and an end time.");
+    }
+    if (problem.startTime !== undefined && problem.endTime !== undefined) {
+        metadata.contestrange = {
             start: problem.startTime.toString(),
             end: problem.endTime.toString(),
-        },
-    };
+        };
+    }
 
     let temporaryFileCreated = false;
     try {

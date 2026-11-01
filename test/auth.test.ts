@@ -3,7 +3,7 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { readAuth, saveAuth } from "@/lib/util/auth";
+import { readAuth, replaceAuth, saveAuth } from "@/lib/util/auth";
 
 const originalLocalAppData = process.env.LOCALAPPDATA;
 let dataRoot: string | undefined;
@@ -45,6 +45,21 @@ describe("authentication data", () => {
             codeforces: { session: "codeforces-session" },
         });
         expect(await Bun.file(authFilePath).exists()).toBe(true);
+    });
+
+    it("replaces provider credentials without retaining old fields", async () => {
+        await setTemporaryDataDirectory();
+        await saveAuth("yukicoder", {
+            method: "token",
+            token: "old-token",
+            expiresAt: "2026-11-02T00:00:00Z",
+        });
+
+        await replaceAuth("yukicoder", { method: "api-key", apiKey: "api-key" });
+
+        await expect(readAuth()).resolves.toEqual({
+            yukicoder: { method: "api-key", apiKey: "api-key" },
+        });
     });
 
     it("rejects authentication files that do not match the Valibot schema", async () => {

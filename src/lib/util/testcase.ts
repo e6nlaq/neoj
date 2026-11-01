@@ -1,15 +1,15 @@
 import { lstat, mkdir, mkdtemp, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 
-import { AtCoderClient, type AtCoderProblem } from "@/lib/service/atcoder";
+import type { Problem, ProblemClient, ProblemSample } from "@/lib/service/problem";
 import type { Config } from "@/lib/util/config";
 import { hasErrorCode } from "@/lib/util/errors";
 
 export interface DownloadedSamples {
     directory: string;
     count: number;
-    samples: AtCoderProblem["samples"];
-    problem: AtCoderProblem;
+    samples: ProblemSample[];
+    problem: Problem;
 }
 
 async function validateTargetDirectory(projectRoot: string, folder: string): Promise<string> {
@@ -61,7 +61,7 @@ async function validateTargetDirectory(projectRoot: string, folder: string): Pro
     return target;
 }
 
-function getSampleFiles(problem: AtCoderProblem, filenamePattern: string) {
+function getSampleFiles(problem: Problem, filenamePattern: string) {
     return problem.samples.flatMap((sample, index) => {
         const baseName = filenamePattern.replace("{}", String(index + 1));
         return [
@@ -111,11 +111,11 @@ async function replaceDirectory(
     }
 }
 
-export async function downloadAtCoderSamples(
+export async function downloadSamples(
     url: string,
     projectRoot: string,
     testcaseConfig: Config["testcase"],
-    client: Pick<AtCoderClient, "getProblem"> = new AtCoderClient(),
+    client: Pick<ProblemClient, "getProblem">,
 ): Promise<DownloadedSamples> {
     const targetDirectory = await validateTargetDirectory(projectRoot, testcaseConfig.folder);
     const problem = await client.getProblem(url);
