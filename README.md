@@ -40,6 +40,7 @@ contest platforms.
 ### Do
 
 - [Install neoj](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/install.md)
+- [Set up shell completions](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/setup-completions.md)
 - [Log in, check status, and log out](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/manage-sessions.md)
 - [Download sample tests](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/download-samples.md)
 - [Configure a project](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/configure-project.md)

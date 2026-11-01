@@ -2,13 +2,14 @@
 
 ## Commands
 
-| Command                                 | Description                                                                 |
-| --------------------------------------- | --------------------------------------------------------------------------- |
-| `neoj init [--force]`                   | Copy the bundled templates into the current project.                        |
-| `neoj download <url>` (alias: `neoj d`) | Download a problem's sample tests into the test-case directory.             |
-| `neoj login <platform>`                 | Log in to a platform. The supported names are `atcoder` and `yukicoder`.    |
-| `neoj logout [--service <name...>]`     | Log out of the given platforms, or of every platform when no name is given. |
-| `neoj status [--offline]`               | Show the login status of every supported platform.                          |
+| Command                                               | Description                                                                 |
+| ----------------------------------------------------- | --------------------------------------------------------------------------- |
+| `neoj init [--force]`                                 | Copy the bundled templates into the current project.                        |
+| `neoj download <url>` (alias: `neoj d`)               | Download a problem's sample tests into the test-case directory.             |
+| `neoj login <platform>`                               | Log in to a platform. The supported names are `atcoder` and `yukicoder`.    |
+| `neoj logout [--service <name...>]`                   | Log out of the given platforms, or of every platform when no name is given. |
+| `neoj status [--offline]`                             | Show the login status of every supported platform.                          |
+| `neoj completions <shell>` (alias: `neoj completion`) | Print a completion script for bash, zsh, fish, or PowerShell.               |
 
 ### `init`
 
@@ -53,6 +54,16 @@ See [Log in, check status, and log out](../how-to/manage-sessions.md).
 | Option      | Description                                             |
 | ----------- | ------------------------------------------------------- |
 | `--offline` | Use saved credentials without contacting the platforms. |
+
+### `completions`
+
+| Argument  | Description                                                                |
+| --------- | -------------------------------------------------------------------------- |
+| `<shell>` | Shell to generate completions for: `bash`, `zsh`, `fish`, or `powershell`. |
+
+Writes the script to standard output. See
+[Set up shell completions](../how-to/setup-completions.md) for installation
+examples. PowerShell completion requires `pwsh` 7.2 or later.
 
 ## Global options
 

@@ -25,7 +25,9 @@ const apiKeyAuthSchema = v.strictObject({
 const yukicoderAuthSchema = v.variant("method", [tokenAuthSchema, apiKeyAuthSchema]);
 
 export type YukicoderAuth = v.InferOutput<typeof yukicoderAuthSchema>;
-export type YukicoderLoginMethod = "token" | "api-key";
+export const yukicoderLoginMethods = ["token", "api-key"] as const;
+
+export type YukicoderLoginMethod = (typeof yukicoderLoginMethods)[number];
 
 export interface LoginToYukicoderOptions extends PollDeviceTokenOptions {
     method?: string;
@@ -34,8 +36,9 @@ export interface LoginToYukicoderOptions extends PollDeviceTokenOptions {
 
 export function parseYukicoderLoginMethod(value: string | undefined): YukicoderLoginMethod {
     const method = value ?? "token";
-    if (method === "token" || method === "api-key") {
-        return method;
+    const parsed = yukicoderLoginMethods.find((candidate) => candidate === method);
+    if (parsed !== undefined) {
+        return parsed;
     }
 
     throw new Error(`Unsupported yukicoder login method: ${method}. Use "token" or "api-key".`);
