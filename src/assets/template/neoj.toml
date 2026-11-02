@@ -1,3 +1,4 @@
+#:schema https://raw.githubusercontent.com/e6nlaq/neoj/main/schema/neoj.schema.json
 
 # neoj config file
 src = "src"

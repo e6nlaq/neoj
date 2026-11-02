@@ -1,6 +1,10 @@
 pre-commit:
     parallel: false
     commands:
+        schema:
+            glob: "{src/lib/util/config.ts,scripts/*.ts,schema/*.json}"
+            run: bun run schema
+            stage_fixed: true
         format:
             run: bun fmt --staged
         lint:

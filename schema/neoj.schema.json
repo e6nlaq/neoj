@@ -1,0 +1,161 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://raw.githubusercontent.com/e6nlaq/neoj/main/schema/neoj.schema.json",
+    "title": "neoj configuration",
+    "type": "object",
+    "properties": {
+        "src": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Destination directory for the solution template, relative to the project root. Required when template.enable is true."
+        },
+        "login": {
+            "type": "object",
+            "properties": {
+                "open_browser": {
+                    "type": "boolean",
+                    "description": "Open the browser automatically during the yukicoder device flow.",
+                    "default": true
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "How neoj behaves during login.",
+            "default": {
+                "open_browser": true
+            }
+        },
+        "testcase": {
+            "type": "object",
+            "properties": {
+                "folder": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Directory that receives downloaded samples, relative to the project root.",
+                    "default": "test"
+                },
+                "filename": {
+                    "type": "string",
+                    "description": "Base name for each sample file. Must contain exactly one {} that is replaced by the sample number.",
+                    "pattern": "^[^<>:\"/\\\\|?*{}]*\\{\\}[^<>:\"/\\\\|?*{}]*$",
+                    "default": "sample-{}"
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "Where and how sample tests are written.",
+            "default": {
+                "folder": "test",
+                "filename": "sample-{}"
+            }
+        },
+        "download": {
+            "type": "object",
+            "properties": {
+                "show_sample": {
+                    "type": "boolean",
+                    "description": "Print every downloaded sample's input and output after writing the files.",
+                    "default": false
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "How neoj reports downloaded samples.",
+            "default": {
+                "show_sample": false
+            }
+        },
+        "stash": {
+            "type": "object",
+            "properties": {
+                "auto_stash": {
+                    "type": "boolean",
+                    "description": "Save the current problem's work before download replaces it.",
+                    "default": false
+                },
+                "auto_apply": {
+                    "type": "boolean",
+                    "description": "Restore the downloaded problem's stash when one exists.",
+                    "default": false
+                },
+                "force": {
+                    "type": "boolean",
+                    "description": "Allow neoj stash save to replace an existing stash without --force.",
+                    "default": true
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "How neoj keeps per-problem work in sync with downloads.",
+            "default": {
+                "auto_stash": false,
+                "auto_apply": false,
+                "force": true
+            }
+        },
+        "template": {
+            "type": "object",
+            "properties": {
+                "enable": {
+                    "type": "boolean",
+                    "description": "Apply the template to src after each successful download. Requires src and template.folder.",
+                    "default": false
+                },
+                "folder": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Directory holding the template files, relative to the project root."
+                },
+                "mode": {
+                    "enum": ["overlay", "replace"],
+                    "type": "string",
+                    "evenBetterToml": {
+                        "docs": {
+                            "enumValues": [
+                                "Copy the template over src, replacing files that exist in both places.",
+                                "Remove the contents of src before copying the template."
+                            ]
+                        }
+                    },
+                    "description": "How the template is applied to src.",
+                    "default": "overlay"
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "Template files applied to src after a download.",
+            "default": {
+                "enable": false,
+                "mode": "overlay"
+            }
+        }
+    },
+    "required": [],
+    "additionalProperties": false,
+    "description": "neoj configuration, read from ~/.neoj.toml and the nearest project neoj.toml.",
+    "allOf": [
+        {
+            "if": {
+                "properties": {
+                    "template": {
+                        "properties": {
+                            "enable": {
+                                "const": true
+                            }
+                        },
+                        "required": ["enable"]
+                    }
+                },
+                "required": ["template"]
+            },
+            "then": {
+                "properties": {
+                    "template": {
+                        "required": ["folder"]
+                    }
+                },
+                "required": ["src"]
+            }
+        }
+    ]
+}

@@ -24,6 +24,7 @@
         "test": "bun test",
         "build": "rm -rf dist && bun build ./src/index.ts --target bun --outdir dist --packages external --splitting --check --minify && bun run scripts/copy-template-assets.ts",
         "neoj": "bun run src/index.ts",
+        "schema": "bun run scripts/generate-schema.ts",
         "format": "bun fmt",
         "lint": "oxlint",
         "prepare": "lefthook install",
@@ -42,6 +43,7 @@
         "@commitlint/cli": "^21.2.4",
         "@commitlint/config-conventional": "^21.2.4",
         "@types/bun": "latest",
+        "@valibot/to-json-schema": "^1.8.0",
         "lefthook": "^2.2.2",
         "oxfmt": "^0.74.0",
         "oxlint": "^1.89.0"

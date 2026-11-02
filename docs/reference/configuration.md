@@ -8,6 +8,9 @@ global file, and every other key is kept.
 Each key may only be set in the scope listed below. Setting `src` or any
 `[template]` key in the global file is an error.
 
+Editors can complete these keys when the file points at the published schema;
+see [Set up editor completions](../how-to/setup-editor-completions.md).
+
 ## Keys
 
 ### `src`

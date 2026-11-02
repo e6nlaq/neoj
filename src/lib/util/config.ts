@@ -7,6 +7,11 @@ import { findProjectConfig } from "./project";
 
 const testcaseFilenameSchema = v.pipe(
     v.string(),
+    v.metadata({
+        pattern: '^[^<>:"/\\\\|?*{}]*\\{\\}[^<>:"/\\\\|?*{}]*$',
+        description:
+            "Base name for each sample file. Must contain exactly one {} that is replaced by the sample number.",
+    }),
     v.check((pattern) => {
         const invalidFileNameCharacters = '<>:"/\\|?*';
         return (
@@ -19,44 +24,151 @@ const testcaseFilenameSchema = v.pipe(
     }, "testcase.filename must contain exactly one {} and be a file name."),
 );
 
-export const configSchema = v.strictObject({
-    src: v.optional(v.pipe(v.string(), v.minLength(1))),
-    login: v.optional(
-        v.strictObject({
-            open_browser: v.optional(v.boolean(), true),
-        }),
-        { open_browser: true },
-    ),
-    testcase: v.optional(
-        v.strictObject({
-            folder: v.optional(v.pipe(v.string(), v.minLength(1)), "test"),
-            filename: v.optional(testcaseFilenameSchema, "sample-{}"),
-        }),
-        { folder: "test", filename: "sample-{}" },
-    ),
-    download: v.optional(
-        v.strictObject({
-            show_sample: v.optional(v.boolean(), false),
-        }),
-        { show_sample: false },
-    ),
-    stash: v.optional(
-        v.strictObject({
-            auto_stash: v.optional(v.boolean(), false),
-            auto_apply: v.optional(v.boolean(), false),
-            force: v.optional(v.boolean(), true),
-        }),
-        { auto_stash: false, auto_apply: false, force: true },
-    ),
-    template: v.optional(
-        v.strictObject({
-            enable: v.optional(v.boolean(), false),
-            folder: v.optional(v.pipe(v.string(), v.minLength(1))),
-            mode: v.optional(v.picklist(["overlay", "replace"]), "overlay"),
-        }),
-        { enable: false, mode: "overlay" },
-    ),
-});
+export const configSchema = v.pipe(
+    v.strictObject({
+        src: v.optional(
+            v.pipe(
+                v.string(),
+                v.minLength(1),
+                v.description(
+                    "Destination directory for the solution template, relative to the project root. Required when template.enable is true.",
+                ),
+            ),
+        ),
+        login: v.optional(
+            v.pipe(
+                v.strictObject({
+                    open_browser: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Open the browser automatically during the yukicoder device flow.",
+                            ),
+                        ),
+                        true,
+                    ),
+                }),
+                v.description("How neoj behaves during login."),
+            ),
+            { open_browser: true },
+        ),
+        testcase: v.optional(
+            v.pipe(
+                v.strictObject({
+                    folder: v.optional(
+                        v.pipe(
+                            v.string(),
+                            v.minLength(1),
+                            v.description(
+                                "Directory that receives downloaded samples, relative to the project root.",
+                            ),
+                        ),
+                        "test",
+                    ),
+                    filename: v.optional(testcaseFilenameSchema, "sample-{}"),
+                }),
+                v.description("Where and how sample tests are written."),
+            ),
+            { folder: "test", filename: "sample-{}" },
+        ),
+        download: v.optional(
+            v.pipe(
+                v.strictObject({
+                    show_sample: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Print every downloaded sample's input and output after writing the files.",
+                            ),
+                        ),
+                        false,
+                    ),
+                }),
+                v.description("How neoj reports downloaded samples."),
+            ),
+            { show_sample: false },
+        ),
+        stash: v.optional(
+            v.pipe(
+                v.strictObject({
+                    auto_stash: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Save the current problem's work before download replaces it.",
+                            ),
+                        ),
+                        false,
+                    ),
+                    auto_apply: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Restore the downloaded problem's stash when one exists.",
+                            ),
+                        ),
+                        false,
+                    ),
+                    force: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Allow neoj stash save to replace an existing stash without --force.",
+                            ),
+                        ),
+                        true,
+                    ),
+                }),
+                v.description("How neoj keeps per-problem work in sync with downloads."),
+            ),
+            { auto_stash: false, auto_apply: false, force: true },
+        ),
+        template: v.optional(
+            v.pipe(
+                v.strictObject({
+                    enable: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Apply the template to src after each successful download. Requires src and template.folder.",
+                            ),
+                        ),
+                        false,
+                    ),
+                    folder: v.optional(
+                        v.pipe(
+                            v.string(),
+                            v.minLength(1),
+                            v.description(
+                                "Directory holding the template files, relative to the project root.",
+                            ),
+                        ),
+                    ),
+                    mode: v.optional(
+                        v.pipe(
+                            v.picklist(["overlay", "replace"]),
+                            v.metadata({
+                                evenBetterToml: {
+                                    docs: {
+                                        enumValues: [
+                                            "Copy the template over src, replacing files that exist in both places.",
+                                            "Remove the contents of src before copying the template.",
+                                        ],
+                                    },
+                                },
+                            }),
+                            v.description("How the template is applied to src."),
+                        ),
+                        "overlay",
+                    ),
+                }),
+                v.description("Template files applied to src after a download."),
+            ),
+            { enable: false, mode: "overlay" },
+        ),
+    }),
+    v.description("neoj configuration, read from ~/.neoj.toml and the nearest project neoj.toml."),
+);
 
 export type Config = v.InferOutput<typeof configSchema>;
 

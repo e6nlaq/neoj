@@ -41,6 +41,7 @@ contest platforms.
 
 - [Install neoj](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/install.md)
 - [Set up shell completions](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/setup-completions.md)
+- [Set up editor completions](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/setup-editor-completions.md)
 - [Log in, check status, and log out](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/manage-sessions.md)
 - [Download sample tests](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/download-samples.md)
 - [Stash and restore work per problem](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/stash-work.md)

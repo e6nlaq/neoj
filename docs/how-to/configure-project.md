@@ -89,4 +89,5 @@ an empty one is allowed.
 
 - [Configuration reference](../reference/configuration.md) for every key and
   default.
+- [Set up editor completions](setup-editor-completions.md).
 - [Download sample tests](download-samples.md).
