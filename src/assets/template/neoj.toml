@@ -9,3 +9,7 @@ folder = "test"
 [template]
 enable = true
 folder = "template"
+
+[stash]
+auto_stash = false
+auto_apply = false
