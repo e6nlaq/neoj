@@ -1,13 +1,14 @@
 import { Command } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
-import { findProblemSource } from "@/feature/problem-sources";
+import { deriveProblemKey, findProblemSource } from "@/feature/problem-sources";
 import type { ProblemSample } from "@/lib/service/problem";
 import { loadConfig } from "@/lib/util/config";
-import { saveProblemMetadata } from "@/lib/util/problem-metadata";
+import { readProblemMetadata, saveProblemMetadata } from "@/lib/util/problem-metadata";
 import { requireInitializedProject } from "@/lib/util/project";
+import { applyStash, EmptyStashError, findStash, saveStash } from "@/lib/util/stash";
 import { applyProjectTemplate } from "@/lib/util/template-apply";
-import { downloadSamples } from "@/lib/util/testcase";
+import { fetchSamples, writeSamples } from "@/lib/util/testcase";
 
 export { getProblemWithLoginHint } from "@/feature/problem-sources";
 
@@ -23,14 +24,52 @@ export function formatSamples(
     );
 }
 
+function formatKey(key: { platform: string; slug: string }): string {
+    return `${key.platform}/${key.slug}`;
+}
+
 export async function downloadProblem(url: string): Promise<void> {
     const source = findProblemSource(url);
     const projectRoot = await requireInitializedProject(process.cwd());
     const config = await loadConfig();
 
-    const result = await downloadSamples(url, projectRoot, config.testcase, {
+    const previous = await readProblemMetadata(projectRoot);
+    const fetched = await fetchSamples(url, projectRoot, config.testcase, {
         getProblem: (problemUrl) => source.fetchProblem(problemUrl),
     });
+
+    const currentKey = deriveProblemKey(fetched.problem.url);
+    const previousKey = previous === undefined ? undefined : deriveProblemKey(previous.url);
+    const problemChanged =
+        previousKey === undefined ||
+        previousKey.platform !== currentKey.platform ||
+        previousKey.slug !== currentKey.slug;
+
+    if (
+        config.stash.auto_stash &&
+        problemChanged &&
+        previous !== undefined &&
+        previousKey !== undefined
+    ) {
+        try {
+            const saved = await saveStash(
+                projectRoot,
+                config,
+                { url: previous.url, key: previousKey },
+                { force: true },
+            );
+            consola.info(
+                `Stashed the working files for "${formatKey(previousKey)}" (${saved.fileCount} file(s)).`,
+            );
+        } catch (error) {
+            if (!(error instanceof EmptyStashError)) {
+                throw error;
+            }
+            consola.info("Skipped the automatic stash: there was nothing to stash.");
+        }
+    }
+
+    const result = await writeSamples(fetched.directory, fetched.problem, config.testcase);
 
     if (config.template.enable) {
         const templateFolder = config.template.folder;
@@ -41,6 +80,19 @@ export async function downloadProblem(url: string): Promise<void> {
             );
         }
         await applyProjectTemplate(projectRoot, templateFolder, sourcePath, config.template.mode);
+    }
+
+    if (config.stash.auto_apply && problemChanged) {
+        const entry = await findStash(projectRoot, currentKey);
+        if (entry !== undefined) {
+            const applied = await applyStash(projectRoot, config, currentKey);
+            for (const warning of applied.warnings) {
+                consola.warn(warning);
+            }
+            consola.info(
+                `Applied the stash for "${formatKey(currentKey)}" (${applied.written} file(s) written, ${applied.removed} removed).`,
+            );
+        }
     }
 
     await saveProblemMetadata(projectRoot, result.problem);

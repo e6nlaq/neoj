@@ -47,6 +47,22 @@ show_sample = true
 `neoj` prints each sample's input and output after the files have been written
 successfully.
 
+## Stash work when switching problems
+
+```toml
+[stash]
+auto_stash = true
+auto_apply = true
+force = true
+```
+
+`auto_stash` saves the previous problem's `src` and test-case directory before a
+download replaces them, and `auto_apply` restores the downloaded problem's stash
+after the download. Both only run when the downloaded problem differs from the
+one in `.neoj/problem.json`. `stash.force` (default `true`) controls whether
+`neoj stash save` may replace an existing stash. See
+[Stash and restore work per problem](stash-work.md).
+
 ## Apply a template
 
 ```toml

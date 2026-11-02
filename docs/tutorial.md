@@ -64,5 +64,6 @@ in `src/main.cpp`.
 ## 4. Where to go next
 
 - [Change the test folder or file names](how-to/configure-project.md).
+- [Stash your work before switching problems](how-to/stash-work.md).
 - [Log in](how-to/manage-sessions.md) if a problem requires an account.
 - [Look up every command and flag](reference/cli.md).

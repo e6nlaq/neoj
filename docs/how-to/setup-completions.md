@@ -65,8 +65,10 @@ completion is not available there.
 
 ## What is completed
 
-- Commands and their aliases (`d`, `completion`).
-- Options, including nested commands such as `neoj login atcoder`.
+- Commands, their aliases (`d`, `completion`), and subcommands such as
+  `login atcoder` and `stash save`.
+- Options for nested commands such as `neoj login atcoder` and
+  `neoj stash save`.
 - Platform names (`atcoder`, `yukicoder`) for login commands and `--service`.
 - `token` and `api-key` for `neoj login yukicoder --method`.
 - Shell names for `neoj completions`.

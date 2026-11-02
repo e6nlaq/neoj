@@ -12,6 +12,11 @@ export interface DownloadedSamples {
     problem: Problem;
 }
 
+export interface FetchedSamples {
+    directory: string;
+    problem: Problem;
+}
+
 async function validateTargetDirectory(projectRoot: string, folder: string): Promise<string> {
     if (!folder || isAbsolute(folder)) {
         throw new Error("testcase.folder must be a non-empty relative path.");
@@ -111,22 +116,40 @@ async function replaceDirectory(
     }
 }
 
+export async function fetchSamples(
+    url: string,
+    projectRoot: string,
+    testcaseConfig: Config["testcase"],
+    client: Pick<ProblemClient, "getProblem">,
+): Promise<FetchedSamples> {
+    const targetDirectory = await validateTargetDirectory(projectRoot, testcaseConfig.folder);
+    const problem = await client.getProblem(url);
+    await validateTargetDirectory(projectRoot, testcaseConfig.folder);
+    return { directory: targetDirectory, problem };
+}
+
+export async function writeSamples(
+    directory: string,
+    problem: Problem,
+    testcaseConfig: Config["testcase"],
+): Promise<DownloadedSamples> {
+    const files = getSampleFiles(problem, testcaseConfig.filename);
+
+    await replaceDirectory(directory, files);
+    return {
+        directory,
+        count: problem.samples.length,
+        samples: problem.samples,
+        problem,
+    };
+}
+
 export async function downloadSamples(
     url: string,
     projectRoot: string,
     testcaseConfig: Config["testcase"],
     client: Pick<ProblemClient, "getProblem">,
 ): Promise<DownloadedSamples> {
-    const targetDirectory = await validateTargetDirectory(projectRoot, testcaseConfig.folder);
-    const problem = await client.getProblem(url);
-    await validateTargetDirectory(projectRoot, testcaseConfig.folder);
-    const files = getSampleFiles(problem, testcaseConfig.filename);
-
-    await replaceDirectory(targetDirectory, files);
-    return {
-        directory: targetDirectory,
-        count: problem.samples.length,
-        samples: problem.samples,
-        problem,
-    };
+    const fetched = await fetchSamples(url, projectRoot, testcaseConfig, client);
+    return writeSamples(fetched.directory, fetched.problem, testcaseConfig);
 }

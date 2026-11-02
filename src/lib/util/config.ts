@@ -40,6 +40,14 @@ export const configSchema = v.strictObject({
         }),
         { show_sample: false },
     ),
+    stash: v.optional(
+        v.strictObject({
+            auto_stash: v.optional(v.boolean(), false),
+            auto_apply: v.optional(v.boolean(), false),
+            force: v.optional(v.boolean(), true),
+        }),
+        { auto_stash: false, auto_apply: false, force: true },
+    ),
     template: v.optional(
         v.strictObject({
             enable: v.optional(v.boolean(), false),

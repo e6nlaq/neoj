@@ -7,6 +7,7 @@ import {
 import type { Problem } from "@/lib/service/problem";
 import { parseYukicoderProblemUrl, YukicoderClient } from "@/lib/service/yukicoder";
 import { readAuth } from "@/lib/util/auth";
+import type { ProblemKey } from "@/lib/util/stash";
 
 export interface ProblemSource {
     name: string;
@@ -88,4 +89,34 @@ export function findProblemSource(url: string): ProblemSource {
     }
 
     return source;
+}
+
+const PROBLEM_SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
+
+function deriveSlug(pathname: string, url: string): string {
+    const segments = pathname.split("/").filter((segment) => segment.length > 0);
+    const slug = segments[segments.length - 1];
+    if (slug === undefined || !PROBLEM_SLUG_PATTERN.test(slug)) {
+        throw new TypeError(`Could not derive a stash name from "${url}".`);
+    }
+
+    return slug;
+}
+
+export function deriveProblemKey(url: string): ProblemKey {
+    if (matchesAtCoderProblem(url)) {
+        const problemUrl = parseAtCoderProblemUrl(url);
+        return { platform: "atcoder", slug: deriveSlug(problemUrl.pathname, url) };
+    }
+
+    if (matchesYukicoderProblem(url)) {
+        const problemUrl = parseYukicoderProblemUrl(url);
+        const number = /(\d+)\/?$/u.exec(problemUrl.pathname)?.[1];
+        if (number === undefined) {
+            throw new TypeError(`Could not derive a stash name from "${url}".`);
+        }
+        return { platform: "yukicoder", slug: `no${number}` };
+    }
+
+    throw new TypeError("Expected a problem URL from a supported platform (AtCoder, yukicoder).");
 }

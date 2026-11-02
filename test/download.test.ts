@@ -49,6 +49,20 @@ function createProblem(samples: AtCoderProblem["samples"]): AtCoderProblem {
     };
 }
 
+function createAtCoderHtml(input: string, output: string): string {
+    return `<html>
+        <title>A - Example</title>
+        <div id="task-statement">
+            <div class="part"><h3>入力例 1</h3><pre>${input}</pre></div>
+            <div class="part"><h3>出力例 1</h3><pre>${output}</pre></div>
+        </div>
+        <div class="contest-duration">
+            <time>2026-10-30 00:00:00+0000</time>
+            <time>2026-10-30 01:00:00+0000</time>
+        </div>
+    </html>`;
+}
+
 const config = { folder: "testcases", filename: "sample-{}" };
 
 describe("formatSamples", () => {
@@ -319,6 +333,91 @@ describe("downloadProblem", () => {
         await expect(Bun.file(join(projectRoot, ".neoj", "problem.json")).json()).resolves.toEqual({
             url: "https://yukicoder.me/problems/no/480",
         });
+    });
+
+    it("stashes the previous problem and restores the matching stash", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await Bun.write(
+            join(projectRoot, "neoj.toml"),
+            "[stash]\nauto_stash = true\nauto_apply = true\n",
+        );
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        const problemA = "https://atcoder.jp/contests/abc300/tasks/abc300_a";
+        const problemB = "https://atcoder.jp/contests/abc300/tasks/abc300_b";
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async (input: string | URL | Request) => {
+                const target =
+                    typeof input === "string"
+                        ? input
+                        : input instanceof URL
+                          ? input.href
+                          : input.url;
+                if (target.includes("abc300_a")) {
+                    return new Response(createAtCoderHtml("1 2", "3"), { status: 200 });
+                }
+                if (target.includes("abc300_b")) {
+                    return new Response(createAtCoderHtml("4 5", "9"), { status: 200 });
+                }
+                throw new Error(`Unexpected request: ${target}`);
+            },
+        });
+
+        try {
+            await downloadProblem(problemA);
+            await Bun.write(join(projectRoot, "test", "sample-1.in"), "custom");
+            await downloadProblem(problemB);
+
+            await expect(
+                Bun.file(
+                    join(
+                        projectRoot,
+                        ".neoj",
+                        "stash",
+                        "atcoder",
+                        "abc300_a",
+                        "testcase",
+                        "sample-1.in",
+                    ),
+                ).text(),
+            ).resolves.toBe("custom");
+            await expect(Bun.file(join(projectRoot, "test", "sample-1.in")).text()).resolves.toBe(
+                "4 5\n",
+            );
+
+            await downloadProblem(problemA);
+
+            await expect(Bun.file(join(projectRoot, "test", "sample-1.in")).text()).resolves.toBe(
+                "custom",
+            );
+            await expect(
+                Bun.file(
+                    join(
+                        projectRoot,
+                        ".neoj",
+                        "stash",
+                        "atcoder",
+                        "abc300_b",
+                        "testcase",
+                        "sample-1.in",
+                    ),
+                ).text(),
+            ).resolves.toBe("4 5\n");
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
     });
 
     it("rejects unsupported problem URLs", async () => {

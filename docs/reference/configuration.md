@@ -66,6 +66,37 @@ Print every downloaded sample's input and output after the files have been
 written successfully. When it is `false`, `download` only reports the number of
 samples and the destination directory.
 
+### `stash.auto_stash`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `false` | global or project |
+
+Save the working files of the current problem before `download` replaces the
+test-case directory. `neoj` only writes the stash when the downloaded problem
+differs from the URL in `.neoj/problem.json`. The snapshot contains `src` when it
+is configured, plus `testcase.folder`.
+
+### `stash.auto_apply`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `false` | global or project |
+
+After a download that changes the problem, restore the new problem's stash when
+one exists. The stash is kept, so downloading another problem and coming back
+restores it again.
+
+### `stash.force`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Allow `neoj stash save` to replace an existing stash of the same problem. When it
+is `false`, `save` fails until you pass `--force`. `stash.auto_stash` always
+refreshes the stash, and `neoj stash clear` always requires `--force`.
+
 ### `template.enable`
 
 | Type    | Default | Scope   |
@@ -112,6 +143,11 @@ filename = "sample-{}"
 
 [download]
 show_sample = false
+
+[stash]
+auto_stash = false
+auto_apply = false
+force = true
 
 [template]
 enable = false

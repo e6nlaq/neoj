@@ -9,6 +9,7 @@
 | `neoj login <platform>`                               | Log in to a platform. The supported names are `atcoder` and `yukicoder`.    |
 | `neoj logout [--service <name...>]`                   | Log out of the given platforms, or of every platform when no name is given. |
 | `neoj status [--offline]`                             | Show the login status of every supported platform.                          |
+| `neoj stash [save\|list\|apply\|pop\|drop\|clear]`    | Save and restore the working files of the current problem.                  |
 | `neoj completions <shell>` (alias: `neoj completion`) | Print a completion script for bash, zsh, fish, or PowerShell.               |
 
 ### `init`
@@ -55,6 +56,30 @@ See [Log in, check status, and log out](../how-to/manage-sessions.md).
 | ----------- | ------------------------------------------------------- |
 | `--offline` | Use saved credentials without contacting the platforms. |
 
+### `stash`
+
+| Subcommand       | Description                                                 |
+| ---------------- | ----------------------------------------------------------- |
+| `save` (default) | Save `src` and the test-case directory.                     |
+| `list`           | List saved stashes; the current problem is marked with `*`. |
+| `apply`          | Restore the current problem's stash.                        |
+| `pop`            | Restore the current problem's stash and remove it.          |
+| `drop`           | Remove the current problem's stash.                         |
+| `clear`          | Remove every stash.                                         |
+
+`neoj stash` without a subcommand is the same as `neoj stash save`.
+
+| Option          | Command | Description                          |
+| --------------- | ------- | ------------------------------------ |
+| `-f`, `--force` | `save`  | Replace an existing stash.           |
+| `-f`, `--force` | `clear` | Required; deletes every saved stash. |
+
+Every subcommand except `list` and `clear` works on the problem recorded in
+`.neoj/problem.json`, so run `neoj download <url>` first. `apply` restores the
+saved files and removes other files inside the saved directories, so the
+directories match the stash exactly. See
+[Stash and restore work per problem](../how-to/stash-work.md).
+
 ### `completions`
 
 | Argument  | Description                                                                |
@@ -78,6 +103,7 @@ examples. PowerShell completion requires `pwsh` 7.2 or later.
 | -------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `<testcase.folder>/` | Sample inputs and outputs; `test/` by default.                                                              |
 | `.neoj/problem.json` | URL of the last successful download. AtCoder also stores its contest window; yukicoder stores only the URL. |
+| `.neoj/stash/`       | Per-problem snapshots of `src` and the test-case directory.                                                 |
 | `neoj.toml`          | Project configuration.                                                                                      |
 | `~/.neoj.toml`       | Global configuration.                                                                                       |
 

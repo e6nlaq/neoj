@@ -25,6 +25,7 @@ describe("buildCompletionModel", () => {
             "login",
             "logout",
             "status",
+            "stash",
             "completions",
         ]);
         expect(model.commands.find((command) => command.name === "download")?.aliases).toEqual([
@@ -38,6 +39,11 @@ describe("buildCompletionModel", () => {
                 .find((command) => command.name === "login")
                 ?.commands.map((command) => command.name),
         ).toEqual(["atcoder", "yukicoder"]);
+        expect(
+            model.commands
+                .find((command) => command.name === "stash")
+                ?.commands.map((command) => command.name),
+        ).toEqual(["save", "list", "apply", "pop", "drop", "clear"]);
     });
 
     it("attaches platform names to --service and login methods to --method", () => {

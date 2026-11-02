@@ -28,10 +28,14 @@ repository root, so you can run it from a subdirectory of the project.
 ## What the command does
 
 1. Fetches the problem through the matching platform integration.
-2. Replaces the test-case folder (`test/` by default) with `sample-*.in` and
+2. Saves the previous problem's working files when `stash.auto_stash = true` and
+   the problem changed.
+3. Replaces the test-case folder (`test/` by default) with `sample-*.in` and
    `sample-*.out` files, one pair per sample.
-3. Applies the project template to `src/` when `template.enable = true`.
-4. Records the problem URL in `.neoj/problem.json`. For AtCoder, the contest
+4. Applies the project template to `src/` when `template.enable = true`.
+5. Restores the downloaded problem's stash when `stash.auto_apply = true`, the
+   problem changed, and a stash exists.
+6. Records the problem URL in `.neoj/problem.json`. For AtCoder, the contest
    window is recorded as well; yukicoder problems store only the URL.
 
 The summary reports how many samples were written. Set
@@ -51,4 +55,5 @@ The summary reports how many samples were written. Set
 
 - [Change the folder or file names](configure-project.md)
 - [Apply a solution template](configure-project.md#apply-a-template)
+- [Stash and restore work per problem](stash-work.md)
 - [CLI reference](../reference/cli.md)

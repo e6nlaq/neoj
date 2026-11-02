@@ -79,6 +79,7 @@ describe("loadConfig", () => {
             login: { open_browser: true },
             testcase: { folder: "test", filename: "sample-{}" },
             download: { show_sample: false },
+            stash: { auto_stash: false, auto_apply: false, force: true },
             template: { enable: false, mode: "overlay" },
         });
     });
@@ -160,7 +161,18 @@ describe("loadConfig", () => {
             login: { open_browser: true },
             testcase: { folder: "tests", filename: "case-{}" },
             download: { show_sample: false },
+            stash: { auto_stash: false, auto_apply: false, force: true },
             template: { enable: false, mode: "overlay" },
+        });
+    });
+
+    it("merges stash settings from the global and project files", async () => {
+        const { home, project } = await setTemporaryPaths();
+        await Bun.write(join(home, ".neoj.toml"), "[stash]\nauto_stash = true");
+        await Bun.write(join(project, "neoj.toml"), "[stash]\nauto_apply = true");
+
+        await expect(loadConfig()).resolves.toMatchObject({
+            stash: { auto_stash: true, auto_apply: true, force: true },
         });
     });
 
