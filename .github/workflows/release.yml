@@ -89,15 +89,22 @@ jobs:
 
             - name: Verify the tarball contents
               run: |
-                  npm pack --dry-run --json --ignore-scripts > pack.json
+                  tarball="$(npm pack --silent --ignore-scripts --pack-destination "$RUNNER_TEMP")"
+                  if [ -z "$tarball" ]; then
+                      echo "::error::npm pack did not produce a tarball."
+                      exit 1
+                  fi
                   node -e '
-                      const files = JSON.parse(require("node:fs").readFileSync("pack.json", "utf8"))[0].files;
+                      const { execFileSync } = require("node:child_process");
+                      const files = execFileSync("tar", ["-tzf", process.argv[1]], { encoding: "utf8" })
+                          .split(/\r?\n/)
+                          .filter(Boolean);
                       for (const extension of ["gitignore", "toml", "cpp"]) {
-                          if (!files.some(({ path }) => path.startsWith("dist/") && path.endsWith("." + extension))) {
+                          if (!files.some((path) => path.startsWith("package/dist/") && path.endsWith("." + extension))) {
                               throw new Error("npm package is missing the bundled *." + extension + " template asset.");
                           }
                       }
-                  '
+                  ' "$RUNNER_TEMP/$tarball"
 
             - name: Publish
               # Trusted publishing derives provenance from the OIDC token, so no
