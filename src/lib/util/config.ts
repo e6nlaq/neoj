@@ -321,6 +321,11 @@ export const configSchema = v.pipe(
 
 export type Config = v.InferOutput<typeof configSchema>;
 
+function getHomeDirectory(): string {
+    const home = process.platform === "win32" ? process.env.USERPROFILE : process.env.HOME;
+    return home || homedir();
+}
+
 function getValueType(value: unknown): string {
     if (value === null) {
         return "null";
@@ -416,7 +421,7 @@ async function readConfigFile(path: string): Promise<ConfigTable> {
 }
 
 export async function loadConfig(): Promise<Config> {
-    const globalConfigPath = join(homedir(), ".neoj.toml");
+    const globalConfigPath = join(getHomeDirectory(), ".neoj.toml");
     const projectConfigPath = await findProjectConfig(process.cwd());
     const globalConfig = await readConfigFile(globalConfigPath);
     const projectConfig = projectConfigPath ? await readConfigFile(projectConfigPath) : {};

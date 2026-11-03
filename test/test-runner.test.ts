@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -182,9 +182,10 @@ describe("resolveSourceFile", () => {
         await writeFile(join(projectRoot, "main.cpp"), "int main() {}");
 
         const resolved = await resolveSourceFile(projectRoot, projectRoot, "main.cpp");
+        const canonicalProjectRoot = await realpath(projectRoot);
 
         expect(resolved.relativePath).toBe("main.cpp");
-        expect(resolved.absolutePath.endsWith("main.cpp")).toBe(true);
+        expect(resolved.absolutePath).toBe(join(canonicalProjectRoot, "main.cpp"));
     });
 
     it("reports missing files and paths outside the project", async () => {

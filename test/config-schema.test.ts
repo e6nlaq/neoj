@@ -40,7 +40,7 @@ describe("config JSON Schema", () => {
 
     it("points the bundled project template at the published schema", async () => {
         const template = await Bun.file(templatePath).text();
-        const directive = template.split("\n")[0];
+        const directive = template.split(/\r?\n/)[0];
 
         expect(directive).toBe(`#:schema ${buildConfigJsonSchema().$id}`);
     });

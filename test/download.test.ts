@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
@@ -128,7 +128,7 @@ describe("downloadSamples", () => {
         const client = { getProblem: async () => problem };
 
         await expect(downloadSamples(problem.url, projectRoot, config, client)).resolves.toEqual({
-            directory: target,
+            directory: await realpath(target),
             count: 2,
             samples: problem.samples,
             problem,
@@ -157,7 +157,7 @@ describe("downloadSamples", () => {
             downloadSamples(problem.url, projectRoot, config, {
                 getProblem: async () => problem,
             }),
-        ).resolves.toEqual({ directory: target, count: 0, samples: [], problem });
+        ).resolves.toEqual({ directory: await realpath(target), count: 0, samples: [], problem });
         await expect(readdir(target)).resolves.toEqual([]);
     });
 

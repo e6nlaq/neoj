@@ -3,7 +3,9 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { readAuth, saveAuth } from "@/lib/util/auth";
+import "./helpers/mock-auth-paths";
+
+const { readAuth, saveAuth } = await import("@/lib/util/auth");
 
 const originalFetch = globalThis.fetch;
 const originalLocalAppData = process.env.LOCALAPPDATA;

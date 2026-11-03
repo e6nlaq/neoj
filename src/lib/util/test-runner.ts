@@ -167,7 +167,8 @@ export async function resolveSourceFile(
     }
 
     const root = await realpath(projectRoot);
-    const absolutePath = resolve(baseDirectory, trimmed);
+    const absoluteBaseDirectory = await realpath(baseDirectory);
+    const absolutePath = resolve(absoluteBaseDirectory, trimmed);
     const relativeToRoot = relative(root, absolutePath);
     if (
         relativeToRoot === "" ||

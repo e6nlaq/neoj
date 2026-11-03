@@ -3,7 +3,9 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { readAuth, replaceAuth, saveAuth } from "@/lib/util/auth";
+import "./helpers/mock-auth-paths";
+
+const { readAuth, replaceAuth, saveAuth } = await import("@/lib/util/auth");
 
 const originalLocalAppData = process.env.LOCALAPPDATA;
 let dataRoot: string | undefined;
