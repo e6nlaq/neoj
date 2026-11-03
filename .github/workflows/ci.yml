@@ -44,6 +44,11 @@ jobs:
                   bun run schema
                   git diff --exit-code -- schema
 
+            - name: Verify generated template asset list is up to date
+              run: |
+                  bun run template-assets
+                  git diff --exit-code -- src/lib/util/template-assets.ts
+
     test:
         name: Test (${{ matrix.os }})
         runs-on: ${{ matrix.os }}
@@ -65,7 +70,7 @@ jobs:
               run: bun install --frozen-lockfile --ignore-scripts
 
             - name: Run tests
-              run: bun test
+              run: bun run test
 
             - name: Build the npm bundle
               run: bun run build

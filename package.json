@@ -21,10 +21,11 @@
     "type": "module",
     "scripts": {
         "typecheck": "bun check",
-        "test": "bun test",
-        "build": "rm -rf dist && bun build ./src/index.ts --target bun --outdir dist --packages external --splitting --check --minify",
+        "test": "bun run template-assets && bun test",
+        "build": "bun run template-assets && rm -rf dist && bun build ./src/index.ts --target bun --outdir dist --packages external --splitting --check --minify",
         "neoj": "bun run src/index.ts",
         "schema": "bun run scripts/generate-schema.ts",
+        "template-assets": "bun run scripts/generate-template-assets.ts",
         "format": "bun fmt",
         "format:check": "bun fmt --check",
         "lint": "oxlint",

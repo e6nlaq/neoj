@@ -1,21 +1,16 @@
 import { resolve } from "node:path";
 
-import gitignoreSource from "@/assets/template/.gitignore" with { type: "file" };
-import configSource from "@/assets/template/neoj.toml" with { type: "file" };
-import sourceTemplateSource from "@/assets/template/src/main.cpp" with { type: "file" };
-import solutionTemplateSource from "@/assets/template/template/main.cpp" with { type: "file" };
+import asset0 from "@/assets/template/.gitignore" with { type: "file" };
+import asset1 from "@/assets/template/neoj.toml" with { type: "file" };
+import asset2 from "@/assets/template/src/main.cpp" with { type: "file" };
+import asset3 from "@/assets/template/template/main.cpp" with { type: "file" };
 
 import type { TemplateFile } from "./template";
 
-/**
- * Project templates bundled with the CLI. Importing them with `type: "file"`
- * makes Bun embed the contents in `--compile` binaries and emit them next to
- * the bundle, so `neoj init` works whether neoj is installed from npm or run
- * from a standalone executable.
- */
+/** Static imports let Bun bundle these files for npm and standalone CLI builds. */
 export const templateFiles: readonly TemplateFile[] = [
-    { path: ".gitignore", source: resolve(import.meta.dir, gitignoreSource) },
-    { path: "neoj.toml", source: resolve(import.meta.dir, configSource) },
-    { path: "src/main.cpp", source: resolve(import.meta.dir, sourceTemplateSource) },
-    { path: "template/main.cpp", source: resolve(import.meta.dir, solutionTemplateSource) },
+    { path: ".gitignore", source: resolve(import.meta.dir, asset0) },
+    { path: "neoj.toml", source: resolve(import.meta.dir, asset1) },
+    { path: "src/main.cpp", source: resolve(import.meta.dir, asset2) },
+    { path: "template/main.cpp", source: resolve(import.meta.dir, asset3) },
 ];

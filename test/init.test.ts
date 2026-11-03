@@ -7,6 +7,11 @@ import { findProjectConfig, requireInitializedProject } from "@/lib/util/project
 import { copyTemplateFiles } from "@/lib/util/template";
 import { templateFiles } from "@/lib/util/template-assets";
 
+import {
+    collectTemplateAssetPaths,
+    generateTemplateAssets,
+} from "../scripts/generate-template-assets";
+
 let testRoot: string | undefined;
 
 afterEach(async () => {
@@ -162,13 +167,12 @@ describe("copyTemplateFiles", () => {
 });
 
 describe("templateFiles", () => {
-    it("lists the bundled templates with POSIX paths", () => {
-        expect(templateFiles.map(({ path }) => path)).toEqual([
-            ".gitignore",
-            "neoj.toml",
-            "src/main.cpp",
-            "template/main.cpp",
-        ]);
+    it("lists every bundled asset with its POSIX relative path", async () => {
+        const templateDirectory = join(import.meta.dir, "..", "src", "assets", "template");
+
+        await expect(collectTemplateAssetPaths(templateDirectory)).resolves.toEqual(
+            templateFiles.map(({ path }) => path),
+        );
     });
 
     it("copies every bundled template into an empty directory", async () => {
@@ -185,5 +189,27 @@ describe("templateFiles", () => {
                 (await Bun.file(join(destinationDirectory, path)).text()).length,
             ).toBeGreaterThan(0);
         }
+    });
+
+    it("recursively includes hidden files and generates static file imports", async () => {
+        const root = await createTestRoot();
+        const templateDirectory = join(root, "assets");
+        const outputFile = join(root, "generated", "template-assets.ts");
+        await mkdir(join(templateDirectory, "nested"), { recursive: true });
+        await Bun.write(join(templateDirectory, ".hidden"), "hidden");
+        await Bun.write(join(templateDirectory, "nested", "main.cpp"), "source");
+
+        await expect(generateTemplateAssets(templateDirectory, outputFile)).resolves.toEqual([
+            ".hidden",
+            "nested/main.cpp",
+        ]);
+
+        const generated = await Bun.file(outputFile).text();
+        expect(generated).toContain(
+            'import asset0 from "@/assets/template/.hidden" with { type: "file" };',
+        );
+        expect(generated).toContain(
+            '{ path: "nested/main.cpp", source: resolve(import.meta.dir, asset1) },',
+        );
     });
 });
