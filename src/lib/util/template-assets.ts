@@ -1,3 +1,5 @@
+import { resolve } from "node:path";
+
 import gitignoreSource from "@/assets/template/.gitignore" with { type: "file" };
 import configSource from "@/assets/template/neoj.toml" with { type: "file" };
 import sourceTemplateSource from "@/assets/template/src/main.cpp" with { type: "file" };
@@ -12,8 +14,8 @@ import type { TemplateFile } from "./template";
  * from a standalone executable.
  */
 export const templateFiles: readonly TemplateFile[] = [
-    { path: ".gitignore", source: gitignoreSource },
-    { path: "neoj.toml", source: configSource },
-    { path: "src/main.cpp", source: sourceTemplateSource },
-    { path: "template/main.cpp", source: solutionTemplateSource },
+    { path: ".gitignore", source: resolve(import.meta.dir, gitignoreSource) },
+    { path: "neoj.toml", source: resolve(import.meta.dir, configSource) },
+    { path: "src/main.cpp", source: resolve(import.meta.dir, sourceTemplateSource) },
+    { path: "template/main.cpp", source: resolve(import.meta.dir, solutionTemplateSource) },
 ];

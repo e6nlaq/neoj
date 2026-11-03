@@ -87,6 +87,16 @@ jobs:
             - name: Build the npm bundle
               run: bun run build
 
+            - name: Smoke test the npm bundle
+              run: |
+                  workdir="$(mktemp -d)"
+                  cd "$workdir"
+                  bun "$GITHUB_WORKSPACE/dist/index.js" init
+                  test -f .gitignore
+                  test -f neoj.toml
+                  test -f src/main.cpp
+                  test -f template/main.cpp
+
             - name: Verify the tarball contents
               run: |
                   tarball="$(npm pack --silent --ignore-scripts --pack-destination "$RUNNER_TEMP")"
