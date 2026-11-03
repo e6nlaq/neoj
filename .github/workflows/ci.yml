@@ -19,10 +19,10 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Check out the repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Set up tools with mise
-              uses: jdx/mise-action@v2
+              uses: jdx/mise-action@v5
               with:
                   install: true
                   cache: true
@@ -53,10 +53,10 @@ jobs:
                 os: [ubuntu-latest, macos-latest, windows-latest]
         steps:
             - name: Check out the repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Set up tools with mise
-              uses: jdx/mise-action@v2
+              uses: jdx/mise-action@v5
               with:
                   install: true
                   cache: true
@@ -75,10 +75,10 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Check out the repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@v7
 
             - name: Set up tools with mise
-              uses: jdx/mise-action@v2
+              uses: jdx/mise-action@v5
               with:
                   install: true
                   cache: true
