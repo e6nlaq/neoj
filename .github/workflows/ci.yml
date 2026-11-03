@@ -1,0 +1,113 @@
+name: CI
+
+on:
+    push:
+        branches: [main]
+    pull_request:
+    workflow_dispatch:
+
+concurrency:
+    group: ${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+jobs:
+    check:
+        name: Format, lint, and typecheck
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out the repository
+              uses: actions/checkout@v4
+
+            - name: Set up tools with mise
+              uses: jdx/mise-action@v2
+              with:
+                  install: true
+                  cache: true
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile --ignore-scripts
+
+            - name: Check formatting
+              run: bun run format:check
+
+            - name: Lint
+              run: bun run lint
+
+            - name: Typecheck
+              run: bun run typecheck
+
+            - name: Verify the generated schema is up to date
+              run: |
+                  bun run schema
+                  git diff --exit-code -- schema
+
+    test:
+        name: Test (${{ matrix.os }})
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                os: [ubuntu-latest, macos-latest, windows-latest]
+        steps:
+            - name: Check out the repository
+              uses: actions/checkout@v4
+
+            - name: Set up tools with mise
+              uses: jdx/mise-action@v2
+              with:
+                  install: true
+                  cache: true
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile --ignore-scripts
+
+            - name: Run tests
+              run: bun test
+
+            - name: Build the npm bundle
+              run: bun run build
+
+    package:
+        name: Package and smoke test
+        runs-on: ubuntu-latest
+        steps:
+            - name: Check out the repository
+              uses: actions/checkout@v4
+
+            - name: Set up tools with mise
+              uses: jdx/mise-action@v2
+              with:
+                  install: true
+                  cache: true
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile --ignore-scripts
+
+            - name: Build the npm bundle
+              run: bun run build
+
+            - name: Verify the bundle ships the project templates
+              run: |
+                  bun dist/index.js --version
+                  for extension in gitignore toml cpp; do
+                      if [ -z "$(ls dist/*."$extension")" ]; then
+                          echo "::error::dist is missing the bundled *.$extension template asset."
+                          exit 1
+                      fi
+                  done
+
+            - name: Compile a standalone binary
+              run: bun build ./src/index.ts --compile --target=bun-linux-x64 --outfile dist-bin/neoj
+
+            - name: Smoke test the standalone binary
+              run: |
+                  test -n "$(./dist-bin/neoj --version)"
+                  workdir="$(mktemp -d)"
+                  cd "$workdir"
+                  "$GITHUB_WORKSPACE/dist-bin/neoj" init
+                  test -f neoj.toml
+                  test -f src/main.cpp
+                  test -f template/main.cpp

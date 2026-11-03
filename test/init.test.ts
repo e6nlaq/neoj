@@ -5,6 +5,7 @@ import { join } from "node:path";
 
 import { findProjectConfig, requireInitializedProject } from "@/lib/util/project";
 import { copyTemplateFiles } from "@/lib/util/template";
+import { templateFiles } from "@/lib/util/template-assets";
 
 let testRoot: string | undefined;
 
@@ -119,10 +120,16 @@ describe("copyTemplateFiles", () => {
         await mkdir(destinationDirectory, { recursive: true });
         await Bun.write(join(destinationDirectory, "neoj.toml"), "existing");
 
-        const result = await copyTemplateFiles(templateDirectory, destinationDirectory);
+        const result = await copyTemplateFiles(
+            [
+                { path: "neoj.toml", source: join(templateDirectory, "neoj.toml") },
+                { path: "src/main.cpp", source: join(templateDirectory, "src", "main.cpp") },
+            ],
+            destinationDirectory,
+        );
 
         expect(result).toEqual({
-            copied: [join("src", "main.cpp")],
+            copied: ["src/main.cpp"],
             skipped: ["neoj.toml"],
             errors: [],
         });
@@ -139,7 +146,11 @@ describe("copyTemplateFiles", () => {
         await Bun.write(join(templateDirectory, "neoj.toml"), "template");
         await Bun.write(join(destinationDirectory, "neoj.toml"), "existing");
 
-        const result = await copyTemplateFiles(templateDirectory, destinationDirectory, true);
+        const result = await copyTemplateFiles(
+            [{ path: "neoj.toml", source: join(templateDirectory, "neoj.toml") }],
+            destinationDirectory,
+            true,
+        );
 
         expect(result).toEqual({
             copied: ["neoj.toml"],
@@ -147,5 +158,32 @@ describe("copyTemplateFiles", () => {
             errors: [],
         });
         expect(await Bun.file(join(destinationDirectory, "neoj.toml")).text()).toBe("template");
+    });
+});
+
+describe("templateFiles", () => {
+    it("lists the bundled templates with POSIX paths", () => {
+        expect(templateFiles.map(({ path }) => path)).toEqual([
+            ".gitignore",
+            "neoj.toml",
+            "src/main.cpp",
+            "template/main.cpp",
+        ]);
+    });
+
+    it("copies every bundled template into an empty directory", async () => {
+        const root = await createTestRoot();
+        const destinationDirectory = join(root, "project");
+
+        const result = await copyTemplateFiles(templateFiles, destinationDirectory);
+
+        expect(result.errors).toEqual([]);
+        expect(result.skipped).toEqual([]);
+        expect(result.copied).toEqual(templateFiles.map(({ path }) => path));
+        for (const { path } of templateFiles) {
+            expect(
+                (await Bun.file(join(destinationDirectory, path)).text()).length,
+            ).toBeGreaterThan(0);
+        }
     });
 });

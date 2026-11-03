@@ -1,9 +1,16 @@
-import { constants } from "node:fs";
 import type { Stats } from "node:fs";
-import { copyFile, lstat, mkdir, readdir } from "node:fs/promises";
-import { dirname, join, relative } from "node:path";
+import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
 
 import { hasErrorCode } from "./errors";
+
+/** A single template file, independent of where its contents are stored. */
+export interface TemplateFile {
+    /** Destination path relative to the project root, using POSIX separators. */
+    path: string;
+    /** Absolute path to the contents, which may live in the compiled binary. */
+    source: string;
+}
 
 export interface CopyTemplateResult {
     copied: string[];
@@ -11,39 +18,14 @@ export interface CopyTemplateResult {
     errors: Array<{ path: string; error: Error }>;
 }
 
-async function listTemplateFiles(
-    templateDirectory: string,
-    directory = templateDirectory,
-): Promise<string[]> {
-    const entries = await readdir(directory, { withFileTypes: true });
-    const files: string[] = [];
-
-    for (const entry of entries) {
-        const entryPath = join(directory, entry.name);
-        if (entry.isDirectory()) {
-            files.push(...(await listTemplateFiles(templateDirectory, entryPath)));
-        } else if (entry.isFile()) {
-            files.push(relative(templateDirectory, entryPath));
-        } else {
-            throw new Error(
-                `Unsupported template entry "${relative(templateDirectory, entryPath)}".`,
-            );
-        }
-    }
-
-    return files.sort();
-}
-
 export async function copyTemplateFiles(
-    templateDirectory: string,
+    files: readonly TemplateFile[],
     destinationDirectory: string,
     force = false,
 ): Promise<CopyTemplateResult> {
     const result: CopyTemplateResult = { copied: [], skipped: [], errors: [] };
-    const files = await listTemplateFiles(templateDirectory);
 
-    for (const path of files) {
-        const source = join(templateDirectory, path);
+    for (const { path, source } of files) {
         const destination = join(destinationDirectory, path);
 
         try {
@@ -68,7 +50,8 @@ export async function copyTemplateFiles(
                 }
             }
 
-            await copyFile(source, destination, force ? 0 : constants.COPYFILE_EXCL);
+            const contents = await readFile(source);
+            await writeFile(destination, contents, { flag: force ? "w" : "wx" });
             result.copied.push(path);
         } catch (error) {
             if (!force && hasErrorCode(error, "EEXIST")) {

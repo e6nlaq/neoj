@@ -1,0 +1,207 @@
+name: Release
+
+# Manual release pipeline:
+#   1. verify the requested version matches package.json and is unpublished
+#   2. publish the npm package with trusted publishing (OIDC, no stored token)
+#   3. compile standalone binaries for the supported platforms
+#   4. create a GitHub Release tagged `v<version>` with the binaries attached
+#
+# Prerequisite: on npmjs.com, add a trusted publisher for `neo-oj` pointing at
+# this repository, the workflow file `release.yml`, and no environment.
+# Bump `version` in package.json on `main` before dispatching this workflow.
+
+on:
+    workflow_dispatch:
+        inputs:
+            dry_run:
+                description: "Build and verify everything without publishing or creating a release"
+                required: false
+                default: false
+                type: boolean
+
+concurrency:
+    group: release
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    verify:
+        name: Verify release request
+        runs-on: ubuntu-latest
+        outputs:
+            version: ${{ steps.version.outputs.version }}
+        steps:
+            - name: Check out the repository
+              uses: actions/checkout@v4
+
+            - name: Require the main branch
+              if: ${{ !inputs.dry_run }}
+              env:
+                  REF_NAME: ${{ github.ref_name }}
+              run: |
+                  if [ "$REF_NAME" != "main" ]; then
+                      echo "::error::Dispatch this workflow from main (selected: $REF_NAME)."
+                      exit 1
+                  fi
+
+            - name: Validate the version
+              id: version
+              run: |
+                  package_version="$(node -p "require('./package.json').version")"
+                  if git ls-remote --tags origin "refs/tags/v$package_version" | grep -q .; then
+                      echo "::error::Tag v$package_version already exists."
+                      exit 1
+                  fi
+                  if npm view "neo-oj@$package_version" version >/dev/null 2>&1; then
+                      echo "::error::neo-oj@$package_version is already published on npm."
+                      exit 1
+                  fi
+                  echo "version=$package_version" >> "$GITHUB_OUTPUT"
+                  echo "Releasing neo-oj@$package_version."
+
+    npm:
+        name: Publish to npm
+        needs: verify
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            id-token: write
+        steps:
+            - name: Check out the repository
+              uses: actions/checkout@v4
+
+            - name: Set up tools with mise
+              uses: jdx/mise-action@v2
+              with:
+                  install: true
+                  cache: true
+
+            - name: Configure npm registry
+              run: npm config set registry https://registry.npmjs.org/
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile --ignore-scripts
+
+            - name: Build the npm bundle
+              run: bun run build
+
+            - name: Verify the tarball contents
+              run: |
+                  npm pack --dry-run --json --ignore-scripts > pack.json
+                  node -e '
+                      const files = JSON.parse(require("node:fs").readFileSync("pack.json", "utf8"))[0].files;
+                      for (const extension of ["gitignore", "toml", "cpp"]) {
+                          if (!files.some(({ path }) => path.startsWith("dist/") && path.endsWith("." + extension))) {
+                              throw new Error("npm package is missing the bundled *." + extension + " template asset.");
+                          }
+                      }
+                  '
+
+            - name: Publish
+              # Trusted publishing derives provenance from the OIDC token, so no
+              # NODE_AUTH_TOKEN secret is required.
+              run: |
+                  if [ "${{ inputs.dry_run }}" = "true" ]; then
+                      npm publish --ignore-scripts --dry-run
+                  else
+                      npm publish --ignore-scripts
+                  fi
+
+    binaries:
+        name: Build ${{ matrix.platform }} binary
+        needs: verify
+        runs-on: ubuntu-latest
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - target: bun-linux-x64
+                      platform: linux-x64
+                      smoke: true
+                    - target: bun-linux-arm64
+                      platform: linux-arm64
+                    - target: bun-darwin-x64
+                      platform: darwin-x64
+                    - target: bun-darwin-arm64
+                      platform: darwin-arm64
+                    - target: bun-windows-x64
+                      platform: windows-x64
+                      extension: ".exe"
+        steps:
+            - name: Check out the repository
+              uses: actions/checkout@v4
+
+            - name: Set up tools with mise
+              uses: jdx/mise-action@v2
+              with:
+                  install: true
+                  cache: true
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile --ignore-scripts
+
+            - name: Compile
+              env:
+                  VERSION: ${{ needs.verify.outputs.version }}
+              run: |
+                  mkdir -p dist-bin
+                  bun build ./src/index.ts --compile --target="${{ matrix.target }}" \
+                      --outfile "dist-bin/neoj-$VERSION-${{ matrix.platform }}${{ matrix.extension }}"
+
+            - name: Smoke test the binary
+              if: ${{ matrix.smoke }}
+              env:
+                  VERSION: ${{ needs.verify.outputs.version }}
+              run: |
+                  binary="dist-bin/neoj-$VERSION-${{ matrix.platform }}"
+                  test -n "$("$binary" --version)"
+                  workdir="$(mktemp -d)"
+                  cd "$workdir"
+                  "$GITHUB_WORKSPACE/$binary" init
+                  test -f neoj.toml
+                  test -f src/main.cpp
+                  test -f template/main.cpp
+
+            - name: Upload the binary
+              uses: actions/upload-artifact@v4
+              with:
+                  name: neoj-${{ matrix.platform }}
+                  path: dist-bin/*
+                  if-no-files-found: error
+
+    release:
+        name: Create GitHub Release
+        needs: [verify, npm, binaries]
+        if: ${{ !inputs.dry_run }}
+        runs-on: ubuntu-latest
+        permissions:
+            contents: write
+        steps:
+            - name: Check out the repository
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+
+            - name: Download the binaries
+              uses: actions/download-artifact@v4
+              with:
+                  path: assets
+                  merge-multiple: true
+
+            - name: Generate checksums
+              run: |
+                  cd assets
+                  ls -l
+                  sha256sum neoj-* > SHA256SUMS.txt
+
+            - name: Create the release
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  VERSION: ${{ needs.verify.outputs.version }}
+              run: |
+                  gh release create "v$VERSION" assets/* \
+                      --title "v$VERSION" \
+                      --target "$GITHUB_SHA" \
+                      --generate-notes

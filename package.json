@@ -22,13 +22,14 @@
     "scripts": {
         "typecheck": "bun check",
         "test": "bun test",
-        "build": "rm -rf dist && bun build ./src/index.ts --target bun --outdir dist --packages external --splitting --check --minify && bun run scripts/copy-template-assets.ts",
+        "build": "rm -rf dist && bun build ./src/index.ts --target bun --outdir dist --packages external --splitting --check --minify",
         "neoj": "bun run src/index.ts",
         "schema": "bun run scripts/generate-schema.ts",
         "format": "bun fmt",
+        "format:check": "bun fmt --check",
         "lint": "oxlint",
         "prepare": "lefthook install",
-        "prepublishOnly": "bun run build && bun run scripts/prepare-npm-package.ts"
+        "prepublishOnly": "bun run build"
     },
     "dependencies": {
         "@commander-js/extra-typings": "^15.0.0",

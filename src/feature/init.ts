@@ -1,33 +1,11 @@
-import { stat } from "node:fs/promises";
-import { dirname, join, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 
 import { Command } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
-import { hasErrorCode } from "@/lib/util/errors";
 import { findProjectConfig } from "@/lib/util/project";
 import { copyTemplateFiles } from "@/lib/util/template";
-
-async function findTemplateDirectory(): Promise<string> {
-    const candidates = [
-        join(import.meta.dir, "assets", "template"),
-        join(import.meta.dir, "..", "assets", "template"),
-    ];
-
-    for (const candidate of candidates) {
-        try {
-            if ((await stat(candidate)).isDirectory()) {
-                return candidate;
-            }
-        } catch (error) {
-            if (!hasErrorCode(error, "ENOENT") && !hasErrorCode(error, "ENOTDIR")) {
-                throw error;
-            }
-        }
-    }
-
-    throw new Error("Could not locate the bundled project templates.");
-}
+import { templateFiles } from "@/lib/util/template-assets";
 
 export function createInitCommand(): Command {
     return new Command("init")
@@ -45,12 +23,7 @@ export function createInitCommand(): Command {
                     );
                 }
 
-                const templateDirectory = await findTemplateDirectory();
-                const result = await copyTemplateFiles(
-                    templateDirectory,
-                    destinationDirectory,
-                    force,
-                );
+                const result = await copyTemplateFiles(templateFiles, destinationDirectory, force);
 
                 const summary = `Copied ${result.copied.length} template file(s) to "${destinationDirectory}".`;
                 if (result.errors.length === 0) {

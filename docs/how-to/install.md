@@ -14,6 +14,34 @@ bun install -g neo-oj
 npm install -g neo-oj
 ```
 
+## Prebuilt binaries
+
+Unsigned standalone executables are attached to each
+[GitHub Release](https://github.com/e6nlaq/neoj/releases):
+
+- `neoj-<version>-linux-x64`
+- `neoj-<version>-linux-arm64`
+- `neoj-<version>-darwin-x64`
+- `neoj-<version>-darwin-arm64`
+- `neoj-<version>-windows-x64.exe`
+
+Download the matching file, make it executable, and place it on your `PATH`:
+
+```bash
+chmod +x neoj-<version>-linux-x64
+./neoj-<version>-linux-x64 --version
+```
+
+On macOS, the first run may be blocked by Gatekeeper because the binaries are
+unsigned. Remove the quarantine attribute if needed:
+
+```bash
+xattr -d com.apple.quarantine ./neoj-<version>-darwin-arm64
+```
+
+SHA-256 checksums for every asset are published as `SHA256SUMS.txt` in the same
+release.
+
 ## Requirements
 
 `neoj` requires [Bun](https://bun.com) 1.4 or newer at runtime. If Bun is not
