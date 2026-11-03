@@ -61,9 +61,20 @@ test/
 Open an input file and compare it with the problem page, then write your solution
 in `src/main.cpp`.
 
-## 4. Where to go next
+## 4. Run the tests
+
+```bash
+neoj test
+```
+
+`neoj` compiles `src/main.cpp`, runs it on every sample, and prints one line per
+case. The bundled configuration defines a `cpp` language with `g++`, so you only
+need a C++ compiler on your `PATH`.
+
+## 5. Where to go next
 
 - [Change the test folder or file names](how-to/configure-project.md).
+- [Add a language or tune the limits](how-to/run-tests.md).
 - [Stash your work before switching problems](how-to/stash-work.md).
 - [Log in](how-to/manage-sessions.md) if a problem requires an account.
 - [Look up every command and flag](reference/cli.md).

@@ -69,6 +69,146 @@ Print every downloaded sample's input and output after the files have been
 written successfully. When it is `false`, `download` only reports the number of
 samples and the destination directory.
 
+### `test.source`
+
+| Type        | Default | Scope             |
+| ----------- | ------- | ----------------- |
+| string path | none    | global or project |
+
+Source file that `neoj test` builds when no source is passed on the command line.
+It is resolved from the project root and must be a plain path that exists; globs
+are rejected. `neoj test <source>` overrides it for one run.
+
+### `test.timeout`
+
+| Type             | Default | Scope             |
+| ---------------- | ------- | ----------------- |
+| number (seconds) | `10`    | global or project |
+
+Wall-clock limit for each test case, measured from process start to exit. The
+value may be fractional. `languages.<key>.timeout` overrides it per language and
+`--timeout` overrides both.
+
+### `test.memory`
+
+| Type             | Default | Scope             |
+| ---------------- | ------- | ----------------- |
+| number (integer) | `1024`  | global or project |
+
+Memory limit in MiB. The limit is checked after the program exits, using the peak
+resident set size of the direct child process, so a program is not stopped while
+it runs. Grandchildren, such as the interpreter started by a script, are not
+counted.
+
+### `test.parallel`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Run test cases in parallel. The default number of jobs is the smaller of the
+logical CPU count and the number of cases; `--jobs` and `--no-parallel` override
+it. The final report always lists cases in name order.
+
+### `test.cache`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `false` | global or project |
+
+Keep the compiled program under `.neoj/build/<hash>/` and skip compiling when the
+same source, commands, and extra inputs are unchanged. With `false`, the build
+directory for the run is deleted afterwards. `--cache` and `--no-cache` override
+it for one run.
+
+### `test.ignore_trailing_space`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `false` | global or project |
+
+Ignore whitespace at the end of each output line when comparing. Whitespace
+inside a line is still significant. `-S` enables it for one run.
+
+### `test.ignore_trailing_newline`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `false` | global or project |
+
+Ignore missing or extra newlines at the end of the output when comparing. `-N`
+enables it for one run.
+
+### `languages.<key>.source`
+
+| Type                  | Default  | Scope             |
+| --------------------- | -------- | ----------------- |
+| string or string list | required | global or project |
+
+Glob or globs, relative to the project root, that identify files written in this
+language. `neoj test` matches the resolved source file against these globs to pick
+the language; exactly one language must match unless `--language` is given.
+Absolute patterns and `..` segments are rejected.
+
+### `languages.<key>.compile`
+
+| Type            | Default | Scope             |
+| --------------- | ------- | ----------------- |
+| list of strings | none    | global or project |
+
+Command and arguments that build the source. It must reference `{outfile}` or
+`{outdir}`. Omit it for interpreted languages.
+
+### `languages.<key>.run`
+
+| Type            | Default  | Scope             |
+| --------------- | -------- | ----------------- |
+| list of strings | required | global or project |
+
+Command and arguments that run the built program. It receives the test input on
+standard input.
+
+### `languages.<key>.timeout`
+
+| Type             | Default        | Scope             |
+| ---------------- | -------------- | ----------------- |
+| number (seconds) | `test.timeout` | global or project |
+
+Time limit for this language.
+
+### `languages.<key>.memory`
+
+| Type             | Default       | Scope             |
+| ---------------- | ------------- | ----------------- |
+| number (integer) | `test.memory` | global or project |
+
+Memory limit for this language, in MiB.
+
+### `languages.<key>.cache_files`
+
+| Type                  | Default | Scope             |
+| --------------------- | ------- | ----------------- |
+| string or string list | none    | global or project |
+
+Extra files, such as shared headers, whose contents belong in the compile cache
+key. They are not passed to the compiler; they only invalidate the cache when
+they change.
+
+### Placeholders in `compile` and `run`
+
+| Placeholder | Value                                                     |
+| ----------- | --------------------------------------------------------- |
+| `{source}`  | Absolute path of the source file.                         |
+| `{outfile}` | Absolute path of the built program, without an extension. |
+| `{outdir}`  | Directory holding `{outfile}` and other build output.     |
+| `{dir}`     | Project root.                                             |
+| `{testdir}` | Absolute path of the test-case directory.                 |
+
+Placeholders are replaced inside each argument. Unknown placeholders are a
+configuration error. On Windows, a `{outfile}` that does not exist is replaced by
+`{outfile}.exe` when that file exists, because some compilers add the extension
+themselves.
+
 ### `stash.auto_stash`
 
 | Type    | Default | Scope             |
@@ -143,6 +283,23 @@ open_browser = true
 [testcase]
 folder = "test"
 filename = "sample-{}"
+
+[test]
+source = "src/main.cpp"
+timeout = 10
+memory = 1024
+parallel = true
+cache = false
+ignore_trailing_space = false
+ignore_trailing_newline = false
+
+[languages.cpp]
+source = "src/**/*.cpp"
+compile = ["g++", "-std=c++23", "-O2", "-o", "{outfile}", "{source}"]
+run = ["{outfile}"]
+timeout = 10
+memory = 1024
+cache_files = ["src/**/*.hpp"]
 
 [download]
 show_sample = false

@@ -17,7 +17,16 @@ export interface FetchedSamples {
     problem: Problem;
 }
 
-async function validateTargetDirectory(projectRoot: string, folder: string): Promise<string> {
+/**
+ * Resolve `testcase.folder` to an absolute directory inside the project.
+ *
+ * The path must not be absolute, must stay inside the project, must not pass
+ * through a symbolic link, and must not target the Git metadata directory.
+ */
+export async function resolveTestcaseDirectory(
+    projectRoot: string,
+    folder: string,
+): Promise<string> {
     if (!folder || isAbsolute(folder)) {
         throw new Error("testcase.folder must be a non-empty relative path.");
     }
@@ -122,9 +131,9 @@ export async function fetchSamples(
     testcaseConfig: Config["testcase"],
     client: Pick<ProblemClient, "getProblem">,
 ): Promise<FetchedSamples> {
-    const targetDirectory = await validateTargetDirectory(projectRoot, testcaseConfig.folder);
+    const targetDirectory = await resolveTestcaseDirectory(projectRoot, testcaseConfig.folder);
     const problem = await client.getProblem(url);
-    await validateTargetDirectory(projectRoot, testcaseConfig.folder);
+    await resolveTestcaseDirectory(projectRoot, testcaseConfig.folder);
     return { directory: targetDirectory, problem };
 }
 

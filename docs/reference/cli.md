@@ -10,6 +10,7 @@
 | `neoj logout [--service <name...>]`                   | Log out of the given platforms, or of every platform when no name is given. |
 | `neoj status [--offline]`                             | Show the login status of every supported platform.                          |
 | `neoj stash [save\|list\|apply\|pop\|drop\|clear]`    | Save and restore the working files of the current problem.                  |
+| `neoj test [source]` (alias: `neoj t`)                | Build the solution and run it against the sample tests.                     |
 | `neoj completions <shell>` (alias: `neoj completion`) | Print a completion script for bash, zsh, fish, or PowerShell.               |
 
 ### `init`
@@ -80,6 +81,30 @@ saved files and removes other files inside the saved directories, so the
 directories match the stash exactly. See
 [Stash and restore work per problem](../how-to/stash-work.md).
 
+### `test`
+
+| Argument   | Description                                     |
+| ---------- | ----------------------------------------------- |
+| `[source]` | Source file to test. Defaults to `test.source`. |
+
+Runs every `*.in` file in the test-case directory against the built program.
+
+| Option                            | Description                                                  |
+| --------------------------------- | ------------------------------------------------------------ |
+| `-l`, `--language <key>`          | Use this `[languages.<key>]` entry instead of detecting one. |
+| `-j`, `--jobs <count>`            | Number of test cases to run at once.                         |
+| `--no-parallel`                   | Run one test case at a time.                                 |
+| `-t`, `--timeout <seconds>`       | Time limit per test case.                                    |
+| `-m`, `--memory <MiB>`            | Memory limit per test case.                                  |
+| `-f`, `--filter <name...>`        | Run only the named cases (`sample-1` for `sample-1.in`).     |
+| `--cache` / `--no-cache`          | Keep or delete the compiled program under `.neoj/build/`.    |
+| `-S`, `--ignore-trailing-space`   | Ignore trailing whitespace on each line.                     |
+| `-N`, `--ignore-trailing-newline` | Ignore newlines at the end of the output.                    |
+| `--progress` / `--no-progress`    | Draw or hide the progress bar.                               |
+| `-v`, `--verbose`                 | Print input and output for passing cases too.                |
+
+See [Build and run the sample tests](../how-to/run-tests.md).
+
 ### `completions`
 
 | Argument  | Description                                                                |
@@ -102,6 +127,7 @@ examples. PowerShell completion requires `pwsh` 7.2 or later.
 | Path                 | Description                                                                                                 |
 | -------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `<testcase.folder>/` | Sample inputs and outputs; `test/` by default.                                                              |
+| `.neoj/build/`       | Compiled programs, one directory per cache key when `test.cache` is enabled.                                |
 | `.neoj/problem.json` | URL of the last successful download. AtCoder also stores its contest window; yukicoder stores only the URL. |
 | `.neoj/stash/`       | Per-problem snapshots of `src` and the test-case directory.                                                 |
 | `neoj.toml`          | Project configuration.                                                                                      |
@@ -114,3 +140,8 @@ examples. PowerShell completion requires `pwsh` 7.2 or later.
 
 `neoj` exits with `0` after a successful command and `1` when a command reports
 an error. Partial failures, such as an unreadable template file, also set `1`.
+
+`neoj test` uses three values: `0` when every case passed, `1` for a compile,
+configuration, or environment error, and `2` when at least one case failed
+(`WA`, `TLE`, `MLE`, or `RE`). Cases without an expected output are reported as
+`UNJUDGED` and do not change the exit status.

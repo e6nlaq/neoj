@@ -6,6 +6,14 @@ src = "src"
 [testcase]
 folder = "test"
 
+[test]
+source = "src/main.cpp"
+
+[languages.cpp]
+source = "src/**/*.cpp"
+compile = ["g++", "-std=c++23", "-O2", "-o", "{outfile}", "{source}"]
+run = ["{outfile}"]
+
 [template]
 enable = true
 folder = "template"

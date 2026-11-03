@@ -49,6 +49,137 @@
                 "filename": "sample-{}"
             }
         },
+        "test": {
+            "type": "object",
+            "properties": {
+                "source": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Source file that neoj test builds by default, relative to the project root."
+                },
+                "timeout": {
+                    "type": "number",
+                    "minimum": 0.001,
+                    "description": "Default time limit per test case in seconds.",
+                    "default": 10
+                },
+                "memory": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Default memory limit per test case in MiB.",
+                    "default": 1024
+                },
+                "parallel": {
+                    "type": "boolean",
+                    "description": "Run test cases in parallel.",
+                    "default": true
+                },
+                "cache": {
+                    "type": "boolean",
+                    "description": "Keep compiled binaries in .neoj/build and skip compiling unchanged sources.",
+                    "default": false
+                },
+                "ignore_trailing_space": {
+                    "type": "boolean",
+                    "description": "Ignore whitespace at the end of each output line when comparing.",
+                    "default": false
+                },
+                "ignore_trailing_newline": {
+                    "type": "boolean",
+                    "description": "Ignore missing or extra newlines at the end of the output when comparing.",
+                    "default": false
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "How neoj builds and runs test cases.",
+            "default": {
+                "timeout": 10,
+                "memory": 1024,
+                "parallel": true,
+                "cache": false,
+                "ignore_trailing_space": false,
+                "ignore_trailing_newline": false
+            }
+        },
+        "languages": {
+            "type": "object",
+            "propertyNames": {
+                "type": "string",
+                "minLength": 1
+            },
+            "additionalProperties": {
+                "type": "object",
+                "properties": {
+                    "source": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                },
+                                "minItems": 1
+                            }
+                        ],
+                        "description": "Glob (or globs) that select the files written in this language, relative to the project root."
+                    },
+                    "compile": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "description": "Command and arguments that build {source} into {outfile} or {outdir}. Omit it for interpreted languages."
+                    },
+                    "run": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "minItems": 1,
+                        "description": "Command and arguments that run the program."
+                    },
+                    "timeout": {
+                        "type": "number",
+                        "minimum": 0.001,
+                        "description": "Time limit for this language in seconds."
+                    },
+                    "memory": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "description": "Memory limit for this language in MiB."
+                    },
+                    "cache_files": {
+                        "anyOf": [
+                            {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string",
+                                    "minLength": 1
+                                },
+                                "minItems": 1
+                            }
+                        ],
+                        "description": "Extra files whose contents belong in the compile cache key, such as shared headers."
+                    }
+                },
+                "required": ["source", "run"],
+                "additionalProperties": false,
+                "description": "How to build and run one language."
+            },
+            "description": "Build and run commands per language, keyed by a name you choose such as cpp.",
+            "default": {}
+        },
         "download": {
             "type": "object",
             "properties": {

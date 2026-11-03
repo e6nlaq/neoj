@@ -26,6 +26,7 @@ describe("buildCompletionModel", () => {
             "logout",
             "status",
             "stash",
+            "test",
             "completions",
         ]);
         expect(model.commands.find((command) => command.name === "download")?.aliases).toEqual([

@@ -24,6 +24,59 @@ const testcaseFilenameSchema = v.pipe(
     }, "testcase.filename must contain exactly one {} and be a file name."),
 );
 
+const globListSchema = v.union([
+    v.pipe(v.string(), v.minLength(1)),
+    v.pipe(v.array(v.pipe(v.string(), v.minLength(1))), v.minLength(1)),
+]);
+
+const languageSchema = v.pipe(
+    v.strictObject({
+        source: v.pipe(
+            globListSchema,
+            v.description(
+                "Glob (or globs) that select the files written in this language, relative to the project root.",
+            ),
+        ),
+        compile: v.optional(
+            v.pipe(
+                v.array(v.pipe(v.string(), v.minLength(1))),
+                v.description(
+                    "Command and arguments that build {source} into {outfile} or {outdir}. Omit it for interpreted languages.",
+                ),
+            ),
+        ),
+        run: v.pipe(
+            v.array(v.pipe(v.string(), v.minLength(1))),
+            v.minLength(1),
+            v.description("Command and arguments that run the program."),
+        ),
+        timeout: v.optional(
+            v.pipe(
+                v.number(),
+                v.minValue(0.001),
+                v.description("Time limit for this language in seconds."),
+            ),
+        ),
+        memory: v.optional(
+            v.pipe(
+                v.number(),
+                v.integer(),
+                v.minValue(1),
+                v.description("Memory limit for this language in MiB."),
+            ),
+        ),
+        cache_files: v.optional(
+            v.pipe(
+                globListSchema,
+                v.description(
+                    "Extra files whose contents belong in the compile cache key, such as shared headers.",
+                ),
+            ),
+        ),
+    }),
+    v.description("How to build and run one language."),
+);
+
 export const configSchema = v.pipe(
     v.strictObject({
         src: v.optional(
@@ -70,6 +123,87 @@ export const configSchema = v.pipe(
                 v.description("Where and how sample tests are written."),
             ),
             { folder: "test", filename: "sample-{}" },
+        ),
+        test: v.optional(
+            v.pipe(
+                v.strictObject({
+                    source: v.optional(
+                        v.pipe(
+                            v.string(),
+                            v.minLength(1),
+                            v.description(
+                                "Source file that neoj test builds by default, relative to the project root.",
+                            ),
+                        ),
+                    ),
+                    timeout: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.minValue(0.001),
+                            v.description("Default time limit per test case in seconds."),
+                        ),
+                        10,
+                    ),
+                    memory: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.integer(),
+                            v.minValue(1),
+                            v.description("Default memory limit per test case in MiB."),
+                        ),
+                        1024,
+                    ),
+                    parallel: v.optional(
+                        v.pipe(v.boolean(), v.description("Run test cases in parallel.")),
+                        true,
+                    ),
+                    cache: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Keep compiled binaries in .neoj/build and skip compiling unchanged sources.",
+                            ),
+                        ),
+                        false,
+                    ),
+                    ignore_trailing_space: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Ignore whitespace at the end of each output line when comparing.",
+                            ),
+                        ),
+                        false,
+                    ),
+                    ignore_trailing_newline: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Ignore missing or extra newlines at the end of the output when comparing.",
+                            ),
+                        ),
+                        false,
+                    ),
+                }),
+                v.description("How neoj builds and runs test cases."),
+            ),
+            {
+                timeout: 10,
+                memory: 1024,
+                parallel: true,
+                cache: false,
+                ignore_trailing_space: false,
+                ignore_trailing_newline: false,
+            },
+        ),
+        languages: v.optional(
+            v.pipe(
+                v.record(v.pipe(v.string(), v.minLength(1)), languageSchema),
+                v.description(
+                    "Build and run commands per language, keyed by a name you choose such as cpp.",
+                ),
+            ),
+            {},
         ),
         download: v.optional(
             v.pipe(

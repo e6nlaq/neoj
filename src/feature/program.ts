@@ -8,6 +8,7 @@ import { createLoginCommand } from "@/feature/login";
 import { createLogoutCommand } from "@/feature/logout";
 import { createStashCommand } from "@/feature/stash";
 import { createStatusCommand } from "@/feature/status";
+import { createTestCommand } from "@/feature/test";
 
 import { description, version } from "../../package.json";
 
@@ -22,6 +23,7 @@ export function createProgram(): Command {
     program.addCommand(createLogoutCommand());
     program.addCommand(createStatusCommand());
     program.addCommand(createStashCommand());
+    program.addCommand(createTestCommand());
     program.addCommand(createCompletionsCommand(program));
 
     return program;

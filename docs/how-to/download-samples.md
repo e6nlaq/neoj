@@ -54,6 +54,7 @@ The summary reports how many samples were written. Set
 ## Related
 
 - [Change the folder or file names](configure-project.md)
+- [Build and run the sample tests](run-tests.md)
 - [Apply a solution template](configure-project.md#apply-a-template)
 - [Stash and restore work per problem](stash-work.md)
 - [CLI reference](../reference/cli.md)
