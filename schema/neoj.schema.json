@@ -88,6 +88,12 @@
                     "type": "boolean",
                     "description": "Ignore missing or extra newlines at the end of the output when comparing.",
                     "default": false
+                },
+                "show_stderr": {
+                    "enum": ["always", "failure", "never"],
+                    "type": "string",
+                    "description": "Print the program's standard error in the report: \"always\", \"failure\" (only when a case did not pass), or \"never\".",
+                    "default": "always"
                 }
             },
             "required": [],
@@ -99,7 +105,8 @@
                 "parallel": true,
                 "cache": false,
                 "ignore_trailing_space": false,
-                "ignore_trailing_newline": false
+                "ignore_trailing_newline": false,
+                "show_stderr": "always"
             }
         },
         "languages": {

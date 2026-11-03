@@ -1,7 +1,7 @@
 import { Command, InvalidArgumentError } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
-import { loadConfig } from "@/lib/util/config";
+import { loadConfig, showStderrModes, type ShowStderrMode } from "@/lib/util/config";
 import { requireInitializedProject } from "@/lib/util/project";
 import { runTests } from "@/lib/util/test-runner";
 
@@ -23,6 +23,16 @@ function parsePositiveSeconds(value: string): number {
     return parsed;
 }
 
+function parseShowStderr(value: string): ShowStderrMode {
+    if ((showStderrModes as readonly string[]).includes(value)) {
+        return value as ShowStderrMode;
+    }
+
+    throw new InvalidArgumentError(
+        `Expected one of ${showStderrModes.join(", ")}, got "${value}".`,
+    );
+}
+
 export function createTestCommand(): Command<[string | undefined]> {
     return new Command("test")
         .alias("t")
@@ -40,6 +50,11 @@ export function createTestCommand(): Command<[string | undefined]> {
         .option("--no-ignore-trailing-space", "Compare trailing whitespace strictly")
         .option("-N, --ignore-trailing-newline", "Ignore newlines at the end of the output")
         .option("--no-ignore-trailing-newline", "Compare trailing newlines strictly")
+        .option(
+            "--show-stderr <mode>",
+            "Print the program's standard error: always, failure, or never",
+            parseShowStderr,
+        )
         .option("--progress", "Draw the progress bar")
         .option("--no-progress", "Do not draw the progress bar")
         .option("-v, --verbose", "Print input and output for passing cases too")
@@ -61,6 +76,7 @@ export function createTestCommand(): Command<[string | undefined]> {
                     cache: options.cache,
                     ignoreTrailingSpace: options.ignoreTrailingSpace,
                     ignoreTrailingNewline: options.ignoreTrailingNewline,
+                    showStderr: options.showStderr,
                     progress: options.progress,
                     verbose: options.verbose,
                     stdout: process.stdout,

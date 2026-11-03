@@ -59,6 +59,7 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
             cache: false,
             ignore_trailing_space: false,
             ignore_trailing_newline: false,
+            show_stderr: "always",
         },
         languages: {},
         download: { show_sample: false },

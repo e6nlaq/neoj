@@ -6,7 +6,7 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
 import { runCommand, type CommandResult } from "@/lib/util/command-runner";
-import type { Config } from "@/lib/util/config";
+import type { Config, ShowStderrMode } from "@/lib/util/config";
 import { hasErrorCode } from "@/lib/util/errors";
 import {
     compareOutput,
@@ -21,7 +21,6 @@ import { resolveTestcaseDirectory } from "@/lib/util/testcase";
 const buildDirectoryName = "build";
 const executableBaseName = "a";
 const compileTimeoutMs = 10 * 60 * 1000;
-const stderrDisplayLines = 20;
 const unjudgedDisplayLines = 100;
 
 export const placeholderNames = ["source", "outfile", "outdir", "dir", "testdir"] as const;
@@ -75,6 +74,7 @@ export interface RunTestsOptions {
     cache?: boolean;
     ignoreTrailingSpace?: boolean;
     ignoreTrailingNewline?: boolean;
+    showStderr?: ShowStderrMode;
     progress?: boolean;
     verbose?: boolean;
     stdout?: ProgressStream;
@@ -433,12 +433,18 @@ function formatMiB(bytes: number): string {
     return `${Math.round(bytes / (1024 * 1024))} MiB`;
 }
 
-function takeLines(text: string, limit: number): { lines: string[]; omitted: number } {
-    const lines = text.replace(/\r\n/gu, "\n").replace(/\n+$/u, "").split("\n");
-    if (lines.length === 1 && lines[0] === "") {
-        return { lines: [], omitted: 0 };
+/** Split captured output into lines, dropping a trailing empty line. */
+function outputLines(text: string): string[] {
+    const normalized = text.replace(/\r\n/gu, "\n").replace(/\n+$/u, "");
+    if (normalized === "") {
+        return [];
     }
 
+    return normalized.split("\n");
+}
+
+function takeLines(text: string, limit: number): { lines: string[]; omitted: number } {
+    const lines = outputLines(text);
     return { lines: lines.slice(0, limit), omitted: Math.max(0, lines.length - limit) };
 }
 
@@ -632,9 +638,45 @@ function formatBlock(text: string, styles: AnsiStyles, limit: number): string[] 
     return formatted;
 }
 
+interface CaseDetailOptions {
+    verbose: boolean;
+    showStderr: ShowStderrMode;
+}
+
 function buildCaseDetails(
     result: TestCaseResult,
-    options: RunTestsOptions,
+    options: CaseDetailOptions,
+    styles: AnsiStyles,
+    columns: number,
+): string[] {
+    const details = verdictDetails(result, options, styles, columns);
+
+    if (result.stderr.trim() !== "" && shouldShowStderr(result.verdict, options.showStderr)) {
+        // Standard error is printed verbatim, without color, so a compiler or
+        // interpreter's own formatting stays intact.
+        details.push("  stderr:");
+        for (const line of outputLines(result.stderr)) {
+            details.push(`    ${line}`);
+        }
+    }
+
+    return details;
+}
+
+function shouldShowStderr(verdict: CaseVerdict, mode: ShowStderrMode): boolean {
+    if (mode === "never") {
+        return false;
+    }
+    if (mode === "always") {
+        return true;
+    }
+
+    return verdict !== "AC";
+}
+
+function verdictDetails(
+    result: TestCaseResult,
+    options: CaseDetailOptions,
     styles: AnsiStyles,
     columns: number,
 ): string[] {
@@ -661,13 +703,6 @@ function buildCaseDetails(
     if (result.verdict === "UNJUDGED") {
         const { lines, omitted } = takeLines(result.stdout, unjudgedDisplayLines);
         details.push(...indent(lines.map((line) => styles.dim(line))));
-        appendOmitted(omitted);
-        return details;
-    }
-
-    if (result.verdict === "RE" && result.stderr.trim() !== "") {
-        const { lines, omitted } = takeLines(result.stderr, stderrDisplayLines);
-        details.push(...indent(lines.map((line) => styles.red(line))));
         appendOmitted(omitted);
         return details;
     }
@@ -739,6 +774,7 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         ignoreTrailingNewline:
             options.ignoreTrailingNewline ?? options.config.test.ignore_trailing_newline,
     };
+    const showStderr = options.showStderr ?? options.config.test.show_stderr;
 
     const testDirectory = await resolveTestcaseDirectory(
         projectRoot,
@@ -899,11 +935,15 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         }
 
         const elapsed = performance.now() - startedAt;
+        const detailOptions: CaseDetailOptions = {
+            verbose: options.verbose === true,
+            showStderr,
+        };
         for (const result of results) {
             stdout.write(
                 `${formatCaseLine(result, nameWidth, timeoutSeconds, memoryMiB, styles)}\n`,
             );
-            for (const line of buildCaseDetails(result, options, styles, columns)) {
+            for (const line of buildCaseDetails(result, detailOptions, styles, columns)) {
                 stdout.write(`${line}\n`);
             }
         }

@@ -13,6 +13,7 @@ import {
     type CompletionHints,
     type CompletionModel,
 } from "@/lib/util/completion";
+import { showStderrModes } from "@/lib/util/config";
 
 export const completionShells = ["bash", "zsh", "fish", "powershell"] as const;
 
@@ -30,6 +31,12 @@ const methodDescriptions: Record<string, string> = {
     "api-key": "Authenticate with a profile API key",
 };
 
+const showStderrDescriptions: Record<string, string> = {
+    always: "Print standard error for every case",
+    failure: "Print standard error only for cases that did not pass",
+    never: "Never print standard error",
+};
+
 function platformCandidates(): CompletionCandidate[] {
     return platforms.map((platform) => ({
         value: platform.name,
@@ -44,6 +51,10 @@ export function getCompletionHints(): CompletionHints {
             "--method": yukicoderLoginMethods.map((method) => ({
                 value: method,
                 description: methodDescriptions[method] ?? method,
+            })),
+            "--show-stderr": showStderrModes.map((mode) => ({
+                value: mode,
+                description: showStderrDescriptions[mode] ?? mode,
             })),
         },
         argumentValues: {

@@ -69,6 +69,21 @@ describe("buildCompletionModel", () => {
         ]);
     });
 
+    it("attaches the show_stderr modes to --show-stderr", () => {
+        const entries = flattenCommands(createModel());
+        const test = entries.find((entry) => commandPathKey(entry.path) === "test");
+        const showStderr = test?.command.options.find((option) =>
+            option.flags.includes("--show-stderr"),
+        );
+
+        expect(showStderr?.takesValue).toBe(true);
+        expect(showStderr?.valueCandidates.map((candidate) => candidate.value)).toEqual([
+            "always",
+            "failure",
+            "never",
+        ]);
+    });
+
     it("attaches supported shell names to the completions argument", () => {
         const completions = createModel().commands.find(
             (command) => command.name === "completions",

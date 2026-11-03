@@ -20,8 +20,20 @@ describe("test configuration", () => {
             cache: false,
             ignore_trailing_space: false,
             ignore_trailing_newline: false,
+            show_stderr: "always",
         });
         expect(config.languages).toEqual({});
+    });
+
+    it("accepts each show_stderr mode and rejects anything else", () => {
+        const modes = ["always", "failure", "never"] as const;
+        for (const mode of modes) {
+            expect(parse({ test: { show_stderr: mode } }).test.show_stderr).toBe(mode);
+        }
+
+        expect(v.safeParse(configSchema, { test: { show_stderr: "sometimes" } }).success).toBe(
+            false,
+        );
     });
 
     it("accepts a language with compile, run, limits, and extra cache inputs", () => {

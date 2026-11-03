@@ -100,6 +100,7 @@ Runs every `*.in` file in the test-case directory against the built program.
 | `--cache` / `--no-cache`          | Keep or delete the compiled program under `.neoj/build/`.    |
 | `-S`, `--ignore-trailing-space`   | Ignore trailing whitespace on each line.                     |
 | `-N`, `--ignore-trailing-newline` | Ignore newlines at the end of the output.                    |
+| `--show-stderr <mode>`            | Print the program's stderr: `always`, `failure`, or `never`. |
 | `--progress` / `--no-progress`    | Draw or hide the progress bar.                               |
 | `-v`, `--verbose`                 | Print input and output for passing cases too.                |
 

@@ -87,6 +87,8 @@ written.
 
 ```text
 ✓ sample-1      12 ms  AC
+  stderr:
+    warning: 'x' is unused
 ✗ sample-2      14 ms  WA (line 3)
   - 3 7
   + 3 8
@@ -107,6 +109,32 @@ written.
 
 Wide terminals show both outputs side by side; narrow terminals, tabs, and long
 lines fall back to a stacked list.
+
+## Show the program's standard error
+
+The program's standard error is printed after each case that wrote something,
+regardless of the verdict:
+
+```text
+✓ sample-1      12 ms  AC
+  stderr:
+    warning: 'x' is unused
+```
+
+Lines are reproduced as written: no color, no truncation, and only if the
+program wrote at least one byte. Choose how much is printed with
+`test.show_stderr`:
+
+```toml
+[test]
+show_stderr = "failure"   # "always" (default), "failure", or "never"
+```
+
+- `"always"` prints standard error for every case.
+- `"failure"` prints it only when a case did not pass.
+- `"never"` never prints it.
+
+`neoj test --show-stderr failure` overrides the setting for one run.
 
 ## Compare leniently
 

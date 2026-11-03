@@ -139,6 +139,23 @@ inside a line is still significant. `-S` enables it for one run.
 Ignore missing or extra newlines at the end of the output when comparing. `-N`
 enables it for one run.
 
+### `test.show_stderr`
+
+| Type   | Default    | Scope             |
+| ------ | ---------- | ----------------- |
+| string | `"always"` | global or project |
+
+Print the program's standard error in the report after the run. The value is one
+of:
+
+- `"always"` — print standard error for every case, including passing ones.
+- `"failure"` — print it only for cases that did not pass (`WA`, `TLE`, `MLE`,
+  `RE`, or `UNJUDGED`).
+- `"never"` — never print it.
+
+Lines are printed as captured, without color and without a line limit, under a
+`stderr:` label. `--show-stderr <mode>` overrides the setting for one run.
+
 ### `languages.<key>.source`
 
 | Type                  | Default  | Scope             |
@@ -292,6 +309,7 @@ parallel = true
 cache = false
 ignore_trailing_space = false
 ignore_trailing_newline = false
+show_stderr = "always"
 
 [languages.cpp]
 source = "src/**/*.cpp"

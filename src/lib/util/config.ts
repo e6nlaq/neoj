@@ -24,6 +24,11 @@ const testcaseFilenameSchema = v.pipe(
     }, "testcase.filename must contain exactly one {} and be a file name."),
 );
 
+/** How much of the program's standard error `neoj test` prints. */
+export const showStderrModes = ["always", "failure", "never"] as const;
+
+export type ShowStderrMode = (typeof showStderrModes)[number];
+
 const globListSchema = v.union([
     v.pipe(v.string(), v.minLength(1)),
     v.pipe(v.array(v.pipe(v.string(), v.minLength(1))), v.minLength(1)),
@@ -184,6 +189,15 @@ export const configSchema = v.pipe(
                         ),
                         false,
                     ),
+                    show_stderr: v.optional(
+                        v.pipe(
+                            v.picklist(showStderrModes),
+                            v.description(
+                                'Print the program\'s standard error in the report: "always", "failure" (only when a case did not pass), or "never".',
+                            ),
+                        ),
+                        "always",
+                    ),
                 }),
                 v.description("How neoj builds and runs test cases."),
             ),
@@ -194,6 +208,7 @@ export const configSchema = v.pipe(
                 cache: false,
                 ignore_trailing_space: false,
                 ignore_trailing_newline: false,
+                show_stderr: "always",
             },
         ),
         languages: v.optional(

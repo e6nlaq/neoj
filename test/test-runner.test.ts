@@ -52,6 +52,7 @@ function createConfig(options: {
             cache: false,
             ignore_trailing_space: false,
             ignore_trailing_newline: false,
+            show_stderr: "always",
             ...options.test,
         },
         languages: options.languages ?? {},
@@ -61,7 +62,10 @@ function createConfig(options: {
     };
 }
 
-function createCapture(): { stream: { write(chunk: string): boolean }; text(): string } {
+function createCapture(options: { isTTY?: boolean; columns?: number } = {}): {
+    stream: { write(chunk: string): boolean; isTTY?: boolean; columns?: number };
+    text(): string;
+} {
     let text = "";
     return {
         stream: {
@@ -69,6 +73,7 @@ function createCapture(): { stream: { write(chunk: string): boolean }; text(): s
                 text += chunk;
                 return true;
             },
+            ...options,
         },
         text: () => text,
     };
@@ -89,11 +94,14 @@ async function writeCase(
 
 const runnerScript = `const text = (await Bun.stdin.text()).trim();
 if (text === "ac") {
+    console.error("ac-note");
     console.log("3 7");
 } else if (text === "wa") {
     console.log("3 8");
 } else if (text === "re") {
-    console.error("boom");
+    for (let index = 0; index < 30; index += 1) {
+        console.error("err-" + index);
+    }
     process.exit(1);
 } else {
     console.log("free");
@@ -466,6 +474,95 @@ describe("runTests", () => {
         expect(out.text()).toContain("4 case(s): 1 passed, 2 failed, 1 unjudged");
         expect(out.text()).toContain("WA (line 1)");
         expect(out.text()).toContain("UNJUDGED (expected output missing)");
+    });
+
+    it("prints the program's standard error for every case by default", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+        const err = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            stdout: out.stream,
+            stderr: err.stream,
+        });
+
+        const text = out.text();
+        expect(text).toContain("  stderr:");
+        expect(text).toContain("    ac-note");
+        expect(text).toContain("    err-29");
+        expect(text).not.toContain("more line(s)");
+    });
+
+    it("hides standard error when show_stderr is never", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+        const err = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({ test: { show_stderr: "never" } }),
+            stdout: out.stream,
+            stderr: err.stream,
+        });
+
+        expect(out.text()).not.toContain("stderr:");
+        expect(out.text()).not.toContain("ac-note");
+        expect(out.text()).not.toContain("err-0");
+    });
+
+    it("prints standard error only for cases that did not pass", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+        const err = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({ test: { show_stderr: "failure" } }),
+            stdout: out.stream,
+            stderr: err.stream,
+        });
+
+        expect(out.text()).not.toContain("ac-note");
+        expect(out.text()).toContain("    err-0");
+    });
+
+    it("lets --show-stderr override the configuration", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+        const err = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({ test: { show_stderr: "always" } }),
+            showStderr: "never",
+            stdout: out.stream,
+            stderr: err.stream,
+        });
+
+        expect(out.text()).not.toContain("stderr:");
+    });
+
+    it("leaves standard error uncolored even on a terminal", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture({ isTTY: true, columns: 120 });
+        const err = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            stdout: out.stream,
+            stderr: err.stream,
+        });
+
+        const lines = out.text().split("\n");
+        const note = lines.find((line) => line.includes("ac-note"));
+
+        expect(note).toBe("    ac-note");
+        if (process.env.NO_COLOR === undefined) {
+            expect(out.text()).toContain("\u001B[");
+        }
     });
 
     it("filters cases and exits with zero when they pass", async () => {
