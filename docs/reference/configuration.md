@@ -208,7 +208,7 @@ Lines are printed as captured, without color and without a line limit, under a
 | ------- | ------- | ----------------- |
 | boolean | `false` | global or project |
 
-Hide `neoj run`'s informational logs, such as `Compiled languages.cpp in 41 ms.`
+Hide `neoj run`'s informational logs, such as `Compiled src/main.cpp (languages.cpp) in 41 ms.`
 and the cache-reuse line. Compiler diagnostics and every error message are still
 printed to standard error. `--silent` turns it on for one run; options must come
 before the source file, so `neoj run src/main.cpp --silent` forwards `--silent`

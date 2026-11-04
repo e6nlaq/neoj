@@ -270,7 +270,7 @@ ${compiledLanguage}
                 })
             ).exitCode,
         ).toBe(0);
-        expect(first.text()).toContain("Compiled languages.ts in");
+        expect(first.text()).toContain("Compiled src/main.ts (languages.ts) in");
         expect(await buildEntries(project)).toEqual([]);
 
         const silentRun = createCapture();
@@ -296,7 +296,7 @@ ${compiledLanguage}
             cache: true,
             stderr: reused.stream,
         });
-        expect(reused.text()).toContain("Reused the cached build for languages.ts.");
+        expect(reused.text()).toContain("Reused the cached build for src/main.ts (languages.ts).");
         expect(await buildEntries(project)).toHaveLength(1);
     });
 
@@ -320,7 +320,7 @@ run = [{execPath}, "{outfile}"]
         ).rejects.toThrow("Compilation failed for languages.ts");
 
         expect(stderr.text()).toContain("error:");
-        expect(stderr.text()).not.toContain("Compiled languages.ts");
+        expect(stderr.text()).not.toContain("Compiled");
         expect(await buildEntries(projectRoot!)).toEqual([]);
     });
 });

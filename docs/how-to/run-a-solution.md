@@ -45,7 +45,7 @@ yourself. There is no time limit, no memory limit, and no 8 MiB output cap.
 neoj's own logs go to standard error, so standard output stays clean:
 
 ```text
-Compiled languages.cpp in 412 ms.
+Compiled src/main.cpp (languages.cpp) in 412 ms.
 ```
 
 ## Pass arguments to the program

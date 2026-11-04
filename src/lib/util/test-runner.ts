@@ -968,7 +968,9 @@ export async function buildSolution(options: BuildSolutionOptions): Promise<Buil
     try {
         if (compileTokens !== undefined) {
             if (cacheEnabled && existsSync(resolveExecutablePath(outfilePath))) {
-                options.onCached?.(`Reused the cached build for ${label}.`);
+                options.onCached?.(
+                    `Reused the cached build for ${resolved.relativePath} (${label}).`,
+                );
             } else {
                 await rm(buildDirectory, { recursive: true, force: true });
                 await mkdir(buildDirectory, { recursive: true });
@@ -994,7 +996,7 @@ export async function buildSolution(options: BuildSolutionOptions): Promise<Buil
                 }
 
                 options.onCompiled?.(
-                    `Compiled ${label} in ${formatDuration(compiled.durationMs)}.`,
+                    `Compiled ${resolved.relativePath} (${label}) in ${formatDuration(compiled.durationMs)}.`,
                 );
             }
         } else if (language.run.some((token) => token.includes("{outdir}"))) {

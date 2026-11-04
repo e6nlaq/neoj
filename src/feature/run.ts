@@ -1,5 +1,5 @@
 import { Command } from "@commander-js/extra-typings";
-import { consola } from "consola";
+import { consola, createConsola, LogLevels } from "consola";
 
 import { loadConfig } from "@/lib/util/config";
 import { requireInitializedProject } from "@/lib/util/project";
@@ -34,6 +34,17 @@ export interface RunSolutionResult {
 export async function runSolution(options: RunSolutionOptions): Promise<RunSolutionResult> {
     const cwd = options.cwd ?? process.cwd();
     const stderr = options.stderr ?? process.stderr;
+    // neoj's own logs go through consola but stay on standard error, so the
+    // program keeps standard output to itself. Consola only writes to the
+    // stream it is given, so the capture stream used by tests is enough.
+    const logStream = stderr as NodeJS.WriteStream;
+    const logger = createConsola({
+        stdout: logStream,
+        stderr: logStream,
+        // Show informational logs even when NODE_ENV=test lowers the default.
+        level: LogLevels.info,
+        defaults: { level: LogLevels.info },
+    });
     const projectRoot = await requireInitializedProject(cwd);
     const config = await loadConfig();
     const silent = options.silent ?? config.run.silent;
@@ -47,8 +58,8 @@ export async function runSolution(options: RunSolutionOptions): Promise<RunSolut
         language: options.language,
         cache: options.cache,
         onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
-        onCompiled: silent ? undefined : (line) => stderr.write(`${line}\n`),
-        onCached: silent ? undefined : (line) => stderr.write(`${line}\n`),
+        onCompiled: silent ? undefined : (line) => logger.success(line),
+        onCached: silent ? undefined : (line) => logger.info(line),
     });
 
     try {
@@ -56,7 +67,7 @@ export async function runSolution(options: RunSolutionOptions): Promise<RunSolut
             argv: [...built.runTokens, ...options.programArgs],
             cwd: built.projectRoot,
             stdio: options.stdio,
-            onSignal: silent ? undefined : (message) => stderr.write(`${message}\n`),
+            onSignal: silent ? undefined : (message) => logger.warn(message),
         });
         return { exitCode: result.exitCode };
     } finally {

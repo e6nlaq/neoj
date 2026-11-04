@@ -59,6 +59,7 @@ The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messag
 ## Repository Hygiene
 
 - Do not commit scratch scripts, captured HTML, temporary `.env` files, or other exploration artifacts. Keep them in the git-ignored `tmp/` directory or delete them before committing.
+- Do not touch `tmp/` folders. It's used by the user. If you need any temporal folders, please use other folders.
 - Remove dependencies as soon as the code that used them is deleted, and keep `package.json` metadata (`description`, `repository`, `license`, `engines`, scripts) accurate.
 - Never install the package into its own `node_modules` (for example with `bun link` or `bun add neoj`). A self-referencing `node_modules/neoj` nests indefinitely; delete `node_modules` and reinstall if it appears.
 - Keep `README.md` and the pages under `docs/` aligned with the actual CLI
