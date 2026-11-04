@@ -1,19 +1,13 @@
 <div align="center">
 
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/e6nlaq/neoj/main/docs/assets/logo.svg">
-    <source media="(prefers-color-scheme: light)" srcset="https://raw.githubusercontent.com/e6nlaq/neoj/main/docs/assets/logo-ink.svg">
-    <img src="https://raw.githubusercontent.com/e6nlaq/neoj/main/docs/assets/logo-ink.svg" alt="neoj" width="480">
-  </picture>
+    <img src="https://raw.githubusercontent.com/e6nlaq/neoj/main/docs/assets/banner.png" alt="neoj" width="1080">
 </p>
-
-<p align="center"><strong>A modern CLI for competitive programming workflows</strong></p>
 
 <p align="center"><sub>Built with Bun and TypeScript · Open Source</sub></p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/neo-oj"><img src="https://img.shields.io/npm/v/neo-oj?style=flat-square&amp;label=npm&amp;labelColor=24292f&amp;color=24292f" alt="npm version"></a>
+  <a href="https://npmx.dev/package/neo-oj"><img src="https://img.shields.io/npm/v/neo-oj?style=flat-square&amp;label=npm&amp;labelColor=24292f&amp;color=24292f" alt="npm version"></a>
   <a href="https://bun.com"><img src="https://img.shields.io/badge/Bun-1.4%2B-24292f?style=flat-square&amp;labelColor=24292f&amp;logo=bun&amp;logoColor=fff" alt="Bun 1.4+"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&amp;labelColor=24292f&amp;logo=typescript&amp;logoColor=fff" alt="TypeScript strict"></a>
   <a href="https://github.com/e6nlaq/neoj/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-24292f?style=flat-square&amp;labelColor=24292f" alt="MIT license"></a>
