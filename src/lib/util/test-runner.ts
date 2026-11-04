@@ -155,15 +155,32 @@ export interface ResolvedSource {
     relativePath: string;
 }
 
-/** Resolve a plain (non-glob) source path and require it to be a file inside the project. */
-export async function resolveSourceFile(
+/** Why a source path could not be used. */
+export type SourceResolveFailure =
+    | "empty"
+    | "outside"
+    | "missing"
+    | "resolves-outside"
+    | "not-a-file";
+
+export type SourceResolveResult =
+    | { ok: true; source: ResolvedSource }
+    | { ok: false; reason: SourceResolveFailure };
+
+/**
+ * Resolve a plain (non-glob) source path to a file inside the project.
+ *
+ * The failure reason is returned instead of thrown so that callers can word
+ * the error for an alias or a command-line argument.
+ */
+export async function tryResolveSource(
     projectRoot: string,
     baseDirectory: string,
     spec: string,
-): Promise<ResolvedSource> {
+): Promise<SourceResolveResult> {
     const trimmed = spec.trim();
     if (trimmed === "") {
-        throw new Error("The source file must not be empty.");
+        return { ok: false, reason: "empty" };
     }
 
     const root = await realpath(projectRoot);
@@ -176,7 +193,7 @@ export async function resolveSourceFile(
         relativeToRoot.startsWith(`..${sep}`) ||
         isAbsolute(relativeToRoot)
     ) {
-        throw new Error(`Source file "${spec}" must be inside the project.`);
+        return { ok: false, reason: "outside" };
     }
 
     let realPath: string;
@@ -184,24 +201,135 @@ export async function resolveSourceFile(
         realPath = await realpath(absolutePath);
     } catch (error) {
         if (hasErrorCode(error, "ENOENT") || hasErrorCode(error, "ENOTDIR")) {
-            throw new Error(
-                `Source file "${spec}" does not exist. Pass a file path, not a glob, or fix test.source.`,
-                { cause: error },
-            );
+            return { ok: false, reason: "missing" };
         }
         throw error;
     }
 
     const realRelative = relative(root, realPath);
     if (realRelative.startsWith(`..${sep}`) || isAbsolute(realRelative)) {
-        throw new Error(`Source file "${spec}" resolves outside the project.`);
+        return { ok: false, reason: "resolves-outside" };
     }
 
     if (!(await stat(realPath)).isFile()) {
-        throw new Error(`Source "${spec}" is not a regular file.`);
+        return { ok: false, reason: "not-a-file" };
     }
 
-    return { absolutePath: realPath, relativePath: realRelative.split(sep).join("/") };
+    return {
+        ok: true,
+        source: { absolutePath: realPath, relativePath: realRelative.split(sep).join("/") },
+    };
+}
+
+function sourceError(reason: SourceResolveFailure, spec: string): Error {
+    switch (reason) {
+        case "empty": {
+            return new Error("The source file must not be empty.");
+        }
+        case "outside": {
+            return new Error(`Source file "${spec}" must be inside the project.`);
+        }
+        case "missing": {
+            return new Error(
+                `Source file "${spec}" does not exist. Pass a file path, not a glob, or fix test.source.`,
+            );
+        }
+        case "resolves-outside": {
+            return new Error(`Source file "${spec}" resolves outside the project.`);
+        }
+        case "not-a-file": {
+            return new Error(`Source "${spec}" is not a regular file.`);
+        }
+    }
+}
+
+/** Resolve a plain (non-glob) source path and require it to be a file inside the project. */
+export async function resolveSourceFile(
+    projectRoot: string,
+    baseDirectory: string,
+    spec: string,
+): Promise<ResolvedSource> {
+    const result = await tryResolveSource(projectRoot, baseDirectory, spec);
+    if (result.ok) {
+        return result.source;
+    }
+
+    throw sourceError(result.reason, spec);
+}
+
+const aliasFailureReasons: Record<SourceResolveFailure, string> = {
+    empty: "is empty",
+    outside: "is outside the project",
+    missing: "does not exist",
+    "resolves-outside": "resolves outside the project",
+    "not-a-file": "is not a regular file",
+};
+
+/**
+ * Resolve the file an alias points at.
+ *
+ * Alias targets are always relative to the project root, so an alias behaves
+ * the same from any subdirectory.
+ */
+export async function resolveAliasSource(
+    projectRoot: string,
+    name: string,
+    target: string,
+): Promise<ResolvedSource> {
+    const result = await tryResolveSource(projectRoot, projectRoot, target);
+    if (result.ok) {
+        return result.source;
+    }
+
+    throw new Error(
+        `Alias "${name}" points to "${target}", which ${aliasFailureReasons[result.reason]}.`,
+    );
+}
+
+/** List the configured aliases for an error message. */
+export function describeAliases(aliases: Readonly<Record<string, string>>): string {
+    const names = Object.keys(aliases).sort(naturalCompare);
+    if (names.length === 0) {
+        return "No aliases are defined in [alias].";
+    }
+
+    return `Available aliases: ${names.join(", ")}.`;
+}
+
+/**
+ * Pick the source file to test: an alias, then a path, then `test.source`.
+ *
+ * Only the positional argument is matched against `[alias]`; `test.source` is
+ * always a literal path.
+ */
+export async function resolveTestSource(
+    projectRoot: string,
+    options: Pick<RunTestsOptions, "source" | "cwd" | "config">,
+    spec: string,
+): Promise<ResolvedSource> {
+    const positional = options.source;
+    if (positional === undefined) {
+        return resolveSourceFile(projectRoot, projectRoot, spec);
+    }
+
+    const target = Object.hasOwn(options.config.alias, positional)
+        ? options.config.alias[positional]
+        : undefined;
+    if (target !== undefined) {
+        return resolveAliasSource(projectRoot, positional, target);
+    }
+
+    const result = await tryResolveSource(projectRoot, options.cwd ?? process.cwd(), positional);
+    if (result.ok) {
+        return result.source;
+    }
+    if (result.reason === "missing") {
+        throw new Error(
+            `Neither a file nor an alias matches "${positional}". ${describeAliases(options.config.alias)}`,
+        );
+    }
+
+    throw sourceError(result.reason, positional);
 }
 
 /** Pick the language whose source glob covers `sourceRelativePath`. */
@@ -761,9 +889,7 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         );
     }
 
-    const baseDirectory =
-        options.source === undefined ? projectRoot : (options.cwd ?? process.cwd());
-    const resolved = await resolveSourceFile(projectRoot, baseDirectory, spec);
+    const resolved = await resolveTestSource(projectRoot, options, spec);
     const language = detectLanguage(languages, resolved.relativePath, options.language);
 
     const timeoutSeconds =

@@ -23,6 +23,22 @@ describe("test configuration", () => {
             show_stderr: "always",
         });
         expect(config.languages).toEqual({});
+        expect(config.alias).toEqual({});
+    });
+
+    it("accepts aliases and rejects path-like names", () => {
+        expect(parse({ alias: { main: "src/main.cpp", old: "archive/a.cpp" } }).alias).toEqual({
+            main: "src/main.cpp",
+            old: "archive/a.cpp",
+        });
+
+        for (const name of ["", ".", "..", "a/b", "a\\b"]) {
+            expect(v.safeParse(configSchema, { alias: { [name]: "src/main.cpp" } }).success).toBe(
+                false,
+            );
+        }
+        expect(v.safeParse(configSchema, { alias: { main: "" } }).success).toBe(false);
+        expect(v.safeParse(configSchema, { alias: { main: 1 } }).success).toBe(false);
     });
 
     it("accepts each show_stderr mode and rejects anything else", () => {

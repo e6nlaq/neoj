@@ -29,6 +29,19 @@ export const showStderrModes = ["always", "failure", "never"] as const;
 
 export type ShowStderrMode = (typeof showStderrModes)[number];
 
+const aliasNameSchema = v.pipe(
+    v.string(),
+    v.metadata({
+        pattern: "^(?!\\.{1,2}$)[^/\\\\]+$",
+        description: 'Alias name. Must not be ".", "..", or contain a path separator.',
+    }),
+    v.minLength(1),
+    v.check(
+        (name) => name !== "." && name !== ".." && !name.includes("/") && !name.includes("\\"),
+        'Alias names must not be ".", "..", or contain a path separator.',
+    ),
+);
+
 const globListSchema = v.union([
     v.pipe(v.string(), v.minLength(1)),
     v.pipe(v.array(v.pipe(v.string(), v.minLength(1))), v.minLength(1)),
@@ -92,6 +105,24 @@ export const configSchema = v.pipe(
                     "Destination directory for the solution template, relative to the project root. Required when template.enable is true.",
                 ),
             ),
+        ),
+        alias: v.optional(
+            v.pipe(
+                v.record(
+                    aliasNameSchema,
+                    v.pipe(
+                        v.string(),
+                        v.minLength(1),
+                        v.description(
+                            "Path of the source file this alias expands to, relative to the project root.",
+                        ),
+                    ),
+                ),
+                v.description(
+                    "Extra names for source files, accepted by neoj test in place of a path.",
+                ),
+            ),
+            {},
         ),
         login: v.optional(
             v.pipe(
@@ -370,6 +401,14 @@ function getIssueReason(issue: v.BaseIssue<unknown>, path: string): string {
     }
     if (path === "testcase.folder" && issue.type === "min_length") {
         return "Must not be empty.";
+    }
+    if (path.startsWith("alias.")) {
+        if (issue.type === "check") {
+            return 'Must not be ".", "..", or contain a path separator.';
+        }
+        if (issue.type === "min_length") {
+            return "Must not be empty.";
+        }
     }
 
     return "Does not satisfy the field validation rule.";

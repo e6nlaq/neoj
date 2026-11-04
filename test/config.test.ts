@@ -76,6 +76,7 @@ describe("loadConfig", () => {
 
         await expect(loadConfig()).resolves.toEqual({
             src: undefined,
+            alias: {},
             login: { open_browser: true },
             testcase: { folder: "test", filename: "sample-{}" },
             test: {
@@ -157,6 +158,15 @@ describe("loadConfig", () => {
         expect(errorMessage).not.toContain("do not show");
     });
 
+    it("rejects invalid alias names with a specific message", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), '[alias]\n"a/b" = "src/main.cpp"');
+
+        await expect(loadConfig()).rejects.toThrow(
+            'alias.a/b: Must not be ".", "..", or contain a path separator. (actual type: string)',
+        );
+    });
+
     it("merges global and project testcase settings", async () => {
         const { home, project } = await setTemporaryPaths();
         await Bun.write(
@@ -169,6 +179,7 @@ describe("loadConfig", () => {
         );
 
         await expect(loadConfig()).resolves.toEqual({
+            alias: {},
             login: { open_browser: true },
             testcase: { folder: "tests", filename: "case-{}" },
             test: {

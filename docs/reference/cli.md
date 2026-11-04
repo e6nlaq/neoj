@@ -83,9 +83,9 @@ directories match the stash exactly. See
 
 ### `test`
 
-| Argument   | Description                                     |
-| ---------- | ----------------------------------------------- |
-| `[source]` | Source file to test. Defaults to `test.source`. |
+| Argument   | Description                                                                    |
+| ---------- | ------------------------------------------------------------------------------ |
+| `[source]` | Source file to test. An `[alias]` name is accepted. Defaults to `test.source`. |
 
 Runs every `*.in` file in the test-case directory against the built program.
 

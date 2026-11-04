@@ -49,6 +49,7 @@ async function createProject(): Promise<string> {
 function createConfig(options: { src?: string; folder?: string } = {}): Config {
     return {
         src: options.src,
+        alias: {},
         login: { open_browser: true },
         testcase: { folder: options.folder ?? "test", filename: "sample-{}" },
         test: {

@@ -14,6 +14,7 @@ import {
     naturalCompare,
     readLanguages,
     resolveSourceFile,
+    resolveTestSource,
     runTests,
     type TestLanguage,
 } from "@/lib/util/test-runner";
@@ -39,9 +40,11 @@ function createConfig(options: {
     test?: Partial<Config["test"]>;
     languages?: Config["languages"];
     testcase?: Partial<Config["testcase"]>;
+    alias?: Config["alias"];
 }): Config {
     return {
         src: undefined,
+        alias: options.alias ?? {},
         login: { open_browser: true },
         testcase: { folder: "test", filename: "sample-{}", ...options.testcase },
         test: {
@@ -205,6 +208,99 @@ describe("resolveSourceFile", () => {
 
         await expect(resolveSourceFile(projectRoot, projectRoot, "src")).rejects.toThrow(
             "is not a regular file",
+        );
+    });
+});
+
+describe("resolveTestSource", () => {
+    async function createAliasProject(): Promise<{ projectRoot: string; canonicalRoot: string }> {
+        const projectRoot = await createProject();
+        await mkdir(join(projectRoot, "src"), { recursive: true });
+        await writeFile(join(projectRoot, "src", "main.ts"), "main");
+        await writeFile(join(projectRoot, "src", "other.ts"), "other");
+        return { projectRoot, canonicalRoot: await realpath(projectRoot) };
+    }
+
+    it("expands an alias from any working directory", async () => {
+        const { projectRoot } = await createAliasProject();
+        const config = createConfig({ alias: { main: "src/main.ts" } });
+
+        const fromRoot = await resolveTestSource(projectRoot, { source: "main", config }, "main");
+        const fromSubdirectory = await resolveTestSource(
+            projectRoot,
+            { source: "main", cwd: join(projectRoot, "src"), config },
+            "main",
+        );
+
+        expect(fromRoot.relativePath).toBe("src/main.ts");
+        expect(fromSubdirectory.relativePath).toBe("src/main.ts");
+    });
+
+    it("prefers an alias over a file with the same name", async () => {
+        const { projectRoot } = await createAliasProject();
+        await writeFile(join(projectRoot, "main"), "shadowed");
+
+        const resolved = await resolveTestSource(
+            projectRoot,
+            { source: "main", config: createConfig({ alias: { main: "src/main.ts" } }) },
+            "main",
+        );
+
+        expect(resolved.relativePath).toBe("src/main.ts");
+    });
+
+    it("still accepts a plain path", async () => {
+        const { projectRoot } = await createAliasProject();
+
+        const resolved = await resolveTestSource(
+            projectRoot,
+            { source: "src/other.ts", cwd: projectRoot, config: createConfig({}) },
+            "src/other.ts",
+        );
+
+        expect(resolved.relativePath).toBe("src/other.ts");
+    });
+
+    it("names the alias when its target is unusable", async () => {
+        const { projectRoot } = await createAliasProject();
+        const resolve = (source: string, alias: Config["alias"]) =>
+            resolveTestSource(projectRoot, { source, config: createConfig({ alias }) }, source);
+
+        await expect(resolve("main", { main: "src/none.ts" })).rejects.toThrow(
+            'Alias "main" points to "src/none.ts", which does not exist.',
+        );
+        await expect(resolve("up", { up: "../outside.ts" })).rejects.toThrow(
+            'Alias "up" points to "../outside.ts", which is outside the project.',
+        );
+        await expect(resolve("dir", { dir: "src" })).rejects.toThrow(
+            'Alias "dir" points to "src", which is not a regular file.',
+        );
+    });
+
+    it("lists the available aliases when nothing matches", async () => {
+        const { projectRoot } = await createAliasProject();
+        const config = createConfig({ alias: { main: "src/main.ts", old: "src/other.ts" } });
+
+        await expect(
+            resolveTestSource(projectRoot, { source: "nain", cwd: projectRoot, config }, "nain"),
+        ).rejects.toThrow(
+            'Neither a file nor an alias matches "nain". Available aliases: main, old.',
+        );
+        await expect(
+            resolveTestSource(
+                projectRoot,
+                { source: "nain", cwd: projectRoot, config: createConfig({}) },
+                "nain",
+            ),
+        ).rejects.toThrow("No aliases are defined in [alias].");
+    });
+
+    it("does not expand test.source", async () => {
+        const { projectRoot } = await createAliasProject();
+        const config = createConfig({ source: "main", alias: { main: "src/main.ts" } });
+
+        await expect(resolveTestSource(projectRoot, { config }, "main")).rejects.toThrow(
+            'Source file "main" does not exist',
         );
     });
 });
@@ -582,6 +678,26 @@ describe("runTests", () => {
         expect(result.results.map((item) => item.name)).toEqual(["sample-1"]);
         expect(result.exitCode).toBe(0);
         expect(out.text()).toContain("1 case(s): 1 passed, 0 failed, 0 unjudged");
+    });
+
+    it("runs the source an alias points at", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+        const err = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: { ...runnerConfig({}), alias: { fast: "main.ts" } },
+            source: "fast",
+            filters: ["sample-1"],
+            stdout: out.stream,
+            stderr: err.stream,
+        });
+
+        expect(result.results.map((item) => [item.name, item.verdict])).toEqual([
+            ["sample-1", "AC"],
+        ]);
+        expect(result.exitCode).toBe(0);
     });
 
     it("stops a program that exceeds the time limit", async () => {

@@ -23,6 +23,35 @@ Destination directory for the solution template, resolved from the project root.
 It is required when `template.enable = true`, must stay inside the project, must
 not pass through a symbolic link, and must not overlap `template.folder`.
 
+### `alias.<name>`
+
+| Type        | Default | Scope             |
+| ----------- | ------- | ----------------- |
+| string path | none    | global or project |
+
+An extra name that `neoj test` accepts instead of a source path:
+
+```toml
+[alias]
+main = "src/main.cpp"
+old = "archive/2019/a.cpp"
+```
+
+`neoj test main` then builds `src/main.cpp`. Each alias is one name mapped to one
+path:
+
+- The target is always resolved from the project root, so an alias works from
+  any subdirectory.
+- The target must exist, be a regular file, and stay inside the project. An
+  alias cannot point at another alias.
+- An alias wins when the same name is also a file; use `./main` to test that
+  file.
+- Only the positional argument of `neoj test` is matched against aliases.
+  `test.source` is always a literal path.
+- Names must be non-empty and must not be `.`, `..`, or contain `/` or `\`.
+- Matching is exact and case-sensitive. Identical names in the global and
+  project files resolve to the project value.
+
 ### `login.open_browser`
 
 | Type    | Default | Scope             |
@@ -293,6 +322,10 @@ How the template is applied to `src`:
 
 ```toml
 src = "src"
+
+[alias]
+main = "src/main.cpp"
+old = "archive/2019/a.cpp"
 
 [login]
 open_browser = true

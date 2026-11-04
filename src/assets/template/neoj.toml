@@ -9,6 +9,10 @@ folder = "test"
 [test]
 source = "src/main.cpp"
 
+# Extra names for source files: `neoj test main` builds src/main.cpp.
+# [alias]
+# main = "src/main.cpp"
+
 [languages.cpp]
 source = "src/**/*.cpp"
 compile = ["g++", "-std=c++23", "-O2", "-o", "{outfile}", "{source}"]

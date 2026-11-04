@@ -72,6 +72,27 @@ every language, and exactly one language must match. When several match, pass
 neoj test --language cpp
 ```
 
+### Save a name for a source file
+
+Register a short name in `[alias]` and pass it instead of the path:
+
+```toml
+[alias]
+main = "src/main.cpp"
+old = "archive/2019/a.cpp"
+```
+
+```bash
+neoj test main     # builds src/main.cpp
+neoj t old         # builds archive/2019/a.cpp
+```
+
+The target is resolved from the project root, so the same alias works from a
+subdirectory. An alias wins if a file with that name also exists (`neoj test
+./main` reaches the file), an alias cannot point at another alias, and
+`test.source` is never expanded. An unknown name is reported with the aliases
+you have defined.
+
 ## What a run does
 
 1. Resolves the source file and its language.

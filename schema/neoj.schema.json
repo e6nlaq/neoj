@@ -9,6 +9,22 @@
             "minLength": 1,
             "description": "Destination directory for the solution template, relative to the project root. Required when template.enable is true."
         },
+        "alias": {
+            "type": "object",
+            "propertyNames": {
+                "type": "string",
+                "description": "Alias name. Must not be \".\", \"..\", or contain a path separator.",
+                "pattern": "^(?!\\.{1,2}$)[^/\\\\]+$",
+                "minLength": 1
+            },
+            "additionalProperties": {
+                "type": "string",
+                "minLength": 1,
+                "description": "Path of the source file this alias expands to, relative to the project root."
+            },
+            "description": "Extra names for source files, accepted by neoj test in place of a path.",
+            "default": {}
+        },
         "login": {
             "type": "object",
             "properties": {
