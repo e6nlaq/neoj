@@ -16,6 +16,8 @@ import {
     resolveSourceFile,
     resolveTestSource,
     runTests,
+    buildSolution,
+    cleanupBuild,
     type TestLanguage,
 } from "@/lib/util/test-runner";
 
@@ -41,6 +43,7 @@ function createConfig(options: {
     languages?: Config["languages"];
     testcase?: Partial<Config["testcase"]>;
     alias?: Config["alias"];
+    run?: Partial<Config["run"]>;
 }): Config {
     return {
         src: undefined,
@@ -48,6 +51,7 @@ function createConfig(options: {
         login: { open_browser: true },
         testcase: { folder: "test", filename: "sample-{}", ...options.testcase },
         handmade: { filename: "handmade-{}" },
+        run: { silent: false, ...options.run },
         test: {
             source: options.source,
             timeout: 10,
@@ -519,6 +523,85 @@ describe("judgeCommandResult", () => {
         expect(judgeCommandResult({ ...base, exitCode: null, signal: "SIGSEGV" }).detail).toBe(
             "killed by SIGSEGV",
         );
+    });
+});
+
+describe("buildSolution", () => {
+    it("does not touch the test-case directory when {testdir} is unused", async () => {
+        const projectRoot = await createProject();
+        await writeFile(join(projectRoot, "main.ts"), "0");
+
+        const built = await buildSolution({
+            projectRoot,
+            command: "run",
+            config: createConfig({
+                source: "main.ts",
+                testcase: { folder: join(projectRoot, "invalid-absolute") },
+                languages: {
+                    ts: { source: "main.ts", run: [process.execPath, "main.ts"] },
+                },
+            }),
+        });
+
+        expect(built.testDirectory).toBeUndefined();
+        expect(built.runTokens).toEqual([process.execPath, "main.ts"]);
+        await cleanupBuild(built);
+    });
+
+    it("resolves the test-case directory when {testdir} is used", async () => {
+        const projectRoot = await createProject();
+        await writeFile(join(projectRoot, "main.ts"), "0");
+
+        const built = await buildSolution({
+            projectRoot,
+            command: "run",
+            config: createConfig({
+                source: "main.ts",
+                testcase: { folder: "samples" },
+                languages: {
+                    ts: { source: "main.ts", run: [process.execPath, "{testdir}"] },
+                },
+            }),
+        });
+
+        const expectedDirectory = join(await realpath(projectRoot), "samples");
+        expect(built.testDirectory).toBe(expectedDirectory);
+        expect(built.runTokens).toEqual([process.execPath, expectedDirectory]);
+    });
+
+    it("reports compiler output even when the compiled line is not requested", async () => {
+        const projectRoot = await createProject();
+        await writeFile(join(projectRoot, "main.ts"), "0");
+
+        const output: string[] = [];
+        const compiled: string[] = [];
+        await expect(
+            buildSolution({
+                projectRoot,
+                command: "run",
+                config: createConfig({
+                    source: "main.ts",
+                    languages: {
+                        ts: {
+                            source: "main.ts",
+                            compile: [
+                                process.execPath,
+                                "build",
+                                "missing.ts",
+                                "--outfile",
+                                "{outfile}",
+                            ],
+                            run: [process.execPath, "{outfile}"],
+                        },
+                    },
+                }),
+                onCompilerOutput: (chunk) => output.push(chunk),
+                onCompiled: (line) => compiled.push(line),
+            }),
+        ).rejects.toThrow("Compilation failed for languages.ts");
+
+        expect(output.join("\n")).toContain("error:");
+        expect(compiled).toEqual([]);
     });
 });
 

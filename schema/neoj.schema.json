@@ -142,6 +142,22 @@
                 "show_stderr": "always"
             }
         },
+        "run": {
+            "type": "object",
+            "properties": {
+                "silent": {
+                    "type": "boolean",
+                    "description": "Hide informational logs, such as the compile result, when neoj run executes a solution.",
+                    "default": false
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "How neoj builds and runs a solution directly.",
+            "default": {
+                "silent": false
+            }
+        },
         "languages": {
             "type": "object",
             "propertyNames": {

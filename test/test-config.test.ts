@@ -52,6 +52,13 @@ describe("test configuration", () => {
         );
     });
 
+    it("defaults run.silent to false and accepts a boolean", () => {
+        expect(parse({}).run).toEqual({ silent: false });
+        expect(parse({ run: { silent: true } }).run.silent).toBe(true);
+        expect(v.safeParse(configSchema, { run: { silent: "yes" } }).success).toBe(false);
+        expect(v.safeParse(configSchema, { run: { quiet: true } }).success).toBe(false);
+    });
+
     it("accepts a language with compile, run, limits, and extra cache inputs", () => {
         const config = parse({
             test: { source: "src/main.cpp", cache: true, ignore_trailing_space: true },

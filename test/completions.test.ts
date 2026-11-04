@@ -28,6 +28,7 @@ describe("buildCompletionModel", () => {
             "status",
             "stash",
             "test",
+            "run",
             "completions",
         ]);
         expect(model.commands.find((command) => command.name === "download")?.aliases).toEqual([
@@ -36,6 +37,7 @@ describe("buildCompletionModel", () => {
         expect(model.commands.find((command) => command.name === "handmade")?.aliases).toEqual([
             "h",
         ]);
+        expect(model.commands.find((command) => command.name === "run")?.aliases).toEqual(["r"]);
         expect(model.commands.find((command) => command.name === "completions")?.aliases).toEqual([
             "completion",
         ]);

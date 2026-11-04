@@ -7,6 +7,7 @@ import { applyHelpBanner } from "@/feature/help-banner";
 import { createInitCommand } from "@/feature/init";
 import { createLoginCommand } from "@/feature/login";
 import { createLogoutCommand } from "@/feature/logout";
+import { createRunCommand } from "@/feature/run";
 import { createStashCommand } from "@/feature/stash";
 import { createStatusCommand } from "@/feature/status";
 import { createTestCommand } from "@/feature/test";
@@ -17,6 +18,9 @@ export function createProgram(): Command {
     const program = new Command();
     program.name("neoj").version(version).description(description);
     applyHelpBanner(program);
+    // `neoj run` passes its arguments through to the program, which requires
+    // the root command to stop parsing options at the subcommand.
+    program.enablePositionalOptions();
 
     program.addCommand(createInitCommand());
     program.addCommand(createDownloadCommand());
@@ -26,6 +30,7 @@ export function createProgram(): Command {
     program.addCommand(createStatusCommand());
     program.addCommand(createStashCommand());
     program.addCommand(createTestCommand());
+    program.addCommand(createRunCommand());
     program.addCommand(createCompletionsCommand(program));
 
     return program;

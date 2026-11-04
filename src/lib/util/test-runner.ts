@@ -859,21 +859,44 @@ function defaultJobCount(caseCount: number): number {
     return Math.max(1, Math.min(cpuCount, caseCount));
 }
 
-/**
- * Build the selected source once, then run every test case and print a report.
- *
- * Throws for configuration, source, and compile problems; test failures are
- * reported through the returned exit code (`2`) instead.
- */
-export async function runTests(options: RunTestsOptions): Promise<RunTestsResult> {
-    const stdout = options.stdout ?? process.stdout;
-    const stderr = options.stderr ?? process.stderr;
-    const styles = createAnsiStyles(supportsColor(stdout));
-    const columns =
-        (stdout as { columns?: number }).columns === undefined
-            ? 80
-            : Math.max(40, (stdout as { columns?: number }).columns!);
+export interface BuildSolutionOptions {
+    projectRoot: string;
+    config: Config;
+    /** Command that requested the build; used to word the missing-source error. */
+    command: "test" | "run";
+    /** Base directory for a positional source path; defaults to the process directory. */
+    cwd?: string;
+    source?: string;
+    language?: string;
+    cache?: boolean;
+    /** Test-case directory the caller already resolved for `{testdir}`. */
+    testDirectory?: string;
+    /** Receives the compiler's own output, without a trailing newline. */
+    onCompilerOutput?: (chunk: string) => void;
+    /** Receives the "compiled" line, without a trailing newline. */
+    onCompiled?: (line: string) => void;
+    /** Receives the "reused the cached build" line, without a trailing newline. */
+    onCached?: (line: string) => void;
+}
 
+export interface BuiltSolution {
+    projectRoot: string;
+    language: TestLanguage;
+    /** Defined when `{testdir}` was needed or the caller supplied a directory. */
+    testDirectory: string | undefined;
+    runTokens: string[];
+    buildDirectory: string;
+    outfilePath: string;
+    cacheEnabled: boolean;
+    buildDirectoryCreated: boolean;
+}
+
+/**
+ * Resolve the source, compile it when needed, and return the command that runs it.
+ *
+ * Throws for configuration, source, and compile problems.
+ */
+export async function buildSolution(options: BuildSolutionOptions): Promise<BuiltSolution> {
     const projectRoot = await realpath(options.projectRoot);
     const languages = readLanguages(options.config);
     if (languages.size === 0) {
@@ -885,29 +908,18 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
     const spec = options.source ?? options.config.test.source;
     if (spec === undefined || spec.trim() === "") {
         throw new Error(
-            'No source file to test. Set test.source in neoj.toml or run "neoj test <source>".',
+            `No source file to ${options.command}. Set test.source in neoj.toml or run "neoj ${options.command} <source>".`,
         );
     }
 
     const resolved = await resolveTestSource(projectRoot, options, spec);
     const language = detectLanguage(languages, resolved.relativePath, options.language);
 
-    const timeoutSeconds =
-        options.timeoutSeconds ?? language.timeoutSeconds ?? options.config.test.timeout;
-    const memoryMiB = options.memoryMiB ?? language.memoryMiB ?? options.config.test.memory;
-    const comparison: ComparisonOptions = {
-        ignoreTrailingSpace:
-            options.ignoreTrailingSpace ?? options.config.test.ignore_trailing_space,
-        ignoreTrailingNewline:
-            options.ignoreTrailingNewline ?? options.config.test.ignore_trailing_newline,
-    };
-    const showStderr = options.showStderr ?? options.config.test.show_stderr;
-
-    const testDirectory = await resolveTestcaseDirectory(
-        projectRoot,
-        options.config.testcase.folder,
-    );
-    const cases = await discoverTestCases(testDirectory, options.filters ?? []);
+    const testDirectory =
+        options.testDirectory ??
+        ([...(language.compile ?? []), ...language.run].some((token) => token.includes("{testdir}"))
+            ? await resolveTestcaseDirectory(projectRoot, options.config.testcase.folder)
+            : undefined);
 
     const cacheEnabled = options.cache ?? options.config.test.cache;
     const cacheFiles = await collectCacheFiles(projectRoot, language.cacheFiles);
@@ -933,7 +945,7 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         outfile: outfilePath,
         outdir: buildDirectory,
         dir: projectRoot,
-        testdir: testDirectory,
+        testdir: testDirectory ?? "",
     };
 
     const label = `languages.${language.key}`;
@@ -949,27 +961,18 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
             throw new Error(`${label}.compile must reference {outfile} or {outdir}.`);
         }
     }
-    // Expand once before compiling so that unknown placeholders fail early.
+    // Fail on unknown placeholders before running the compiler.
     expandTokens(language.run, placeholders, `${label}.run`);
 
-    const progress = createProgressBar({
-        total: cases.length,
-        label: "Testing",
-        stream: stderr,
-        enabled: (options.progress ?? true) && stderr.isTTY === true,
-    });
-
-    let buildCreated = false;
+    let buildDirectoryCreated = false;
     try {
         if (compileTokens !== undefined) {
             if (cacheEnabled && existsSync(resolveExecutablePath(outfilePath))) {
-                if (options.verbose === true) {
-                    stderr.write(`Reused the cached build for ${label}.\n`);
-                }
+                options.onCached?.(`Reused the cached build for ${label}.`);
             } else {
                 await rm(buildDirectory, { recursive: true, force: true });
                 await mkdir(buildDirectory, { recursive: true });
-                buildCreated = true;
+                buildDirectoryCreated = true;
 
                 const compiled = await runCommand({
                     argv: compileTokens,
@@ -978,10 +981,10 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
                 });
                 if (compiled.timedOut || compiled.exitCode !== 0) {
                     if (compiled.stdout.trim() !== "") {
-                        stderr.write(`${compiled.stdout.trimEnd()}\n`);
+                        options.onCompilerOutput?.(compiled.stdout.trimEnd());
                     }
                     if (compiled.stderr.trim() !== "") {
-                        stderr.write(`${compiled.stderr.trimEnd()}\n`);
+                        options.onCompilerOutput?.(compiled.stderr.trimEnd());
                     }
                     throw new Error(
                         compiled.timedOut
@@ -990,11 +993,13 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
                     );
                 }
 
-                stderr.write(`Compiled ${label} in ${formatDuration(compiled.durationMs)}.\n`);
+                options.onCompiled?.(
+                    `Compiled ${label} in ${formatDuration(compiled.durationMs)}.`,
+                );
             }
         } else if (language.run.some((token) => token.includes("{outdir}"))) {
             await mkdir(buildDirectory, { recursive: true });
-            buildCreated = true;
+            buildDirectoryCreated = true;
         }
 
         const runTokens = expandTokens(
@@ -1003,13 +1008,94 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
             `${label}.run`,
         );
 
+        return {
+            projectRoot,
+            language,
+            testDirectory,
+            runTokens,
+            buildDirectory,
+            outfilePath,
+            cacheEnabled,
+            buildDirectoryCreated,
+        };
+    } catch (error) {
+        if (!cacheEnabled && buildDirectoryCreated) {
+            await rm(buildDirectory, { recursive: true, force: true });
+        }
+        throw error;
+    }
+}
+
+/** Delete the build directory after a run, unless the build is cached. */
+export async function cleanupBuild(solution: BuiltSolution): Promise<void> {
+    if (!solution.cacheEnabled && solution.buildDirectoryCreated) {
+        await rm(solution.buildDirectory, { recursive: true, force: true });
+    }
+}
+
+/**
+ * Build the selected source once, then run every test case and print a report.
+ *
+ * Throws for configuration, source, and compile problems; test failures are
+ * reported through the returned exit code (`2`) instead.
+ */
+export async function runTests(options: RunTestsOptions): Promise<RunTestsResult> {
+    const stdout = options.stdout ?? process.stdout;
+    const stderr = options.stderr ?? process.stderr;
+    const styles = createAnsiStyles(supportsColor(stdout));
+    const columns =
+        (stdout as { columns?: number }).columns === undefined
+            ? 80
+            : Math.max(40, (stdout as { columns?: number }).columns!);
+
+    const projectRoot = await realpath(options.projectRoot);
+    const testDirectory = await resolveTestcaseDirectory(
+        projectRoot,
+        options.config.testcase.folder,
+    );
+    const cases = await discoverTestCases(testDirectory, options.filters ?? []);
+
+    const built = await buildSolution({
+        projectRoot,
+        config: options.config,
+        command: "test",
+        cwd: options.cwd,
+        source: options.source,
+        language: options.language,
+        cache: options.cache,
+        testDirectory,
+        onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
+        onCompiled: (line) => stderr.write(`${line}\n`),
+        onCached: options.verbose === true ? (line) => stderr.write(`${line}\n`) : undefined,
+    });
+    const language = built.language;
+
+    const timeoutSeconds =
+        options.timeoutSeconds ?? language.timeoutSeconds ?? options.config.test.timeout;
+    const memoryMiB = options.memoryMiB ?? language.memoryMiB ?? options.config.test.memory;
+    const comparison: ComparisonOptions = {
+        ignoreTrailingSpace:
+            options.ignoreTrailingSpace ?? options.config.test.ignore_trailing_space,
+        ignoreTrailingNewline:
+            options.ignoreTrailingNewline ?? options.config.test.ignore_trailing_newline,
+    };
+    const showStderr = options.showStderr ?? options.config.test.show_stderr;
+
+    const progress = createProgressBar({
+        total: cases.length,
+        label: "Testing",
+        stream: stderr,
+        enabled: (options.progress ?? true) && stderr.isTTY === true,
+    });
+
+    try {
         const parallel = options.parallel ?? options.config.test.parallel;
         const jobCount = !parallel ? 1 : (options.jobs ?? defaultJobCount(cases.length));
         const jobLimit = Math.max(1, Math.min(jobCount, cases.length));
 
         const context: CaseContext = {
             projectRoot,
-            runTokens,
+            runTokens: built.runTokens,
             timeoutSeconds,
             memoryMiB,
             comparison,
@@ -1082,8 +1168,6 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         return { results, exitCode: counters.failed > 0 ? 2 : 0 };
     } finally {
         progress.finish();
-        if (!cacheEnabled && buildCreated) {
-            await rm(buildDirectory, { recursive: true, force: true });
-        }
+        await cleanupBuild(built);
     }
 }

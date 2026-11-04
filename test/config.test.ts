@@ -77,6 +77,7 @@ describe("loadConfig", () => {
         await expect(loadConfig()).resolves.toEqual({
             src: undefined,
             alias: {},
+            run: { silent: false },
             login: { open_browser: true },
             testcase: { folder: "test", filename: "sample-{}" },
             handmade: { filename: "handmade-{}" },
@@ -181,6 +182,7 @@ describe("loadConfig", () => {
 
         await expect(loadConfig()).resolves.toEqual({
             alias: {},
+            run: { silent: false },
             login: { open_browser: true },
             testcase: { folder: "tests", filename: "case-{}" },
             handmade: { filename: "handmade-{}" },
@@ -209,6 +211,14 @@ describe("loadConfig", () => {
         await expect(loadConfig()).resolves.toMatchObject({
             stash: { auto_stash: true, auto_apply: true, force: true },
         });
+    });
+
+    it("lets the project file override run.silent from the global file", async () => {
+        const { home, project } = await setTemporaryPaths();
+        await Bun.write(join(home, ".neoj.toml"), "[run]\nsilent = true");
+        await Bun.write(join(project, "neoj.toml"), "[run]\nsilent = false");
+
+        await expect(loadConfig()).resolves.toMatchObject({ run: { silent: false } });
     });
 
     it("rejects invalid testcase filename patterns", async () => {

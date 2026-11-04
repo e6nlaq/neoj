@@ -12,6 +12,7 @@
 | `neoj status [--offline]`                             | Show the login status of every supported platform.                          |
 | `neoj stash [save\|list\|apply\|pop\|drop\|clear]`    | Save and restore the working files of the current problem.                  |
 | `neoj test [source]` (alias: `neoj t`)                | Build the solution and run it against the sample tests.                     |
+| `neoj run [source] [args...]` (alias: `neoj r`)       | Build the solution and run it without tests, forwarding `args`.             |
 | `neoj completions <shell>` (alias: `neoj completion`) | Print a completion script for bash, zsh, fish, or PowerShell.               |
 
 ### `init`
@@ -137,6 +138,39 @@ Runs every `*.in` file in the test-case directory against the built program.
 
 See [Build and run the sample tests](../how-to/run-tests.md).
 
+### `run`
+
+| Argument    | Description                                                                   |
+| ----------- | ----------------------------------------------------------------------------- |
+| `[source]`  | Source file to run. An `[alias]` name is accepted. Defaults to `test.source`. |
+| `[args...]` | Arguments passed to the program verbatim.                                     |
+
+Builds the source and runs it with the terminal attached: standard input,
+output, and error belong to the program, and no time limit, memory limit, or
+output cap is applied. The test-case directory is not read, so `neoj run` works
+without `test/`.
+
+| Option                   | Description                                                  |
+| ------------------------ | ------------------------------------------------------------ |
+| `-l`, `--language <key>` | Use this `[languages.<key>]` entry instead of detecting one. |
+| `--cache` / `--no-cache` | Keep or delete the compiled program under `.neoj/build/`.    |
+| `--silent`               | Hide informational logs such as `Compiled ... in N ms.`.     |
+
+Everything after the source goes to the program, so `neoj` options must come
+first. `--` before the source keeps `test.source` and forwards everything after
+it:
+
+```bash
+neoj run src/main.cpp -x 1       # -x 1 goes to the program
+neoj run -l cpp -- -x 1          # test.source + -x 1
+neoj run --silent src/main.cpp   # neoj parses --silent
+neoj run src/main.cpp --silent   # --silent goes to the program
+```
+
+`--silent` only hides informational logs. The compiler's own diagnostics and
+every error message are still printed to standard error. See
+[Run a solution without tests](../how-to/run-a-solution.md).
+
 ### `completions`
 
 | Argument  | Description                                                                |
@@ -159,7 +193,7 @@ examples. PowerShell completion requires `pwsh` 7.2 or later.
 | Path                 | Description                                                                                                 |
 | -------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `<testcase.folder>/` | Sample and handmade inputs and outputs; `test/` by default.                                                 |
-| `.neoj/build/`       | Compiled programs, one directory per cache key when `test.cache` is enabled.                                |
+| `.neoj/build/`       | Compiled programs, one directory per cache key when `test.cache` is enabled; shared by `test` and `run`.    |
 | `.neoj/problem.json` | URL of the last successful download. AtCoder also stores its contest window; yukicoder stores only the URL. |
 | `.neoj/stash/`       | Per-problem snapshots of `src` and the test-case directory.                                                 |
 | `neoj.toml`          | Project configuration.                                                                                      |
@@ -178,3 +212,7 @@ an error. Partial failures, such as an unreadable template file, also set `1`.
 configuration, or environment error, and `2` when at least one case failed
 (`WA`, `TLE`, `MLE`, or `RE`). Cases without an expected output are reported as
 `UNJUDGED` and do not change the exit status.
+
+`neoj run` exits with the program's own exit code. A configuration, compile, or
+start error sets `1`, and a program killed by a signal also sets `1` after a
+one-line notice (hidden by `--silent`).

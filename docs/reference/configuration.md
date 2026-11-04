@@ -202,6 +202,18 @@ of:
 Lines are printed as captured, without color and without a line limit, under a
 `stderr:` label. `--show-stderr <mode>` overrides the setting for one run.
 
+### `run.silent`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `false` | global or project |
+
+Hide `neoj run`'s informational logs, such as `Compiled languages.cpp in 41 ms.`
+and the cache-reuse line. Compiler diagnostics and every error message are still
+printed to standard error. `--silent` turns it on for one run; options must come
+before the source file, so `neoj run src/main.cpp --silent` forwards `--silent`
+to the program instead.
+
 ### `languages.<key>.source`
 
 | Type                  | Default  | Scope             |
@@ -363,6 +375,9 @@ cache = false
 ignore_trailing_space = false
 ignore_trailing_newline = false
 show_stderr = "always"
+
+[run]
+silent = false
 
 [languages.cpp]
 source = "src/**/*.cpp"

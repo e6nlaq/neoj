@@ -262,6 +262,23 @@ export const configSchema = v.pipe(
                 show_stderr: "always",
             },
         ),
+        run: v.optional(
+            v.pipe(
+                v.strictObject({
+                    silent: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Hide informational logs, such as the compile result, when neoj run executes a solution.",
+                            ),
+                        ),
+                        false,
+                    ),
+                }),
+                v.description("How neoj builds and runs a solution directly."),
+            ),
+            { silent: false },
+        ),
         languages: v.optional(
             v.pipe(
                 v.record(v.pipe(v.string(), v.minLength(1)), languageSchema),

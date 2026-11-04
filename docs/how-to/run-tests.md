@@ -229,6 +229,7 @@ and `--no-cache` removes that run's build directory when it finishes.
 
 ## Related
 
+- [Run a solution without tests](run-a-solution.md)
 - [Configure a project](configure-project.md)
 - [Download sample tests](download-samples.md)
 - [Create a test case by hand](create-handmade-tests.md)
