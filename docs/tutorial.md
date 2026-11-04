@@ -75,6 +75,7 @@ need a C++ compiler on your `PATH`.
 
 - [Change the test folder or file names](how-to/configure-project.md).
 - [Add a language or tune the limits](how-to/run-tests.md).
+- [Create a test case by hand](how-to/create-handmade-tests.md).
 - [Stash your work before switching problems](how-to/stash-work.md).
 - [Log in](how-to/manage-sessions.md) if a problem requires an account.
 - [Look up every command and flag](reference/cli.md).

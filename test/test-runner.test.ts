@@ -47,6 +47,7 @@ function createConfig(options: {
         alias: options.alias ?? {},
         login: { open_browser: true },
         testcase: { folder: "test", filename: "sample-{}", ...options.testcase },
+        handmade: { filename: "handmade-{}" },
         test: {
             source: options.source,
             timeout: 10,

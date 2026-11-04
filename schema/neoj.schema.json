@@ -47,7 +47,7 @@
                 "folder": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "Directory that receives downloaded samples, relative to the project root.",
+                    "description": "Directory that receives downloaded samples and handmade test cases, relative to the project root.",
                     "default": "test"
                 },
                 "filename": {
@@ -63,6 +63,23 @@
             "default": {
                 "folder": "test",
                 "filename": "sample-{}"
+            }
+        },
+        "handmade": {
+            "type": "object",
+            "properties": {
+                "filename": {
+                    "type": "string",
+                    "description": "Base name for each handmade test case. Must contain exactly one {} that is replaced by the case number.",
+                    "pattern": "^[^<>:\"/\\\\|?*{}]*\\{\\}[^<>:\"/\\\\|?*{}]*$",
+                    "default": "handmade-{}"
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "How neoj writes test cases created by hand.",
+            "default": {
+                "filename": "handmade-{}"
             }
         },
         "test": {

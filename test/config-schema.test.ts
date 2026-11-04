@@ -26,12 +26,16 @@ describe("config JSON Schema", () => {
         const schema = buildConfigJsonSchema() as {
             properties: {
                 testcase: { properties: { filename: { pattern: string } } };
+                handmade: { properties: { filename: { pattern: string } } };
                 template: { properties: { mode: { enum: string[] } } };
             };
             allOf: unknown[];
         };
 
         expect(schema.properties.testcase.properties.filename.pattern).toBe(
+            '^[^<>:"/\\\\|?*{}]*\\{\\}[^<>:"/\\\\|?*{}]*$',
+        );
+        expect(schema.properties.handmade.properties.filename.pattern).toBe(
             '^[^<>:"/\\\\|?*{}]*\\{\\}[^<>:"/\\\\|?*{}]*$',
         );
         expect(schema.properties.template.properties.mode.enum).toEqual(["overlay", "replace"]);

@@ -52,6 +52,7 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
         alias: {},
         login: { open_browser: true },
         testcase: { folder: options.folder ?? "test", filename: "sample-{}" },
+        handmade: { filename: "handmade-{}" },
         test: {
             source: undefined,
             timeout: 10,

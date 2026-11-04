@@ -179,6 +179,19 @@ neoj test -f sample-1 sample-3
 The names are the file names without `.in`, and they must match exactly. Unknown
 names are reported with the available cases.
 
+## Add a case by hand
+
+When the samples do not cover a case you want to check, create one from the
+terminal:
+
+```bash
+neoj handmade
+```
+
+Type the input, finish it with a blank line, then type the expected output and
+finish it the same way. The files are written only after both blocks are
+complete. See [Create a test case by hand](create-handmade-tests.md).
+
 ## Limits
 
 - `test.timeout` defaults to 10 seconds. `neoj test -t 2` or
@@ -218,5 +231,6 @@ and `--no-cache` removes that run's build directory when it finishes.
 
 - [Configure a project](configure-project.md)
 - [Download sample tests](download-samples.md)
+- [Create a test case by hand](create-handmade-tests.md)
 - [Configuration reference](../reference/configuration.md)
 - [CLI reference](../reference/cli.md)

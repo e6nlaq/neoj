@@ -79,6 +79,7 @@ describe("loadConfig", () => {
             alias: {},
             login: { open_browser: true },
             testcase: { folder: "test", filename: "sample-{}" },
+            handmade: { filename: "handmade-{}" },
             test: {
                 source: undefined,
                 timeout: 10,
@@ -182,6 +183,7 @@ describe("loadConfig", () => {
             alias: {},
             login: { open_browser: true },
             testcase: { folder: "tests", filename: "case-{}" },
+            handmade: { filename: "handmade-{}" },
             test: {
                 source: undefined,
                 timeout: 10,
@@ -224,6 +226,25 @@ describe("loadConfig", () => {
 
         await expect(loadConfig()).rejects.toThrow(
             `testcase.filename: Must contain exactly one {} and be a file name. (actual type: string)`,
+        );
+    });
+
+    it("merges handmade filename patterns from the global and project files", async () => {
+        const { home, project } = await setTemporaryPaths();
+        await Bun.write(join(home, ".neoj.toml"), '[handmade]\nfilename = "hand-{}"');
+        await Bun.write(join(project, "neoj.toml"), '[handmade]\nfilename = "case-{}"');
+
+        await expect(loadConfig()).resolves.toMatchObject({
+            handmade: { filename: "case-{}" },
+        });
+    });
+
+    it("rejects invalid handmade filename patterns", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), '[handmade]\nfilename = "handmade"');
+
+        await expect(loadConfig()).rejects.toThrow(
+            `handmade.filename: Must contain exactly one {} and be a file name. (actual type: string)`,
         );
     });
 });

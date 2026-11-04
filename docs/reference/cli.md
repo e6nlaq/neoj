@@ -6,6 +6,7 @@
 | ----------------------------------------------------- | --------------------------------------------------------------------------- |
 | `neoj init [--force]`                                 | Copy the bundled templates into the current project.                        |
 | `neoj download <url>` (alias: `neoj d`)               | Download a problem's sample tests into the test-case directory.             |
+| `neoj handmade` (alias: `neoj h`)                     | Create a handmade test case from interactive input.                         |
 | `neoj login <platform>`                               | Log in to a platform. The supported names are `atcoder` and `yukicoder`.    |
 | `neoj logout [--service <name...>]`                   | Log out of the given platforms, or of every platform when no name is given. |
 | `neoj status [--offline]`                             | Show the login status of every supported platform.                          |
@@ -30,6 +31,36 @@ directory when none is found. The search stops at the repository root.
 
 Requires an initialized project. See
 [Download sample tests](../how-to/download-samples.md).
+
+### `handmade`
+
+Reads one test case from the terminal and writes it into the test-case directory:
+
+```text
+$ neoj handmade
+test/handmade-1.in and test/handmade-1.out will be created.
+input> 1 2
+input>
+
+output> 3
+output>
+✔ Created test/handmade-1.in and test/handmade-1.out.
+```
+
+Enter the input line by line and finish the block with a blank line, then do the
+same for the expected output; a blank line separates the two blocks. Both files
+are written only after the output block has been closed, so an interrupted
+session leaves no files behind. Ctrl-C, or Ctrl-D (Ctrl-Z on Windows), cancels
+the command without writing.
+
+The command takes the next free case number, so existing cases are never
+replaced. The directory comes from `testcase.folder` and the file names from
+`handmade.filename` (default `handmade-{}`). It needs an interactive terminal and
+an initialized project. See
+[Create a test case by hand](../how-to/create-handmade-tests.md).
+
+`neoj download` replaces the whole test-case directory, so handmade files placed
+there are removed by the next download.
 
 ### `login`
 
@@ -127,7 +158,7 @@ examples. PowerShell completion requires `pwsh` 7.2 or later.
 
 | Path                 | Description                                                                                                 |
 | -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `<testcase.folder>/` | Sample inputs and outputs; `test/` by default.                                                              |
+| `<testcase.folder>/` | Sample and handmade inputs and outputs; `test/` by default.                                                 |
 | `.neoj/build/`       | Compiled programs, one directory per cache key when `test.cache` is enabled.                                |
 | `.neoj/problem.json` | URL of the last successful download. AtCoder also stores its contest window; yukicoder stores only the URL. |
 | `.neoj/stash/`       | Per-problem snapshots of `src` and the test-case directory.                                                 |
@@ -141,6 +172,7 @@ examples. PowerShell completion requires `pwsh` 7.2 or later.
 
 `neoj` exits with `0` after a successful command and `1` when a command reports
 an error. Partial failures, such as an unreadable template file, also set `1`.
+`neoj handmade` sets `1` when it is cancelled before both blocks are complete.
 
 `neoj test` uses three values: `0` when every case passed, `1` for a compile,
 configuration, or environment error, and `2` when at least one case failed

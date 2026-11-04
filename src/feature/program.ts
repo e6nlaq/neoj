@@ -2,6 +2,7 @@ import { Command } from "@commander-js/extra-typings";
 
 import { createCompletionsCommand } from "@/feature/completions";
 import { createDownloadCommand } from "@/feature/download";
+import { createHandmadeCommand } from "@/feature/handmade";
 import { applyHelpBanner } from "@/feature/help-banner";
 import { createInitCommand } from "@/feature/init";
 import { createLoginCommand } from "@/feature/login";
@@ -19,6 +20,7 @@ export function createProgram(): Command {
 
     program.addCommand(createInitCommand());
     program.addCommand(createDownloadCommand());
+    program.addCommand(createHandmadeCommand());
     program.addCommand(createLoginCommand());
     program.addCommand(createLogoutCommand());
     program.addCommand(createStatusCommand());

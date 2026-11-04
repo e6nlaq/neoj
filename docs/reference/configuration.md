@@ -68,9 +68,10 @@ this is `false` or when the browser cannot be opened (for example over SSH).
 | ----------- | ------- | ----------------- |
 | string path | `test`  | global or project |
 
-Directory that receives downloaded samples. The path is resolved from the project
-root (the directory containing the nearest `neoj.toml`). It must stay inside the
-project, must not pass through a symbolic link, and must not target `.git`.
+Directory that receives downloaded samples and handmade test cases. The path is
+resolved from the project root (the directory containing the nearest
+`neoj.toml`). It must stay inside the project, must not pass through a symbolic
+link, and must not target `.git`.
 
 Each download replaces the whole directory, so files placed there by hand are
 removed.
@@ -87,6 +88,22 @@ replaced by the 1-based sample number, and must be a valid file name: no
 
 Sample `n` is written as `<name>.in` and `<name>.out`, so the default produces
 `sample-1.in`, `sample-1.out`, and so on.
+
+### `handmade.filename`
+
+| Type   | Default       | Scope             |
+| ------ | ------------- | ----------------- |
+| string | `handmade-{}` | global or project |
+
+Base name for test cases created by `neoj handmade`. It follows the same rules as
+`testcase.filename`: exactly one `{}` replaced by the 1-based case number, and a
+valid file name. Case `n` is written as `<name>.in` and `<name>.out` in
+`testcase.folder`.
+
+The number is the smallest one whose `.in` and `.out` files do not exist yet, so
+a new case never replaces an existing one. Handmade cases live in the same
+directory as downloaded samples and are removed when `neoj download` replaces
+that directory.
 
 ### `download.show_sample`
 
@@ -333,6 +350,9 @@ open_browser = true
 [testcase]
 folder = "test"
 filename = "sample-{}"
+
+[handmade]
+filename = "handmade-{}"
 
 [test]
 source = "src/main.cpp"

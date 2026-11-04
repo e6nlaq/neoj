@@ -38,6 +38,7 @@ contest platforms.
 - [Set up editor completions](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/setup-editor-completions.md)
 - [Log in, check status, and log out](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/manage-sessions.md)
 - [Download sample tests](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/download-samples.md)
+- [Create a test case by hand](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/create-handmade-tests.md)
 - [Build and run the sample tests](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/run-tests.md)
 - [Stash and restore work per problem](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/stash-work.md)
 - [Configure a project](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/configure-project.md)

@@ -31,7 +31,8 @@ repository root, so you can run it from a subdirectory of the project.
 2. Saves the previous problem's working files when `stash.auto_stash = true` and
    the problem changed.
 3. Replaces the test-case folder (`test/` by default) with `sample-*.in` and
-   `sample-*.out` files, one pair per sample.
+   `sample-*.out` files, one pair per sample. Files you placed there, including
+   handmade cases, are removed.
 4. Applies the project template to `src/` when `template.enable = true`.
 5. Restores the downloaded problem's stash when `stash.auto_apply = true`, the
    problem changed, and a stash exists.

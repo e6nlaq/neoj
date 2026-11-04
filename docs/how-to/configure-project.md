@@ -27,12 +27,17 @@ are printed either way, so set it to `false` on headless or SSH sessions.
 [testcase]
 folder = "test"
 filename = "sample-{}"
+
+[handmade]
+filename = "handmade-{}"
 ```
 
 - `folder` must be a relative path inside the project and must not pass through
   a symbolic link.
 - `filename` must be a plain file name containing exactly one `{}`, which is
   replaced by the 1-based sample number.
+- `handmade.filename` names the cases created by `neoj handmade`. They use the
+  same `folder` and the same `{}` rules, and get the next free number.
 
 Relative folders are resolved from the directory containing the nearest project
 `neoj.toml`. Downloading replaces the folder without prompting.

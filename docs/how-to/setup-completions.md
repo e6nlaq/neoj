@@ -65,7 +65,7 @@ completion is not available there.
 
 ## What is completed
 
-- Commands, their aliases (`d`, `completion`), and subcommands such as
+- Commands, their aliases (`d`, `h`, `completion`), and subcommands such as
   `login atcoder` and `stash save`.
 - Options for nested commands such as `neoj login atcoder` and
   `neoj stash save`.

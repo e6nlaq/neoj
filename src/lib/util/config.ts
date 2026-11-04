@@ -5,23 +5,29 @@ import * as v from "valibot";
 
 import { findProjectConfig } from "./project";
 
-const testcaseFilenameSchema = v.pipe(
-    v.string(),
-    v.metadata({
-        pattern: '^[^<>:"/\\\\|?*{}]*\\{\\}[^<>:"/\\\\|?*{}]*$',
-        description:
-            "Base name for each sample file. Must contain exactly one {} that is replaced by the sample number.",
-    }),
-    v.check((pattern) => {
-        const invalidFileNameCharacters = '<>:"/\\|?*';
-        return (
-            pattern.split("{}").length === 2 &&
-            !Array.from(pattern).some(
-                (character) =>
-                    invalidFileNameCharacters.includes(character) || character.charCodeAt(0) < 32,
-            )
-        );
-    }, "testcase.filename must contain exactly one {} and be a file name."),
+function createFilenamePatternSchema(description: string) {
+    return v.pipe(
+        v.string(),
+        v.metadata({
+            pattern: '^[^<>:"/\\\\|?*{}]*\\{\\}[^<>:"/\\\\|?*{}]*$',
+            description,
+        }),
+        v.check((pattern) => {
+            const invalidFileNameCharacters = '<>:"/\\|?*';
+            return (
+                pattern.split("{}").length === 2 &&
+                !Array.from(pattern).some(
+                    (character) =>
+                        invalidFileNameCharacters.includes(character) ||
+                        character.charCodeAt(0) < 32,
+                )
+            );
+        }, "Filename must contain exactly one {} and be a file name."),
+    );
+}
+
+const testcaseFilenameSchema = createFilenamePatternSchema(
+    "Base name for each sample file. Must contain exactly one {} that is replaced by the sample number.",
 );
 
 /** How much of the program's standard error `neoj test` prints. */
@@ -149,7 +155,7 @@ export const configSchema = v.pipe(
                             v.string(),
                             v.minLength(1),
                             v.description(
-                                "Directory that receives downloaded samples, relative to the project root.",
+                                "Directory that receives downloaded samples and handmade test cases, relative to the project root.",
                             ),
                         ),
                         "test",
@@ -159,6 +165,20 @@ export const configSchema = v.pipe(
                 v.description("Where and how sample tests are written."),
             ),
             { folder: "test", filename: "sample-{}" },
+        ),
+        handmade: v.optional(
+            v.pipe(
+                v.strictObject({
+                    filename: v.optional(
+                        createFilenamePatternSchema(
+                            "Base name for each handmade test case. Must contain exactly one {} that is replaced by the case number.",
+                        ),
+                        "handmade-{}",
+                    ),
+                }),
+                v.description("How neoj writes test cases created by hand."),
+            ),
+            { filename: "handmade-{}" },
         ),
         test: v.optional(
             v.pipe(
@@ -396,7 +416,7 @@ function getIssueReason(issue: v.BaseIssue<unknown>, path: string): string {
     if (issue.kind === "schema") {
         return `Expected ${issue.expected ?? "a valid value"}.`;
     }
-    if (path === "testcase.filename" && issue.type === "check") {
+    if ((path === "testcase.filename" || path === "handmade.filename") && issue.type === "check") {
         return "Must contain exactly one {} and be a file name.";
     }
     if (path === "testcase.folder" && issue.type === "min_length") {
