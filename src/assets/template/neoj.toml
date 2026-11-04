@@ -8,6 +8,7 @@ folder = "test"
 
 [test]
 source = "src/main.cpp"
+cache = true
 
 # Extra names for source files: `neoj test main` builds src/main.cpp.
 # [alias]
