@@ -659,6 +659,25 @@ describe("runTests", () => {
         expect(out.text()).toContain("UNJUDGED (expected output missing)");
     });
 
+    it("prints the peak memory of each case and the maximums in the summary", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            filters: ["sample-1"],
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(text).toMatch(/^✓ sample-1\s+[\d.]+ (?:ms|s)\s+(?:\d+|\?) MiB  AC$/mu);
+        expect(text).toMatch(
+            /\([\d.]+ (?:ms|s); slowest [\d.]+ (?:ms|s), peak (?:\d+|\?) MiB\)\./u,
+        );
+    });
+
     it("shows the input and the comparison as numbered tables for a wrong answer", async () => {
         const projectRoot = await createRunnerProject();
         const out = createCapture();

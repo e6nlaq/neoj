@@ -564,6 +564,11 @@ function formatMiB(bytes: number): string {
     return `${Math.round(bytes / (1024 * 1024))} MiB`;
 }
 
+/** Peak memory of one case, or `? MiB` when the platform does not report it. */
+function formatMemory(bytes: number | undefined): string {
+    return bytes === undefined ? "? MiB" : formatMiB(bytes);
+}
+
 /** Split captured output into lines, dropping a trailing empty line. */
 function outputLines(text: string): string[] {
     const normalized = text.replace(/\r\n/gu, "\n").replace(/\n+$/u, "");
@@ -703,8 +708,7 @@ function verdictDescription(
             return `TLE (${formatDuration(result.durationMs)} > ${timeoutSeconds} s)`;
         }
         case "MLE": {
-            const used = result.maxRssBytes === undefined ? "?" : formatMiB(result.maxRssBytes);
-            return `MLE (${used} > ${memoryMiB} MiB)`;
+            return `MLE (> ${memoryMiB} MiB)`;
         }
         case "RE": {
             return `RE (${result.detail ?? "runtime error"})`;
@@ -755,7 +759,7 @@ function formatCaseLine(
         verdictDescription(result, timeoutSeconds, memoryMiB),
         styles,
     );
-    return `${verdictSymbol(result, styles)} ${result.name.padEnd(nameWidth)}  ${formatDuration(result.durationMs).padStart(8)}  ${description}`;
+    return `${verdictSymbol(result, styles)} ${result.name.padEnd(nameWidth)}  ${formatDuration(result.durationMs).padStart(8)}  ${formatMemory(result.maxRssBytes).padStart(8)}  ${description}`;
 }
 
 /** Detail lines sit under the case line, indented past the verdict symbol. */
@@ -1192,7 +1196,12 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         }
 
         const total = results.length;
-        const summary = `${total} case(s): ${counters.ac} passed, ${counters.failed} failed, ${counters.unjudged} unjudged (${formatDuration(elapsed)}).`;
+        const slowest = Math.max(...results.map((result) => result.durationMs));
+        const rated = results
+            .map((result) => result.maxRssBytes)
+            .filter((bytes): bytes is number => bytes !== undefined);
+        const peak = rated.length === 0 ? undefined : Math.max(...rated);
+        const summary = `${total} case(s): ${counters.ac} passed, ${counters.failed} failed, ${counters.unjudged} unjudged (${formatDuration(elapsed)}; slowest ${formatDuration(slowest)}, peak ${formatMemory(peak)}).`;
         stdout.write(`${counters.failed > 0 ? styles.red(summary) : styles.green(summary)}\n`);
 
         return { results, exitCode: counters.failed > 0 ? 2 : 0 };

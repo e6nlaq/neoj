@@ -107,8 +107,8 @@ written.
 ## Read the report
 
 ```text
-✓ sample-1      12 ms  AC
-✗ sample-2      14 ms  WA (line 2)
+✓ sample-1      45 ms    28 MiB  AC
+✗ sample-2      37 ms    28 MiB  WA (line 2)
     Line │ Input
        1 │ 1 2
        2 │ 3
@@ -119,14 +119,14 @@ written.
 
     stderr:
       warning: 'x' is unused
-? sample-3       9 ms  UNJUDGED (expected output missing)
+? sample-3      36 ms    28 MiB  UNJUDGED (expected output missing)
     Line │ Input
        1 │ 4
 
     Line │ Output
        1 │ 42
 
-3 case(s): 1 passed, 1 failed, 1 unjudged (38 ms).
+3 case(s): 1 passed, 1 failed, 1 unjudged (68 ms; slowest 45 ms, peak 28 MiB).
 ```
 
 | Verdict    | Meaning                                                                       |
@@ -137,6 +137,14 @@ written.
 | `MLE`      | The peak memory usage exceeded the limit (checked after the run).             |
 | `RE`       | The program exited with a non-zero status, was killed, or flooded the output. |
 | `UNJUDGED` | There is no `.out` file; the program still ran and its output is shown.       |
+
+Each case line shows how long it ran and the peak memory it used, after the
+name. Memory is measured for the direct child process and shown as `? MiB` when
+the platform does not report it. The final line repeats the whole run's elapsed
+time, the slowest case, and the highest peak memory.
+
+A `MLE` case reports only the limit it crossed, such as `MLE (> 1024 MiB)`,
+because the memory column already holds the measured value.
 
 Every failure shows the input that produced it, then the expected and actual
 output; a case without an `.out` file shows the program's output instead. `-v`
@@ -169,7 +177,7 @@ The program's standard error is printed after each case that wrote something,
 regardless of the verdict:
 
 ```text
-✓ sample-1      12 ms  AC
+✓ sample-1      12 ms    28 MiB  AC
     stderr:
       warning: 'x' is unused
 ```
