@@ -111,6 +111,13 @@ silent = true
 Errors are never hidden: the compiler's diagnostics, a compile failure, and a
 missing source file are always printed.
 
+The logs are also hidden automatically when standard error is not a terminal. A
+redirected or piped run stays quiet without any extra flag:
+
+```bash
+neoj run > out.txt 2>&1
+```
+
 ## Cache builds
 
 `neoj run` shares `test.cache` and the `.neoj/build/` directory with

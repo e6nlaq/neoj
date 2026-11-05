@@ -214,6 +214,9 @@ printed to standard error. `--silent` turns it on for one run; options must come
 before the source file, so `neoj run src/main.cpp --silent` forwards `--silent`
 to the program instead.
 
+The same logs are hidden automatically when standard error is not a terminal, so
+`neoj run > out.txt 2>&1` and scripts that capture the output stay quiet.
+
 ### `languages.<key>.source`
 
 | Type                  | Default  | Scope             |

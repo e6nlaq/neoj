@@ -32,10 +32,14 @@ afterEach(async () => {
     }
 });
 
-function createCapture(): { stream: { write(chunk: string): boolean }; text(): string } {
+function createCapture(options: { isTTY?: boolean } = {}): {
+    stream: { write(chunk: string): boolean; isTTY: boolean };
+    text(): string;
+} {
     let text = "";
     return {
         stream: {
+            isTTY: options.isTTY ?? true,
             write(chunk: string) {
                 text += chunk;
                 return true;
@@ -298,6 +302,45 @@ ${compiledLanguage}
         });
         expect(reused.text()).toContain("Reused the cached build for src/main.ts (languages.ts).");
         expect(await buildEntries(project)).toHaveLength(1);
+    });
+
+    it("hides informational logs when the log stream is not a terminal", async () => {
+        await createProject(`
+[test]
+source = "src/main.ts"
+${compiledLanguage}
+`);
+
+        const redirected = createCapture({ isTTY: false });
+        const result = await runSolution({
+            programArgs: [],
+            stdio: "ignore",
+            stderr: redirected.stream,
+        });
+
+        expect(result.exitCode).toBe(0);
+        expect(redirected.text()).toBe("");
+    });
+
+    it("still prints compiler diagnostics when the log stream is not a terminal", async () => {
+        await createProject(
+            `
+[test]
+source = "src/main.ts"
+[languages.ts]
+source = "src/*.ts"
+compile = [{execPath}, "build", "missing.ts", "--outfile", "{outfile}"]
+run = [{execPath}, "{outfile}"]
+`.replaceAll("{execPath}", JSON.stringify(process.execPath)),
+        );
+
+        const redirected = createCapture({ isTTY: false });
+        await expect(
+            runSolution({ programArgs: [], stdio: "ignore", stderr: redirected.stream }),
+        ).rejects.toThrow("Compilation failed for languages.ts");
+
+        expect(redirected.text()).toContain("error:");
+        expect(redirected.text()).not.toContain("Compiled");
     });
 
     it("reads silent from [run] and still prints compiler diagnostics", async () => {

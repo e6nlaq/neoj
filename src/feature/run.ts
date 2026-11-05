@@ -11,11 +11,15 @@ export interface RunSolutionOptions {
     programArgs: readonly string[];
     language?: string;
     cache?: boolean;
+    /**
+     * Hide informational logs. Defaults to `run.silent`, and to `true` when the
+     * log stream is not an interactive terminal.
+     */
     silent?: boolean;
     /** Defaults to the process directory. */
     cwd?: string;
     /** Where neoj's own logs go; defaults to the process standard error. */
-    stderr?: { write(chunk: string): unknown };
+    stderr?: { write(chunk: string): unknown; isTTY?: boolean };
     /** How the program's streams are connected; defaults to `inherit`. */
     stdio?: "inherit" | "ignore";
 }
@@ -29,7 +33,8 @@ export interface RunSolutionResult {
  * Build the solution and hand the terminal to it.
  *
  * Only informational logs go through `stderr`; the program writes its own
- * output directly. `silent` hides those logs but never hides errors.
+ * output directly. `silent` hides those logs but never hides errors, and they
+ * are hidden by default when the log stream is not a terminal.
  */
 export async function runSolution(options: RunSolutionOptions): Promise<RunSolutionResult> {
     const cwd = options.cwd ?? process.cwd();
@@ -47,7 +52,9 @@ export async function runSolution(options: RunSolutionOptions): Promise<RunSolut
     });
     const projectRoot = await requireInitializedProject(cwd);
     const config = await loadConfig();
-    const silent = options.silent ?? config.run.silent;
+    // Informational logs are for people watching the terminal: when standard
+    // error is redirected to a file or a pipe, keep the build quiet by default.
+    const silent = options.silent ?? (config.run.silent || stderr.isTTY !== true);
 
     const built = await buildSolution({
         projectRoot,

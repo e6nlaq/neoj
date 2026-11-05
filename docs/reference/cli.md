@@ -168,7 +168,9 @@ neoj run src/main.cpp --silent   # --silent goes to the program
 ```
 
 `--silent` only hides informational logs. The compiler's own diagnostics and
-every error message are still printed to standard error. See
+every error message are still printed to standard error. Informational logs are
+also hidden automatically when standard error is not a terminal, so piped or
+redirected output stays clean. See
 [Run a solution without tests](../how-to/run-a-solution.md).
 
 ### `completions`
