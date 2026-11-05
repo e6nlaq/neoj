@@ -63,6 +63,8 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
             ignore_trailing_space: false,
             ignore_trailing_newline: false,
             show_stderr: "always",
+            display_lines: 30,
+            show_line_numbers: true,
         },
         languages: {},
         download: { show_sample: false },

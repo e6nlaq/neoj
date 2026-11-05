@@ -26,6 +26,35 @@ export interface ComparisonFormatOptions {
     columns: number;
     /** Try to place the expected and actual lines next to each other. */
     sideBySide: boolean;
+    /** Prefix every row with a right-aligned line number. */
+    lineNumbers: boolean;
+}
+
+export interface LinesTableOptions {
+    styles: AnsiStyles;
+    /** Column header, such as "Input" or "Output". */
+    header: string;
+    /** Prefix every row with a right-aligned line number. */
+    lineNumbers: boolean;
+    /** Rows the caller dropped from the end of the table. */
+    omitted?: number;
+}
+
+const lineNumberHeader = "Line";
+
+interface TableCell {
+    text: string;
+    color?: "red" | "green";
+}
+
+interface TableRow {
+    /** 1-based line number shown in the gutter. */
+    number: number;
+    cells: readonly TableCell[];
+}
+
+function toRows(lines: readonly string[]): TableRow[] {
+    return lines.map((text, index) => ({ number: index + 1, cells: [{ text }] }));
 }
 
 export function normalizeLineEndings(text: string): string {
@@ -150,95 +179,156 @@ export function displayWidth(text: string): number {
     return width;
 }
 
-function padToWidth(text: string, width: number): string {
+function padCell(text: string, width: number): string {
     return text + " ".repeat(Math.max(0, width - displayWidth(text)));
 }
 
-function rowsOf(result: ComparisonResult): number {
-    return Math.max(result.expectedLines.length, result.actualLines.length);
+function formatTableRow(
+    number: string | undefined,
+    cells: readonly TableCell[],
+    widths: readonly number[],
+    numberWidth: number,
+    styles: AnsiStyles,
+): string {
+    const parts: string[] = [];
+    if (number !== undefined) {
+        parts.push(styles.dim(number.padStart(numberWidth)));
+    }
+    for (const [index, cell] of cells.entries()) {
+        const padded =
+            index === cells.length - 1 ? cell.text : padCell(cell.text, widths[index] ?? 0);
+        parts.push(cell.color === undefined ? padded : styles[cell.color](padded));
+    }
+
+    return parts.join(` ${styles.dim("│")} `).trimEnd();
 }
 
-function fitsSideBySide(result: ComparisonResult, columns: number): boolean {
+/**
+ * Render a table whose first row names the columns.
+ *
+ * The line-number gutter is optional; the last column is never padded, so no
+ * line ends with whitespace.
+ */
+function formatTable(
+    headers: readonly string[],
+    rows: readonly TableRow[],
+    styles: AnsiStyles,
+    lineNumbers: boolean,
+): string[] {
+    const numberWidth = lineNumbers
+        ? Math.max(lineNumberHeader.length, String(rows.length).length)
+        : 0;
+    const widths = headers.map((header, index) =>
+        Math.max(
+            displayWidth(header),
+            ...rows.map((row) => displayWidth(row.cells[index]?.text ?? "")),
+        ),
+    );
+
+    const lines = [
+        styles.dim(
+            formatTableRow(
+                lineNumbers ? lineNumberHeader.padEnd(numberWidth) : undefined,
+                headers.map((header) => ({ text: header })),
+                widths,
+                numberWidth,
+                styles,
+            ),
+        ),
+    ];
+    for (const row of rows) {
+        lines.push(
+            formatTableRow(
+                lineNumbers ? String(row.number) : undefined,
+                row.cells,
+                widths,
+                numberWidth,
+                styles,
+            ),
+        );
+    }
+
+    return lines;
+}
+
+function columnWidthsOf(result: ComparisonResult): { left: number; right: number } {
+    return {
+        left: Math.max(
+            displayWidth("Expected"),
+            ...result.expectedLines.map((line) => displayWidth(line)),
+        ),
+        right: Math.max(
+            displayWidth("Output"),
+            ...result.actualLines.map((line) => displayWidth(line)),
+        ),
+    };
+}
+
+/** Indent used by the report; the table has to fit next to it. */
+const reportIndentWidth = 4;
+
+function fitsSideBySide(result: ComparisonResult, columns: number, lineNumbers: boolean): boolean {
     const lines = [...result.expectedLines, ...result.actualLines];
     if (lines.some((line) => line.includes("\t"))) {
         return false;
     }
 
-    const left = Math.max(0, ...result.expectedLines.map((line) => displayWidth(line)));
-    const right = Math.max(0, ...result.actualLines.map((line) => displayWidth(line)));
+    const widths = columnWidthsOf(result);
+    const rowCount = Math.max(result.expectedLines.length, result.actualLines.length);
+    const numberWidth = lineNumbers
+        ? Math.max(lineNumberHeader.length, String(rowCount).length)
+        : 0;
+    const textWidth = widths.left + 3 + widths.right;
+    const gutterWidth = lineNumbers ? numberWidth + 3 : 0;
 
-    return left + right + 5 <= columns;
-}
-
-function formatSideBySide(
-    result: ComparisonResult,
-    options: ComparisonFormatOptions,
-    leftWidth: number,
-    rightWidth: number,
-): string[] {
-    const { styles } = options;
-    const lines: string[] = [];
-
-    for (let index = 0; index < rowsOf(result); index += 1) {
-        const expected = result.expectedLines[index];
-        const actual = result.actualLines[index];
-        const matched = expected !== undefined && actual !== undefined && expected === actual;
-        const left = padToWidth(expected ?? "", leftWidth);
-        const right = padToWidth(actual ?? "", rightWidth);
-
-        if (matched) {
-            lines.push(`  ${left} ${styles.dim("│")} ${right}`.trimEnd());
-        } else {
-            lines.push(`  ${styles.red(left)} ${styles.dim("│")} ${styles.green(right)}`.trimEnd());
-        }
-    }
-
-    return lines;
-}
-
-function formatStacked(result: ComparisonResult, styles: AnsiStyles): string[] {
-    const lines: string[] = [];
-
-    for (let index = 0; index < rowsOf(result); index += 1) {
-        const expected = result.expectedLines[index];
-        const actual = result.actualLines[index];
-
-        if (expected !== undefined && actual !== undefined && expected === actual) {
-            lines.push(`  ${expected}`);
-            continue;
-        }
-        if (expected !== undefined) {
-            lines.push(styles.red(`- ${expected}`));
-        }
-        if (actual !== undefined) {
-            lines.push(styles.green(`+ ${actual}`));
-        }
-    }
-
-    return lines;
+    return gutterWidth + textWidth + reportIndentWidth <= columns;
 }
 
 /**
- * Render every line of both outputs, highlighting the ones that differ.
- *
- * Side-by-side needs a wide terminal, no tabs, and both columns to fit; the
- * caller decides whether the terminal even qualifies.
+ * Render both outputs as a table: side by side when it fits, otherwise as two
+ * stacked tables that keep the headers. Differing rows stay colored.
  */
 export function formatComparison(
     result: ComparisonResult,
     options: ComparisonFormatOptions,
 ): string[] {
-    const sideBySide = options.sideBySide && fitsSideBySide(result, options.columns);
-    const leftWidth = Math.max(0, ...result.expectedLines.map((line) => displayWidth(line)));
-    const rightWidth = Math.max(0, ...result.actualLines.map((line) => displayWidth(line)));
+    const { styles, lineNumbers } = options;
+    const lines: string[] = [];
+    const rowCount = Math.max(result.expectedLines.length, result.actualLines.length);
+    const mismatched = (index: number): boolean =>
+        result.expectedLines[index] !== result.actualLines[index];
 
-    const lines = sideBySide
-        ? formatSideBySide(result, options, leftWidth, rightWidth)
-        : formatStacked(result, options.styles);
+    if (options.sideBySide && fitsSideBySide(result, options.columns, lineNumbers)) {
+        const rows: TableRow[] = [];
+        for (let index = 0; index < rowCount; index += 1) {
+            const expected = result.expectedLines[index];
+            const actual = result.actualLines[index];
+            rows.push({
+                number: index + 1,
+                cells: [
+                    { text: expected ?? "", color: mismatched(index) ? "red" : undefined },
+                    { text: actual ?? "", color: mismatched(index) ? "green" : undefined },
+                ],
+            });
+        }
+        lines.push(...formatTable(["Expected", "Output"], rows, styles, lineNumbers));
+    } else {
+        const expectedRows: TableRow[] = result.expectedLines.map((text, index) => ({
+            number: index + 1,
+            cells: [{ text, color: mismatched(index) ? "red" : undefined }],
+        }));
+        const actualRows: TableRow[] = result.actualLines.map((text, index) => ({
+            number: index + 1,
+            cells: [{ text, color: mismatched(index) ? "green" : undefined }],
+        }));
+        lines.push(...formatTable(["Expected"], expectedRows, styles, lineNumbers));
+        lines.push("");
+        lines.push(...formatTable(["Output"], actualRows, styles, lineNumbers));
+    }
 
     if (result.trailingNewlineOnly) {
         lines.push(
-            options.styles.dim(
+            styles.dim(
                 result.expectedTrailingNewline
                     ? "(the actual output has no trailing newline)"
                     : "(the expected output has no trailing newline)",
@@ -247,4 +337,20 @@ export function formatComparison(
     }
 
     return lines;
+}
+
+/** Render one block, such as the input or the program's output, as a table. */
+export function formatLinesTable(lines: readonly string[], options: LinesTableOptions): string[] {
+    const formatted = formatTable(
+        [options.header],
+        toRows(lines),
+        options.styles,
+        options.lineNumbers,
+    );
+    const omitted = options.omitted ?? 0;
+    if (omitted > 0) {
+        formatted.push(options.styles.dim(`… ${omitted} more line(s)`));
+    }
+
+    return formatted;
 }

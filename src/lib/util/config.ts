@@ -249,6 +249,26 @@ export const configSchema = v.pipe(
                         ),
                         "always",
                     ),
+                    display_lines: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.integer(),
+                            v.minValue(1),
+                            v.description(
+                                "Lines shown per block in the report before the rest is summarised, such as the input or the program's output.",
+                            ),
+                        ),
+                        30,
+                    ),
+                    show_line_numbers: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Prefix each line of the report's input and output tables with its line number.",
+                            ),
+                        ),
+                        true,
+                    ),
                 }),
                 v.description("How neoj builds and runs test cases."),
             ),
@@ -260,6 +280,8 @@ export const configSchema = v.pipe(
                 ignore_trailing_space: false,
                 ignore_trailing_newline: false,
                 show_stderr: "always",
+                display_lines: 30,
+                show_line_numbers: true,
             },
         ),
         run: v.optional(

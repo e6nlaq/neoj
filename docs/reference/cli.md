@@ -121,20 +121,21 @@ directories match the stash exactly. See
 
 Runs every `*.in` file in the test-case directory against the built program.
 
-| Option                            | Description                                                  |
-| --------------------------------- | ------------------------------------------------------------ |
-| `-l`, `--language <key>`          | Use this `[languages.<key>]` entry instead of detecting one. |
-| `-j`, `--jobs <count>`            | Number of test cases to run at once.                         |
-| `--no-parallel`                   | Run one test case at a time.                                 |
-| `-t`, `--timeout <seconds>`       | Time limit per test case.                                    |
-| `-m`, `--memory <MiB>`            | Memory limit per test case.                                  |
-| `-f`, `--filter <name...>`        | Run only the named cases (`sample-1` for `sample-1.in`).     |
-| `--cache` / `--no-cache`          | Keep or delete the compiled program under `.neoj/build/`.    |
-| `-S`, `--ignore-trailing-space`   | Ignore trailing whitespace on each line.                     |
-| `-N`, `--ignore-trailing-newline` | Ignore newlines at the end of the output.                    |
-| `--show-stderr <mode>`            | Print the program's stderr: `always`, `failure`, or `never`. |
-| `--progress` / `--no-progress`    | Draw or hide the progress bar.                               |
-| `-v`, `--verbose`                 | Print input and output for passing cases too.                |
+| Option                                           | Description                                                  |
+| ------------------------------------------------ | ------------------------------------------------------------ |
+| `-l`, `--language <key>`                         | Use this `[languages.<key>]` entry instead of detecting one. |
+| `-j`, `--jobs <count>`                           | Number of test cases to run at once.                         |
+| `--no-parallel`                                  | Run one test case at a time.                                 |
+| `-t`, `--timeout <seconds>`                      | Time limit per test case.                                    |
+| `-m`, `--memory <MiB>`                           | Memory limit per test case.                                  |
+| `-f`, `--filter <name...>`                       | Run only the named cases (`sample-1` for `sample-1.in`).     |
+| `--cache` / `--no-cache`                         | Keep or delete the compiled program under `.neoj/build/`.    |
+| `-S`, `--ignore-trailing-space`                  | Ignore trailing whitespace on each line.                     |
+| `-N`, `--ignore-trailing-newline`                | Ignore newlines at the end of the output.                    |
+| `--show-stderr <mode>`                           | Print the program's stderr: `always`, `failure`, or `never`. |
+| `--progress` / `--no-progress`                   | Draw or hide the progress bar.                               |
+| `--show-line-numbers` / `--no-show-line-numbers` | Number the rows of the input and output tables.              |
+| `-v`, `--verbose`                                | Print input and output for passing cases too.                |
 
 See [Build and run the sample tests](../how-to/run-tests.md).
 

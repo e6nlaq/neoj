@@ -202,6 +202,27 @@ of:
 Lines are printed as captured, without color and without a line limit, under a
 `stderr:` label. `--show-stderr <mode>` overrides the setting for one run.
 
+### `test.display_lines`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| integer | `30`    | global or project |
+
+Lines shown per block in the report before the rest is summarised as
+`… N more line(s)`. It applies to the input and to the program's output; a `WA`
+comparison always lists every line so the difference stays visible. Must be at
+least `1`.
+
+### `test.show_line_numbers`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Prefix each row of the report's input and output tables with its line number. The
+comparison adds the number once per row, next to `Expected` and `Output`.
+`--no-show-line-numbers` turns it off for one run.
+
 ### `run.silent`
 
 | Type    | Default | Scope             |

@@ -21,6 +21,8 @@ describe("test configuration", () => {
             ignore_trailing_space: false,
             ignore_trailing_newline: false,
             show_stderr: "always",
+            display_lines: 30,
+            show_line_numbers: true,
         });
         expect(config.languages).toEqual({});
         expect(config.alias).toEqual({});
@@ -57,6 +59,21 @@ describe("test configuration", () => {
         expect(parse({ run: { silent: true } }).run.silent).toBe(true);
         expect(v.safeParse(configSchema, { run: { silent: "yes" } }).success).toBe(false);
         expect(v.safeParse(configSchema, { run: { quiet: true } }).success).toBe(false);
+    });
+
+    it("defaults display_lines and show_line_numbers, and validates them", () => {
+        expect(parse({}).test.display_lines).toBe(30);
+        expect(parse({}).test.show_line_numbers).toBe(true);
+        expect(parse({ test: { display_lines: 5, show_line_numbers: false } }).test).toMatchObject({
+            display_lines: 5,
+            show_line_numbers: false,
+        });
+
+        expect(v.safeParse(configSchema, { test: { display_lines: 0 } }).success).toBe(false);
+        expect(v.safeParse(configSchema, { test: { display_lines: 1.5 } }).success).toBe(false);
+        expect(v.safeParse(configSchema, { test: { show_line_numbers: "yes" } }).success).toBe(
+            false,
+        );
     });
 
     it("accepts a language with compile, run, limits, and extra cache inputs", () => {

@@ -127,6 +127,17 @@
                     "type": "string",
                     "description": "Print the program's standard error in the report: \"always\", \"failure\" (only when a case did not pass), or \"never\".",
                     "default": "always"
+                },
+                "display_lines": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Lines shown per block in the report before the rest is summarised, such as the input or the program's output.",
+                    "default": 30
+                },
+                "show_line_numbers": {
+                    "type": "boolean",
+                    "description": "Prefix each line of the report's input and output tables with its line number.",
+                    "default": true
                 }
             },
             "required": [],
@@ -139,7 +150,9 @@
                 "cache": false,
                 "ignore_trailing_space": false,
                 "ignore_trailing_newline": false,
-                "show_stderr": "always"
+                "show_stderr": "always",
+                "display_lines": 30,
+                "show_line_numbers": true
             }
         },
         "run": {

@@ -57,6 +57,8 @@ export function createTestCommand(): Command<[string | undefined]> {
         )
         .option("--progress", "Draw the progress bar")
         .option("--no-progress", "Do not draw the progress bar")
+        .option("--show-line-numbers", "Number the lines of the input and output tables")
+        .option("--no-show-line-numbers", "Do not number the lines")
         .option("-v, --verbose", "Print input and output for passing cases too")
         .action(async (source, options) => {
             try {
@@ -78,6 +80,7 @@ export function createTestCommand(): Command<[string | undefined]> {
                     ignoreTrailingNewline: options.ignoreTrailingNewline,
                     showStderr: options.showStderr,
                     progress: options.progress,
+                    lineNumbers: options.showLineNumbers,
                     verbose: options.verbose,
                     stdout: process.stdout,
                     stderr: process.stderr,

@@ -11,6 +11,7 @@ import { hasErrorCode } from "@/lib/util/errors";
 import {
     compareOutput,
     formatComparison,
+    formatLinesTable,
     type CaseVerdict,
     type ComparisonOptions,
     type ComparisonResult,
@@ -21,7 +22,6 @@ import { resolveTestcaseDirectory } from "@/lib/util/testcase";
 const buildDirectoryName = "build";
 const executableBaseName = "a";
 const compileTimeoutMs = 10 * 60 * 1000;
-const unjudgedDisplayLines = 100;
 
 export const placeholderNames = ["source", "outfile", "outdir", "dir", "testdir"] as const;
 
@@ -75,6 +75,8 @@ export interface RunTestsOptions {
     ignoreTrailingSpace?: boolean;
     ignoreTrailingNewline?: boolean;
     showStderr?: ShowStderrMode;
+    /** Defaults to `test.show_line_numbers`. */
+    lineNumbers?: boolean;
     progress?: boolean;
     verbose?: boolean;
     stdout?: ProgressStream;
@@ -671,7 +673,10 @@ async function runTestCase(testCase: TestCase, context: CaseContext): Promise<Te
         durationMs: result.durationMs,
         stdout: result.stdout,
         stderr: result.stderr,
-        input: context.verbose ? await Bun.file(testCase.inputPath).text() : undefined,
+        input:
+            context.verbose || judged.verdict !== "AC"
+                ? await Bun.file(testCase.inputPath).text()
+                : undefined,
         exitCode: result.exitCode,
         signal: result.signal,
         maxRssBytes: result.maxRssBytes,
@@ -753,23 +758,39 @@ function formatCaseLine(
     return `${verdictSymbol(result, styles)} ${result.name.padEnd(nameWidth)}  ${formatDuration(result.durationMs).padStart(8)}  ${description}`;
 }
 
+/** Detail lines sit under the case line, indented past the verdict symbol. */
+const detailIndent = "    ";
+
 function indent(lines: readonly string[]): string[] {
-    return lines.map((line) => `  ${line}`);
-}
-
-function formatBlock(text: string, styles: AnsiStyles, limit: number): string[] {
-    const { lines, omitted } = takeLines(text, limit);
-    const formatted = lines.map((line) => `    ${styles.dim(line)}`);
-    if (omitted > 0) {
-        formatted.push(`    ${styles.dim(`… ${omitted} more line(s)`)}`);
-    }
-
-    return formatted;
+    return lines.map((line) => (line === "" ? line : `${detailIndent}${line}`));
 }
 
 interface CaseDetailOptions {
     verbose: boolean;
     showStderr: ShowStderrMode;
+    /** Prefix the tables with line numbers. */
+    lineNumbers: boolean;
+    /** Rows shown per block before `… N more line(s)`. */
+    displayLines: number;
+}
+
+function tableBlock(
+    text: string,
+    header: string,
+    options: CaseDetailOptions,
+    styles: AnsiStyles,
+): string[] {
+    const { lines, omitted } = takeLines(text, options.displayLines);
+    if (lines.length === 0) {
+        return [];
+    }
+
+    return formatLinesTable(lines, {
+        styles,
+        header,
+        lineNumbers: options.lineNumbers,
+        omitted,
+    });
 }
 
 function buildCaseDetails(
@@ -783,9 +804,12 @@ function buildCaseDetails(
     if (result.stderr.trim() !== "" && shouldShowStderr(result.verdict, options.showStderr)) {
         // Standard error is printed verbatim, without color, so a compiler or
         // interpreter's own formatting stays intact.
-        details.push("  stderr:");
+        if (details.length > 0) {
+            details.push("");
+        }
+        details.push(`${detailIndent}stderr:`);
         for (const line of outputLines(result.stderr)) {
-            details.push(`    ${line}`);
+            details.push(`${detailIndent}  ${line}`);
         }
     }
 
@@ -809,40 +833,38 @@ function verdictDetails(
     styles: AnsiStyles,
     columns: number,
 ): string[] {
-    const details: string[] = [];
-    const appendOmitted = (omitted: number) => {
-        if (omitted > 0) {
-            details.push(`  ${styles.dim(`… ${omitted} more line(s)`)}`);
-        }
-    };
+    const blocks: string[][] = [];
+    const input = result.input;
+    if (input !== undefined) {
+        blocks.push(tableBlock(input, "Input", options, styles));
+    }
 
     if (result.verdict === "WA" && result.comparison !== undefined) {
-        details.push(
-            ...indent(
-                formatComparison(result.comparison, {
-                    styles,
-                    columns,
-                    sideBySide: styles.enabled && columns >= 100,
-                }),
-            ),
+        blocks.push(
+            formatComparison(result.comparison, {
+                styles,
+                columns,
+                sideBySide: styles.enabled && columns >= 100,
+                lineNumbers: options.lineNumbers,
+            }),
         );
-        return details;
+    } else if (result.verdict === "UNJUDGED") {
+        blocks.push(tableBlock(result.stdout, "Output", options, styles));
+    } else if (options.verbose === true && result.verdict === "AC") {
+        // A verbose AC run is the only time the expected output is not shown,
+        // so print the actual output instead.
+        blocks.push(tableBlock(result.stdout, "Output", options, styles));
     }
 
-    if (result.verdict === "UNJUDGED") {
-        const { lines, omitted } = takeLines(result.stdout, unjudgedDisplayLines);
-        details.push(...indent(lines.map((line) => styles.dim(line))));
-        appendOmitted(omitted);
-        return details;
-    }
-
-    if (options.verbose === true && result.verdict === "AC" && result.comparison !== undefined) {
-        details.push(`  ${styles.dim("input:")}`);
-        details.push(...formatBlock(result.input ?? "", styles, 20));
-        details.push(`  ${styles.dim("output:")}`);
-        details.push(
-            ...formatBlock(result.comparison.actualLines.join("\n"), styles, unjudgedDisplayLines),
-        );
+    const details: string[] = [];
+    for (const block of blocks) {
+        if (block.length === 0) {
+            continue;
+        }
+        if (details.length > 0) {
+            details.push("");
+        }
+        details.push(...indent(block));
     }
 
     return details;
@@ -1153,6 +1175,8 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         const detailOptions: CaseDetailOptions = {
             verbose: options.verbose === true,
             showStderr,
+            lineNumbers: options.lineNumbers ?? options.config.test.show_line_numbers,
+            displayLines: options.config.test.display_lines,
         };
         for (const result of results) {
             stdout.write(

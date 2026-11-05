@@ -61,6 +61,8 @@ function createConfig(options: {
             ignore_trailing_space: false,
             ignore_trailing_newline: false,
             show_stderr: "always",
+            display_lines: 30,
+            show_line_numbers: true,
             ...options.test,
         },
         languages: options.languages ?? {},
@@ -657,6 +659,121 @@ describe("runTests", () => {
         expect(out.text()).toContain("UNJUDGED (expected output missing)");
     });
 
+    it("shows the input and the comparison as numbered tables for a wrong answer", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            filters: ["sample-2"],
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(text).toContain("Line │ Input");
+        expect(text).toContain("   1 │ wa");
+        expect(text).toContain("\n\n    Line │ Expected");
+        expect(text).toContain("\n\n    Line │ Output");
+        expect(text).toContain("   1 │ 3 7");
+        expect(text).toContain("   1 │ 3 8");
+    });
+
+    it("shows the input for failing and unjudged cases", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            filters: ["sample-3", "sample-4"],
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(text.match(/Line │ Input/gu)).toHaveLength(2);
+        expect(text).toContain("   1 │ re");
+        expect(text).toContain("   1 │ free");
+    });
+
+    it("prints only the case line for a passing case unless verbose", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            filters: ["sample-1"],
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        expect(out.text()).not.toContain("Line │");
+    });
+
+    it("prints the input and output tables for a passing case when verbose", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            filters: ["sample-1"],
+            verbose: true,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(text).toContain("Line │ Input");
+        expect(text).toContain("   1 │ ac");
+        expect(text).toContain("\n\n    Line │ Output");
+        expect(text).toContain("   1 │ 3 7");
+    });
+
+    it("hides the line-number gutter when line numbers are off", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            lineNumbers: false,
+            filters: ["sample-2"],
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(text).not.toContain("Line │");
+        expect(text).toContain("    Input\n    wa\n");
+    });
+
+    it("limits each block to display_lines rows", async () => {
+        const projectRoot = await createProject();
+        await writeFile(
+            join(projectRoot, "main.ts"),
+            `for (let index = 0; index < 5; index += 1) console.log("out-" + index);`,
+        );
+        await writeCase(join(projectRoot, "test"), "sample-1", "in\n");
+
+        const out = createCapture();
+        await runTests({
+            projectRoot,
+            config: runnerConfig({ test: { display_lines: 2 } }),
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(text).toContain("   1 │ out-0");
+        expect(text).toContain("   2 │ out-1");
+        expect(text).not.toContain("out-2");
+        expect(text).toContain("… 3 more line(s)");
+    });
+
     it("prints the program's standard error for every case by default", async () => {
         const projectRoot = await createRunnerProject();
         const out = createCapture();
@@ -740,7 +857,7 @@ describe("runTests", () => {
         const lines = out.text().split("\n");
         const note = lines.find((line) => line.includes("ac-note"));
 
-        expect(note).toBe("    ac-note");
+        expect(note).toBe("      ac-note");
         if (process.env.NO_COLOR === undefined) {
             expect(out.text()).toContain("\u001B[");
         }

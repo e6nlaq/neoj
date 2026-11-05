@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
 import { createAnsiStyles } from "@/lib/util/ansi";
-import { compareOutput, displayWidth, formatComparison } from "@/lib/util/judge";
+import { compareOutput, displayWidth, formatComparison, formatLinesTable } from "@/lib/util/judge";
 
 const strict = { ignoreTrailingSpace: false, ignoreTrailingNewline: false };
 const plain = createAnsiStyles(false);
@@ -75,22 +75,54 @@ describe("displayWidth", () => {
 
 describe("formatComparison", () => {
     const mismatched = compareOutput("a\nb\nc\n", "a\nx\nc\n", strict);
-    const options = { styles: plain, columns: 120, sideBySide: true };
+    const options = { styles: plain, columns: 120, sideBySide: true, lineNumbers: false };
 
-    it("prints every line and prefixes only the differing ones when stacked", () => {
+    it("stacks the expected and actual tables with headers", () => {
         const lines = formatComparison(mismatched, { ...options, sideBySide: false });
 
-        expect(lines).toEqual(["  a", "- b", "+ x", "  c"]);
+        expect(lines).toEqual(["Expected", "a", "b", "c", "", "Output", "a", "x", "c"]);
+    });
+
+    it("numbers every row when line numbers are on", () => {
+        const lines = formatComparison(mismatched, {
+            ...options,
+            sideBySide: false,
+            lineNumbers: true,
+        });
+
+        expect(lines).toEqual([
+            "Line │ Expected",
+            "   1 │ a",
+            "   2 │ b",
+            "   3 │ c",
+            "",
+            "Line │ Output",
+            "   1 │ a",
+            "   2 │ x",
+            "   3 │ c",
+        ]);
     });
 
     it("prints both columns when the terminal is wide enough", () => {
         const lines = formatComparison(mismatched, options);
 
-        expect(lines.some((line) => line.includes("│"))).toBe(true);
-        expect(lines).toHaveLength(3);
-        expect(lines[0]).toContain("a");
-        expect(lines[1]).toContain("b");
-        expect(lines[1]).toContain("x");
+        expect(lines).toEqual([
+            "Expected │ Output",
+            "a        │ a",
+            "b        │ x",
+            "c        │ c",
+        ]);
+    });
+
+    it("keeps the line-number gutter in the side-by-side table", () => {
+        const lines = formatComparison(mismatched, { ...options, lineNumbers: true });
+
+        expect(lines).toEqual([
+            "Line │ Expected │ Output",
+            "   1 │ a        │ a",
+            "   2 │ b        │ x",
+            "   3 │ c        │ c",
+        ]);
     });
 
     it("falls back to stacked output on narrow terminals", () => {
@@ -107,6 +139,18 @@ describe("formatComparison", () => {
         expect(lines.some((line) => line.includes("│"))).toBe(false);
     });
 
+    it("leaves room for the report indent when measuring the table", () => {
+        // 16 + 3 + 16 cells plus the 4-space report indent needs 39 columns.
+        const exact = compareOutput(`${"x".repeat(16)}\n`, `${"y".repeat(16)}\n`, strict);
+
+        expect(
+            formatComparison(exact, { ...options, columns: 39 }).some((line) => line.includes("│")),
+        ).toBe(true);
+        expect(
+            formatComparison(exact, { ...options, columns: 38 }).some((line) => line.includes("│")),
+        ).toBe(false);
+    });
+
     it("notes a trailing-newline-only difference", () => {
         const onlyNewline = compareOutput("a", "a\n", strict);
         const lines = formatComparison(onlyNewline, { ...options, sideBySide: false });
@@ -119,10 +163,48 @@ describe("formatComparison", () => {
             styles: createAnsiStyles(true),
             columns: 120,
             sideBySide: false,
+            lineNumbers: false,
         });
 
-        expect(colored[0]).not.toContain("\u001B[");
-        expect(colored[1]).toContain("\u001B[31m");
-        expect(colored[2]).toContain("\u001B[32m");
+        expect(colored.filter((line) => line.includes("\u001B[31m"))).toHaveLength(1);
+        expect(colored.find((line) => line.includes("\u001B[31m"))).toContain("b");
+        expect(colored.filter((line) => line.includes("\u001B[32m"))).toHaveLength(1);
+        expect(colored.find((line) => line.includes("\u001B[32m"))).toContain("x");
+        expect(colored[1]).not.toContain("\u001B[");
+    });
+});
+
+describe("formatLinesTable", () => {
+    it("renders a single-column table with a header", () => {
+        expect(
+            formatLinesTable(["1 2", "3"], { styles: plain, header: "Input", lineNumbers: true }),
+        ).toEqual(["Line │ Input", "   1 │ 1 2", "   2 │ 3"]);
+    });
+
+    it("omits the gutter when line numbers are off", () => {
+        expect(
+            formatLinesTable(["1 2", "3"], { styles: plain, header: "Input", lineNumbers: false }),
+        ).toEqual(["Input", "1 2", "3"]);
+    });
+
+    it("summarises the rows it was not given", () => {
+        const lines = formatLinesTable(["a"], {
+            styles: plain,
+            header: "Output",
+            lineNumbers: true,
+            omitted: 7,
+        });
+
+        expect(lines.at(-1)).toBe("… 7 more line(s)");
+    });
+
+    it("does not pad the last column", () => {
+        const lines = formatLinesTable(["a", "long"], {
+            styles: plain,
+            header: "Input",
+            lineNumbers: true,
+        });
+
+        expect(lines).toEqual(["Line │ Input", "   1 │ a", "   2 │ long"]);
     });
 });

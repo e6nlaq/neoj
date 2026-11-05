@@ -108,13 +108,23 @@ written.
 
 ```text
 ✓ sample-1      12 ms  AC
-  stderr:
-    warning: 'x' is unused
-✗ sample-2      14 ms  WA (line 3)
-  - 3 7
-  + 3 8
+✗ sample-2      14 ms  WA (line 2)
+    Line │ Input
+       1 │ 1 2
+       2 │ 3
+
+    Line │ Expected │ Output
+       1 │ 3 7      │ 3 7
+       2 │ 1        │ 1 8
+
+    stderr:
+      warning: 'x' is unused
 ? sample-3       9 ms  UNJUDGED (expected output missing)
-    42
+    Line │ Input
+       1 │ 4
+
+    Line │ Output
+       1 │ 42
 
 3 case(s): 1 passed, 1 failed, 1 unjudged (38 ms).
 ```
@@ -128,8 +138,28 @@ written.
 | `RE`       | The program exited with a non-zero status, was killed, or flooded the output. |
 | `UNJUDGED` | There is no `.out` file; the program still ran and its output is shown.       |
 
-Wide terminals show both outputs side by side; narrow terminals, tabs, and long
-lines fall back to a stacked list.
+Every failure shows the input that produced it, then the expected and actual
+output; a case without an `.out` file shows the program's output instead. `-v`
+adds the same tables to passing cases.
+
+Wide terminals show both outputs side by side in one table; narrow terminals,
+tabs, and long lines fall back to two stacked tables that keep their headers.
+
+## Number and trim the lines
+
+The `Line` column numbers the rows of every table. It is on by default; set
+`test.show_line_numbers = false` or pass `--no-show-line-numbers` to drop it.
+
+Blocks longer than `test.display_lines` (default `30`) are cut off with
+`… N more line(s)`, so one large case cannot flood the report. The comparison is
+the exception: it always lists every line. The limit covers the input, the
+program's output, and the verbose tables for passing cases.
+
+```toml
+[test]
+show_line_numbers = true
+display_lines = 30
+```
 
 ## Show the program's standard error
 
@@ -138,8 +168,8 @@ regardless of the verdict:
 
 ```text
 ✓ sample-1      12 ms  AC
-  stderr:
-    warning: 'x' is unused
+    stderr:
+      warning: 'x' is unused
 ```
 
 Lines are reproduced as written: no color, no truncation, and only if the
