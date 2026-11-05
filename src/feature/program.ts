@@ -7,6 +7,7 @@ import { applyHelpBanner } from "@/feature/help-banner";
 import { createInitCommand } from "@/feature/init";
 import { createLoginCommand } from "@/feature/login";
 import { createLogoutCommand } from "@/feature/logout";
+import { createOpenCommand } from "@/feature/open";
 import { createRunCommand } from "@/feature/run";
 import { createStashCommand } from "@/feature/stash";
 import { createStatusCommand } from "@/feature/status";
@@ -24,6 +25,7 @@ export function createProgram(): Command {
 
     program.addCommand(createInitCommand());
     program.addCommand(createDownloadCommand());
+    program.addCommand(createOpenCommand());
     program.addCommand(createHandmadeCommand());
     program.addCommand(createLoginCommand());
     program.addCommand(createLogoutCommand());

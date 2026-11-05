@@ -1,6 +1,5 @@
 import { confirm, password } from "@inquirer/prompts";
 import { consola } from "consola";
-import open from "tiny-open";
 import * as v from "valibot";
 
 import {
@@ -9,6 +8,7 @@ import {
     type PollDeviceTokenOptions,
 } from "@/lib/service/yukicoder";
 import { readAuth, replaceAuth } from "@/lib/util/auth";
+import { openInBrowser } from "@/lib/util/browser";
 import { loadConfig } from "@/lib/util/config";
 
 const tokenAuthSchema = v.strictObject({
@@ -79,14 +79,6 @@ export async function isYukicoderLoggedIn(auth: unknown): Promise<boolean> {
 
     const credential = parsedAuth.method === "token" ? parsedAuth.token : parsedAuth.apiKey;
     return new YukicoderClient().checkCredential(credential);
-}
-
-async function openInBrowser(url: string): Promise<boolean> {
-    try {
-        return await open(url);
-    } catch {
-        return false;
-    }
 }
 
 export async function loginToYukicoder(options: LoginToYukicoderOptions = {}): Promise<boolean> {

@@ -68,6 +68,30 @@ export function parseAtCoderProblemUrl(value: string): URL {
     return problemUrl;
 }
 
+function parseTaskPath(value: string): { contestId: string; taskId: string } {
+    const problemUrl = parseAtCoderProblemUrl(value);
+    const segments = problemUrl.pathname.split("/").filter((segment) => segment.length > 0);
+    const contestId = segments[1];
+    const taskId = segments[3];
+    if (contestId === undefined || taskId === undefined) {
+        throw new TypeError("Expected an AtCoder contest task URL.");
+    }
+
+    return { contestId, taskId };
+}
+
+export function buildAtCoderContestUrl(value: string): URL {
+    const { contestId } = parseTaskPath(value);
+    return new URL(`/contests/${contestId}`, ATCODER_ORIGIN);
+}
+
+export function buildAtCoderSubmissionsUrl(value: string): URL {
+    const { contestId, taskId } = parseTaskPath(value);
+    const submissionsUrl = new URL(`/contests/${contestId}/submissions/me`, ATCODER_ORIGIN);
+    submissionsUrl.searchParams.set("f.Task", taskId);
+    return submissionsUrl;
+}
+
 async function request(url: URL | string, init: RequestInit): Promise<Response> {
     try {
         return await fetch(url, { ...init, signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS) });

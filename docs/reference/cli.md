@@ -6,6 +6,7 @@
 | ----------------------------------------------------- | --------------------------------------------------------------------------- |
 | `neoj init [--force]`                                 | Copy the bundled templates into the current project.                        |
 | `neoj download <url>` (alias: `neoj d`)               | Download a problem's sample tests into the test-case directory.             |
+| `neoj open [options]` (alias: `neoj o`)               | Open the current problem in the browser.                                    |
 | `neoj handmade` (alias: `neoj h`)                     | Create a handmade test case from interactive input.                         |
 | `neoj login <platform>`                               | Log in to a platform. The supported names are `atcoder` and `yukicoder`.    |
 | `neoj logout [--service <name...>]`                   | Log out of the given platforms, or of every platform when no name is given. |
@@ -32,6 +33,32 @@ directory when none is found. The search stops at the repository root.
 
 Requires an initialized project. See
 [Download sample tests](../how-to/download-samples.md).
+
+### `open`
+
+Opens the page for the problem recorded by the last successful download, so run
+`neoj download <url>` first.
+
+| Option                | Description                                        |
+| --------------------- | -------------------------------------------------- |
+| `-c`, `--contest`     | Open the contest page of the current problem.      |
+| `-s`, `--submissions` | Open your own submissions for the current problem. |
+
+`--contest` and `--submissions` cannot be combined.
+
+| Target          | AtCoder                                                                  | yukicoder                                                                |
+| --------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| (default)       | The problem page.                                                        | The problem page.                                                        |
+| `--contest`     | `https://atcoder.jp/contests/<contestId>`                                | The contest that published the problem, resolved through the public API. |
+| `--submissions` | `https://atcoder.jp/contests/<contestId>/submissions/me?f.Task=<taskId>` | `https://yukicoder.me/problems/no/<n>/submissions?my_submission=enabled` |
+
+AtCoder URLs are derived from the problem URL. yukicoder does not record the
+contest in the problem URL, so `--contest` asks the public API; it needs network
+access, and a problem that belongs to no contest cannot be opened this way. When
+a problem appears in several contests, the API reports only one of them.
+
+If the browser cannot be started, the URL is printed so it can be opened by
+hand and the command exits with `1`.
 
 ### `handmade`
 

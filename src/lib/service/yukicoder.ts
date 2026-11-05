@@ -131,6 +131,54 @@ function parseJsonWithSchema<TSchema extends v.GenericSchema>(
     return result.output;
 }
 
+const problemSummarySchema = v.object({
+    ContestId: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),
+});
+
+function parseProblemNumber(value: string): number {
+    const problemUrl = parseYukicoderProblemUrl(value);
+    const number = /(\d+)\/?$/u.exec(problemUrl.pathname)?.[1];
+    if (number === undefined) {
+        throw new TypeError(`Expected a yukicoder problem URL with a problem number: "${value}".`);
+    }
+
+    return Number(number);
+}
+
+export function buildYukicoderSubmissionsUrl(value: string): URL {
+    const number = parseProblemNumber(value);
+    const submissionsUrl = new URL(`/problems/no/${number}/submissions`, YUKICODER_ORIGIN);
+    submissionsUrl.searchParams.set("my_submission", "enabled");
+    return submissionsUrl;
+}
+
+/**
+ * Resolve the contest page of a problem.
+ *
+ * The contest ID is not part of the problem URL, so it comes from the public
+ * yukicoder API. Problems that are not part of a contest cannot be resolved.
+ */
+export async function fetchYukicoderContestUrl(value: string): Promise<URL> {
+    const number = parseProblemNumber(value);
+    const response = await request(`${API_ORIGIN}/v1/problems/no/${number}`, {
+        headers: { "User-Agent": USER_AGENT },
+    });
+    if (!response.ok) {
+        throw new Error(`yukicoder problem request failed (${response.status}).`);
+    }
+
+    const problem = parseJsonWithSchema(
+        await readJson(response, "problem"),
+        problemSummarySchema,
+        "problem",
+    );
+    if (problem.ContestId === null || problem.ContestId === undefined) {
+        throw new Error("This yukicoder problem does not belong to a contest.");
+    }
+
+    return new URL(`/contests/${problem.ContestId}`, YUKICODER_ORIGIN);
+}
+
 function normalizePre(value: string): string {
     return value.trim().replaceAll("\r\n", "\n");
 }
