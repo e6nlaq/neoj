@@ -1178,12 +1178,16 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
             lineNumbers: options.lineNumbers ?? options.config.test.show_line_numbers,
             displayLines: options.config.test.display_lines,
         };
-        for (const result of results) {
+        for (const [index, result] of results.entries()) {
             stdout.write(
                 `${formatCaseLine(result, nameWidth, timeoutSeconds, memoryMiB, styles)}\n`,
             );
             for (const line of buildCaseDetails(result, detailOptions, styles, columns)) {
                 stdout.write(`${line}\n`);
+            }
+            if (result.verdict !== "AC" && index < results.length - 1) {
+                // Separate a failing case from the next one with two blank lines.
+                stdout.write("\n\n");
             }
         }
 

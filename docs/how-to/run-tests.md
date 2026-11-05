@@ -145,6 +145,8 @@ adds the same tables to passing cases.
 Wide terminals show both outputs side by side in one table; narrow terminals,
 tabs, and long lines fall back to two stacked tables that keep their headers.
 
+A case that did not pass is separated from the next one by two blank lines.
+
 ## Number and trim the lines
 
 The `Line` column numbers the rows of every table. It is on by default; set
