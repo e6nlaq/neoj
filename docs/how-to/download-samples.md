@@ -33,11 +33,16 @@ repository root, so you can run it from a subdirectory of the project.
 3. Replaces the test-case folder (`test/` by default) with `sample-*.in` and
    `sample-*.out` files, one pair per sample. Files you placed there, including
    handmade cases, are removed.
-4. Applies the project template to `src/` when `template.enable = true`.
+4. Applies the project template to `src/` when `template.enable = true` and the
+   problem changed.
 5. Restores the downloaded problem's stash when `stash.auto_apply = true`, the
    problem changed, and a stash exists.
 6. Records the problem URL in `.neoj/problem.json`. For AtCoder, the contest
    window is recorded as well; yukicoder problems store only the URL.
+
+Re-downloading the same problem only refreshes the test-case folder. The
+template and the stash are not applied again, so working files under `src/` keep
+your edits.
 
 The summary reports how many samples were written. Set
 `download.show_sample = true` to print each sample's contents as well.

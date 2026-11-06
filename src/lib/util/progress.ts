@@ -1,4 +1,4 @@
-import { createAnsiStyles } from "./ansi";
+import { createAnsiStyles } from "@/lib/util/ansi";
 
 /** The subset of a writable stream the progress bar needs. */
 export interface ProgressStream {

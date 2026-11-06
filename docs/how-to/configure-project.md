@@ -32,8 +32,9 @@ filename = "sample-{}"
 filename = "handmade-{}"
 ```
 
-- `folder` must be a relative path inside the project and must not pass through
-  a symbolic link.
+- `folder` must be a relative path inside the project, must not pass through a
+  symbolic link, and must not target `.git` or `.neoj`. It must also not overlap
+  `src` (neither directory may contain the other).
 - `filename` must be a plain file name containing exactly one `{}`, which is
   replaced by the 1-based sample number.
 - `handmade.filename` names the cases created by `neoj handmade`. They use the
@@ -80,7 +81,7 @@ mode = "overlay"
 ```
 
 With `enable = true`, both `src` and `template.folder` are required. After a
-download, `neoj` copies the template into `src`:
+download that changes the problem, `neoj` copies the template into `src`:
 
 - `mode = "overlay"` (default) replaces files that exist in both places and keeps
   the rest.
@@ -88,7 +89,8 @@ download, `neoj` copies the template into `src`:
 
 Hidden files are included, symbolic links inside the template are rejected, and
 the two directories must not overlap. A missing template directory is an error;
-an empty one is allowed.
+an empty one is allowed. Downloading the same problem again does not reapply the
+template, so it never overwrites edits in `src`.
 
 ## Related
 

@@ -200,7 +200,7 @@ describe("saveStash", () => {
 
         await expect(
             saveStash(projectRoot, createConfig({ src: "test" }), { url, key }, { force: true }),
-        ).rejects.toThrow("must not be the same directory");
+        ).rejects.toThrow("must not overlap");
     });
 });
 

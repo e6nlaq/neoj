@@ -4,8 +4,7 @@ import asset0 from "@/assets/template/.gitignore" with { type: "file" };
 import asset1 from "@/assets/template/neoj.toml" with { type: "file" };
 import asset2 from "@/assets/template/src/main.cpp" with { type: "file" };
 import asset3 from "@/assets/template/template/main.cpp" with { type: "file" };
-
-import type { TemplateFile } from "./template";
+import type { TemplateFile } from "@/lib/util/template";
 
 /** Static imports let Bun bundle these files for npm and standalone CLI builds. */
 export const templateFiles: readonly TemplateFile[] = [

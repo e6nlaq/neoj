@@ -13,4 +13,4 @@ const program = createProgram();
 program.configureOutput({
     writeErr: (str) => consola.error(str.trimEnd()),
 });
-program.parse();
+await program.parseAsync();

@@ -2,7 +2,7 @@ import type { Stats } from "node:fs";
 import { lstat, mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { hasErrorCode } from "./errors";
+import { hasErrorCode } from "@/lib/util/errors";
 
 /** A single template file, independent of where its contents are stored. */
 export interface TemplateFile {

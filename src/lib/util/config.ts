@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import * as v from "valibot";
 
-import { findProjectConfig } from "./project";
+import { findProjectConfig } from "@/lib/util/project";
 
 function createFilenamePatternSchema(description: string) {
     return v.pipe(

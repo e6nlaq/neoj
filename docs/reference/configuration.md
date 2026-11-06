@@ -21,7 +21,8 @@ see [Set up editor completions](../how-to/setup-editor-completions.md).
 
 Destination directory for the solution template, resolved from the project root.
 It is required when `template.enable = true`, must stay inside the project, must
-not pass through a symbolic link, and must not overlap `template.folder`.
+not pass through a symbolic link, must not target `.git` or `.neoj`, and must
+not overlap `template.folder`.
 
 ### `alias.<name>`
 
@@ -71,7 +72,8 @@ this is `false` or when the browser cannot be opened (for example over SSH).
 Directory that receives downloaded samples and handmade test cases. The path is
 resolved from the project root (the directory containing the nearest
 `neoj.toml`). It must stay inside the project, must not pass through a symbolic
-link, and must not target `.git`.
+link, and must not target `.git` or `.neoj`. It must also not overlap `src`:
+neither directory may contain the other.
 
 Each download replaces the whole directory, so files placed there by hand are
 removed.
@@ -345,8 +347,9 @@ refreshes the stash, and `neoj stash clear` always requires `--force`.
 | ------- | ------- | ------- |
 | boolean | `false` | project |
 
-Apply the template to `src` after each successful download. Enabling it requires
-both `src` and `template.folder`.
+Apply the template to `src` after a download that changes the problem. Enabling
+it requires both `src` and `template.folder`. Downloading the same problem again
+refreshes the samples without reapplying the template.
 
 ### `template.folder`
 
@@ -356,8 +359,9 @@ both `src` and `template.folder`.
 
 Directory holding the template files, resolved from the project root. It must
 exist when `template.enable = true`; an empty directory is allowed. The path
-must stay inside the project, must not overlap `src`, and the tree must not
-contain symbolic links. Hidden files are copied like any other file.
+must stay inside the project, must not target `.git` or `.neoj`, must not
+overlap `src`, and the tree must not contain symbolic links. Hidden files are
+copied like any other file.
 
 ### `template.mode`
 

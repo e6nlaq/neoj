@@ -1,67 +1,11 @@
-import { copyFile, lstat, mkdir, mkdtemp, readdir, realpath, rename, rm } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { copyFile, lstat, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 
+import { commitStagedDirectory } from "@/lib/util/directory-replace";
 import { hasErrorCode } from "@/lib/util/errors";
+import { assertDirectoriesDoNotOverlap, resolveProjectDirectory } from "@/lib/util/project-path";
 
 export type TemplateMode = "overlay" | "replace";
-
-function isWithin(parent: string, candidate: string): boolean {
-    const path = relative(parent, candidate);
-    return path === "" || (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path));
-}
-
-async function validateProjectDirectory(
-    projectRoot: string,
-    configuredPath: string,
-    name: string,
-): Promise<string> {
-    if (!configuredPath || isAbsolute(configuredPath)) {
-        throw new Error(`${name} must be a non-empty relative path.`);
-    }
-
-    const root = await realpath(projectRoot);
-    const target = resolve(root, configuredPath);
-    const targetRelative = relative(root, target);
-    if (
-        targetRelative === "" ||
-        targetRelative === ".." ||
-        targetRelative.startsWith(`..${sep}`) ||
-        isAbsolute(targetRelative)
-    ) {
-        throw new Error(`${name} must resolve to a directory inside the project.`);
-    }
-
-    const segments = targetRelative.split(sep);
-    if (segments.some((segment) => segment.toLowerCase() === ".git")) {
-        throw new Error(`${name} cannot target the Git metadata directory.`);
-    }
-
-    let current = root;
-    for (let index = 0; index < segments.length; index += 1) {
-        current = join(current, segments[index] ?? "");
-        let entry;
-        try {
-            entry = await lstat(current);
-        } catch (error) {
-            if (hasErrorCode(error, "ENOENT")) {
-                break;
-            }
-            throw error;
-        }
-
-        if (entry.isSymbolicLink()) {
-            throw new Error(`${name} cannot pass through a symbolic link.`);
-        }
-        if (index < segments.length - 1 && !entry.isDirectory()) {
-            throw new Error(`${name} parent path "${current}" is not a directory.`);
-        }
-        if (index === segments.length - 1 && !entry.isDirectory()) {
-            throw new Error(`${name} "${current}" exists but is not a directory.`);
-        }
-    }
-
-    return target;
-}
 
 async function assertSafeTree(directory: string, name: string): Promise<void> {
     for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -115,19 +59,17 @@ export async function applyProjectTemplate(
     sourcePath: string,
     mode: TemplateMode,
 ): Promise<void> {
-    const templateDirectory = await validateProjectDirectory(
+    const templateDirectory = await resolveProjectDirectory(
         projectRoot,
         templatePath,
         "template.folder",
     );
-    const sourceDirectory = await validateProjectDirectory(projectRoot, sourcePath, "src");
+    const sourceDirectory = await resolveProjectDirectory(projectRoot, sourcePath, "src");
 
-    if (
-        isWithin(templateDirectory, sourceDirectory) ||
-        isWithin(sourceDirectory, templateDirectory)
-    ) {
-        throw new Error("template.folder and src must not overlap.");
-    }
+    assertDirectoriesDoNotOverlap(
+        { path: templateDirectory, name: "template.folder" },
+        { path: sourceDirectory, name: "src" },
+    );
 
     try {
         const templateStats = await lstat(templateDirectory);
@@ -171,10 +113,7 @@ export async function applyProjectTemplate(
     try {
         await applyTemplateTree(templateDirectory, stagingDirectory);
 
-        if (sourceExists) {
-            await rm(sourceDirectory, { recursive: true });
-        }
-        await rename(stagingDirectory, sourceDirectory);
+        await commitStagedDirectory(stagingDirectory, sourceDirectory, sourceExists);
     } finally {
         await rm(stagingDirectory, { recursive: true, force: true });
     }

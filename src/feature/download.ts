@@ -34,9 +34,15 @@ export async function downloadProblem(url: string): Promise<void> {
     const config = await loadConfig();
 
     const previous = await readProblemMetadata(projectRoot);
-    const fetched = await fetchSamples(url, projectRoot, config.testcase, {
-        getProblem: (problemUrl) => source.fetchProblem(problemUrl),
-    });
+    const fetched = await fetchSamples(
+        url,
+        projectRoot,
+        config.testcase,
+        {
+            getProblem: (problemUrl) => source.fetchProblem(problemUrl),
+        },
+        config.src,
+    );
 
     const currentKey = deriveProblemKey(fetched.problem.url);
     const previousKey = previous === undefined ? undefined : deriveProblemKey(previous.url);
@@ -71,7 +77,7 @@ export async function downloadProblem(url: string): Promise<void> {
 
     const result = await writeSamples(fetched.directory, fetched.problem, config.testcase);
 
-    if (config.template.enable) {
+    if (problemChanged && config.template.enable) {
         const templateFolder = config.template.folder;
         const sourcePath = config.src;
         if (templateFolder === undefined || sourcePath === undefined) {

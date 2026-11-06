@@ -6,18 +6,18 @@ import {
     mkdtemp,
     readdir,
     readFile,
-    realpath,
-    rename,
     rm,
     rmdir,
     writeFile,
 } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { basename, dirname, join, resolve } from "node:path";
 
 import * as v from "valibot";
 
 import type { Config } from "@/lib/util/config";
+import { commitStagedDirectory } from "@/lib/util/directory-replace";
 import { hasErrorCode } from "@/lib/util/errors";
+import { assertDirectoriesDoNotOverlap, resolveProjectDirectory } from "@/lib/util/project-path";
 
 export interface ProblemKey {
     platform: string;
@@ -158,59 +158,6 @@ async function assertRealDirectory(directory: string, description: string): Prom
     if (stats !== undefined && (stats.isSymbolicLink() || !stats.isDirectory())) {
         throw new Error(`${description} "${directory}" is not a directory.`);
     }
-}
-
-async function resolveProjectDirectory(
-    projectRoot: string,
-    folder: string,
-    name: string,
-): Promise<string> {
-    if (!folder || isAbsolute(folder)) {
-        throw new Error(`${name} must be a non-empty relative path.`);
-    }
-
-    const root = await realpath(projectRoot);
-    const target = resolve(root, folder);
-    const targetRelative = relative(root, target);
-    if (
-        targetRelative === "" ||
-        targetRelative === ".." ||
-        targetRelative.startsWith(`..${sep}`) ||
-        isAbsolute(targetRelative)
-    ) {
-        throw new Error(`${name} must resolve to a directory inside the project.`);
-    }
-
-    const segments = targetRelative.split(sep);
-    if (segments.some((segment) => segment.toLowerCase() === ".git")) {
-        throw new Error(`${name} cannot target the Git metadata directory.`);
-    }
-
-    let current = root;
-    for (let index = 0; index < segments.length; index += 1) {
-        current = join(current, segments[index] ?? "");
-        let entry;
-        try {
-            entry = await lstat(current);
-        } catch (error) {
-            if (hasErrorCode(error, "ENOENT")) {
-                break;
-            }
-            throw error;
-        }
-
-        if (entry.isSymbolicLink()) {
-            throw new Error(`${name} cannot pass through a symbolic link.`);
-        }
-        if (index < segments.length - 1 && !entry.isDirectory()) {
-            throw new Error(`${name} parent path "${current}" is not a directory.`);
-        }
-        if (index === segments.length - 1 && !entry.isDirectory()) {
-            throw new Error(`${name} "${current}" exists but is not a directory.`);
-        }
-    }
-
-    return target;
 }
 
 async function collectFiles(directory: string, name: string): Promise<string[][]> {
@@ -376,7 +323,7 @@ export async function saveStash(
 ): Promise<SaveStashResult> {
     const { key } = target;
     const slotSources = getSlotSources(config);
-    const resolvedDirectories = new Set<string>();
+    const resolvedDirectories: Array<{ path: string; name: string }> = [];
     const slotFiles = new Map<
         StashSlot,
         { folder: string; directory: string; files: string[][] }
@@ -385,10 +332,10 @@ export async function saveStash(
 
     for (const source of slotSources) {
         const directory = await resolveProjectDirectory(projectRoot, source.folder, source.name);
-        if (resolvedDirectories.has(directory)) {
-            throw new Error("src and testcase.folder must not be the same directory.");
+        for (const resolved of resolvedDirectories) {
+            assertDirectoriesDoNotOverlap(resolved, { path: directory, name: source.name });
         }
-        resolvedDirectories.add(directory);
+        resolvedDirectories.push({ path: directory, name: source.name });
 
         const stats = await lstatOptional(directory);
         if (stats === undefined) {
@@ -470,10 +417,7 @@ export async function saveStash(
             flag: "wx",
         });
 
-        if (existingStats !== undefined) {
-            await rm(directory, { recursive: true });
-        }
-        await rename(stagingDirectory, directory);
+        await commitStagedDirectory(stagingDirectory, directory, existingStats !== undefined);
     } finally {
         await rm(stagingDirectory, { recursive: true, force: true });
     }
@@ -549,10 +493,11 @@ export async function applyStash(
                 await copyFile(join(sourceDirectory, ...segments), destination);
             }
 
-            if (existingStats !== undefined) {
-                await rm(targetDirectory, { recursive: true });
-            }
-            await rename(stagingDirectory, targetDirectory);
+            await commitStagedDirectory(
+                stagingDirectory,
+                targetDirectory,
+                existingStats !== undefined,
+            );
         } finally {
             await rm(stagingDirectory, { recursive: true, force: true });
         }

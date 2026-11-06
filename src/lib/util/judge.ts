@@ -1,4 +1,5 @@
-import type { AnsiStyles } from "./ansi";
+import type { AnsiStyles } from "@/lib/util/ansi";
+import { maxValue } from "@/lib/util/numbers";
 
 export const caseVerdicts = ["AC", "WA", "TLE", "MLE", "RE", "UNJUDGED"] as const;
 
@@ -219,9 +220,9 @@ function formatTable(
         ? Math.max(lineNumberHeader.length, String(rows.length).length)
         : 0;
     const widths = headers.map((header, index) =>
-        Math.max(
+        maxValue(
+            rows.map((row) => displayWidth(row.cells[index]?.text ?? "")),
             displayWidth(header),
-            ...rows.map((row) => displayWidth(row.cells[index]?.text ?? "")),
         ),
     );
 
@@ -253,13 +254,13 @@ function formatTable(
 
 function columnWidthsOf(result: ComparisonResult): { left: number; right: number } {
     return {
-        left: Math.max(
+        left: maxValue(
+            result.expectedLines.map((line) => displayWidth(line)),
             displayWidth("Expected"),
-            ...result.expectedLines.map((line) => displayWidth(line)),
         ),
-        right: Math.max(
+        right: maxValue(
+            result.actualLines.map((line) => displayWidth(line)),
             displayWidth("Output"),
-            ...result.actualLines.map((line) => displayWidth(line)),
         ),
     };
 }

@@ -1,7 +1,7 @@
 import { lstat } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 
-import { hasErrorCode } from "./errors";
+import { hasErrorCode } from "@/lib/util/errors";
 
 async function isGitRoot(directory: string): Promise<boolean> {
     try {

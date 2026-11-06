@@ -89,7 +89,8 @@ With both options enabled, `neoj download` behaves like this:
 1. Fetch the problem.
 2. When the problem differs from the one in `.neoj/problem.json`, save that
    previous problem's working files.
-3. Replace the test-case directory and apply the template.
+3. Replace the test-case directory and, when the problem changed, apply the
+   template.
 4. Restore the new problem's stash if it has one.
 
 Both options only run when the problem changes, so re-downloading the same

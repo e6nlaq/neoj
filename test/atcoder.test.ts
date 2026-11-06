@@ -291,11 +291,14 @@ describe("AtCoderClient", () => {
                 return new Response(problemHtml, { status: 200 });
             });
 
-            await expect(
-                new AtCoderClient().getProblem(
-                    "https://example.com/contests/abc001/tasks/abc001_1",
-                ),
-            ).rejects.toThrow("Expected an AtCoder contest task URL.");
+            for (const url of [
+                "https://example.com/contests/abc001/tasks/abc001_1",
+                "https://user:pass@atcoder.jp/contests/abc001/tasks/abc001_1",
+            ]) {
+                await expect(new AtCoderClient().getProblem(url)).rejects.toThrow(
+                    "Expected an AtCoder contest task URL.",
+                );
+            }
             expect(fetched).toBe(false);
         });
 

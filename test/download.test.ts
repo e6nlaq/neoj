@@ -420,6 +420,97 @@ describe("downloadProblem", () => {
         }
     });
 
+    it("does not reapply the template when the problem has not changed", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await mkdir(join(projectRoot, "src"));
+        await mkdir(join(projectRoot, "template"));
+        await Bun.write(join(projectRoot, "template", "main.cpp"), "template");
+        await Bun.write(join(projectRoot, "src", "main.cpp"), "work");
+        await Bun.write(
+            join(projectRoot, "neoj.toml"),
+            'src = "src"\n[template]\nenable = true\nfolder = "template"\n',
+        );
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        const problemUrl = "https://atcoder.jp/contests/abc300/tasks/abc300_a";
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async () => new Response(createAtCoderHtml("1 2", "3"), { status: 200 }),
+        });
+        try {
+            await downloadProblem(problemUrl);
+            await expect(Bun.file(join(projectRoot, "src", "main.cpp")).text()).resolves.toBe(
+                "template",
+            );
+
+            await Bun.write(join(projectRoot, "src", "main.cpp"), "work");
+            await downloadProblem(problemUrl);
+
+            await expect(Bun.file(join(projectRoot, "src", "main.cpp")).text()).resolves.toBe(
+                "work",
+            );
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
+    });
+
+    it("rejects test-case folders that overlap src or the metadata directory", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await mkdir(join(projectRoot, "src"));
+        await Bun.write(join(projectRoot, "src", "main.cpp"), "keep");
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        let fetched = false;
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async () => {
+                fetched = true;
+                return new Response(createAtCoderHtml("1 2", "3"), { status: 200 });
+            },
+        });
+        try {
+            for (const [folder, message] of [
+                ["src", "testcase.folder and src must not overlap"],
+                [".neoj", "testcase.folder cannot target the neoj metadata directory"],
+            ] as const) {
+                await Bun.write(
+                    join(projectRoot, "neoj.toml"),
+                    `src = "src"\n[testcase]\nfolder = "${folder}"\n`,
+                );
+                await expect(
+                    downloadProblem("https://atcoder.jp/contests/abc300/tasks/abc300_a"),
+                ).rejects.toThrow(message);
+            }
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
+
+        expect(fetched).toBe(false);
+        await expect(Bun.file(join(projectRoot, "src", "main.cpp")).text()).resolves.toBe("keep");
+    });
+
     it("rejects unsupported problem URLs", async () => {
         await expect(downloadProblem("https://example.com/problems/no/480")).rejects.toThrow(
             "Expected a problem URL from a supported platform (AtCoder, yukicoder).",

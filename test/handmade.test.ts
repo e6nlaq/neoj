@@ -246,4 +246,19 @@ describe("runHandmade", () => {
             }),
         ).rejects.toThrow("testcase.folder must resolve to a directory inside the project");
     });
+
+    it("rejects a folder that overlaps src", async () => {
+        const root = await createRoot();
+        await mkdir(join(root, "src"));
+
+        await expect(
+            runHandmade({
+                projectRoot: root,
+                folder: "src",
+                src: "src",
+                filename: "handmade-{}",
+                prompt: createPrompt([""]),
+            }),
+        ).rejects.toThrow("testcase.folder and src must not overlap");
+    });
 });

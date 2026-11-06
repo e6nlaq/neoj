@@ -95,7 +95,8 @@ an initialized project. See
 [Create a test case by hand](../how-to/create-handmade-tests.md).
 
 `neoj download` replaces the whole test-case directory, so handmade files placed
-there are removed by the next download.
+there are removed by the next download. The directory must not be `src` or
+`.neoj`, and it must not contain or live inside `src`.
 
 ### `login`
 

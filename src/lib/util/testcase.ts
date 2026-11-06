@@ -1,9 +1,11 @@
-import { lstat, mkdir, mkdtemp, realpath, rename, rm, writeFile } from "node:fs/promises";
-import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { lstat, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { basename, dirname, join } from "node:path";
 
 import type { Problem, ProblemClient, ProblemSample } from "@/lib/service/problem";
 import type { Config } from "@/lib/util/config";
+import { commitStagedDirectory } from "@/lib/util/directory-replace";
 import { hasErrorCode } from "@/lib/util/errors";
+import { assertDirectoriesDoNotOverlap, resolveProjectDirectory } from "@/lib/util/project-path";
 
 export interface DownloadedSamples {
     directory: string;
@@ -20,56 +22,21 @@ export interface FetchedSamples {
 /**
  * Resolve `testcase.folder` to an absolute directory inside the project.
  *
- * The path must not be absolute, must stay inside the project, must not pass
- * through a symbolic link, and must not target the Git metadata directory.
+ * When `sourceFolder` is configured, the test-case directory must not overlap
+ * it, so a download cannot replace the solution sources.
  */
 export async function resolveTestcaseDirectory(
     projectRoot: string,
     folder: string,
+    sourceFolder?: string,
 ): Promise<string> {
-    if (!folder || isAbsolute(folder)) {
-        throw new Error("testcase.folder must be a non-empty relative path.");
-    }
-
-    const root = await realpath(projectRoot);
-    const target = resolve(root, folder);
-    const targetRelative = relative(root, target);
-    if (
-        targetRelative === "" ||
-        targetRelative === ".." ||
-        targetRelative.startsWith(`..${sep}`) ||
-        isAbsolute(targetRelative)
-    ) {
-        throw new Error("testcase.folder must resolve to a directory inside the project.");
-    }
-
-    const segments = targetRelative.split(sep);
-    if (segments.some((segment) => segment.toLowerCase() === ".git")) {
-        throw new Error("testcase.folder cannot target the Git metadata directory.");
-    }
-
-    let current = root;
-    for (let index = 0; index < segments.length; index += 1) {
-        current = join(current, segments[index] ?? "");
-        let entry;
-        try {
-            entry = await lstat(current);
-        } catch (error) {
-            if (hasErrorCode(error, "ENOENT")) {
-                break;
-            }
-            throw error;
-        }
-
-        if (entry.isSymbolicLink()) {
-            throw new Error("testcase.folder cannot pass through a symbolic link.");
-        }
-        if (index < segments.length - 1 && !entry.isDirectory()) {
-            throw new Error(`Parent path "${current}" is not a directory.`);
-        }
-        if (index === segments.length - 1 && !entry.isDirectory()) {
-            throw new Error(`testcase.folder "${current}" exists but is not a directory.`);
-        }
+    const target = await resolveProjectDirectory(projectRoot, folder, "testcase.folder");
+    if (sourceFolder !== undefined) {
+        const source = await resolveProjectDirectory(projectRoot, sourceFolder, "src");
+        assertDirectoriesDoNotOverlap(
+            { path: target, name: "testcase.folder" },
+            { path: source, name: "src" },
+        );
     }
 
     return target;
@@ -116,10 +83,9 @@ async function replaceDirectory(
             if (existing.isSymbolicLink() || !existing.isDirectory()) {
                 throw new Error(`testcase.folder "${targetDirectory}" is not a directory.`);
             }
-            await rm(targetDirectory, { recursive: true });
         }
 
-        await rename(stagingDirectory, targetDirectory);
+        await commitStagedDirectory(stagingDirectory, targetDirectory, existing !== undefined);
     } finally {
         await rm(stagingDirectory, { recursive: true, force: true });
     }
@@ -130,10 +96,14 @@ export async function fetchSamples(
     projectRoot: string,
     testcaseConfig: Config["testcase"],
     client: Pick<ProblemClient, "getProblem">,
+    sourceFolder?: string,
 ): Promise<FetchedSamples> {
-    const targetDirectory = await resolveTestcaseDirectory(projectRoot, testcaseConfig.folder);
+    const targetDirectory = await resolveTestcaseDirectory(
+        projectRoot,
+        testcaseConfig.folder,
+        sourceFolder,
+    );
     const problem = await client.getProblem(url);
-    await resolveTestcaseDirectory(projectRoot, testcaseConfig.folder);
     return { directory: targetDirectory, problem };
 }
 
@@ -158,7 +128,8 @@ export async function downloadSamples(
     projectRoot: string,
     testcaseConfig: Config["testcase"],
     client: Pick<ProblemClient, "getProblem">,
+    sourceFolder?: string,
 ): Promise<DownloadedSamples> {
-    const fetched = await fetchSamples(url, projectRoot, testcaseConfig, client);
+    const fetched = await fetchSamples(url, projectRoot, testcaseConfig, client, sourceFolder);
     return writeSamples(fetched.directory, fetched.problem, testcaseConfig);
 }

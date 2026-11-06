@@ -20,6 +20,8 @@ export interface RunHandmadeOptions {
     projectRoot: string;
     /** Test-case directory from `testcase.folder`. */
     folder: string;
+    /** Source directory from `src`, when configured. */
+    src?: string;
     /** File name pattern from `handmade.filename`. */
     filename: string;
     prompt: HandmadePrompt;
@@ -30,7 +32,11 @@ function formatCasePath(folder: string, baseName: string, extension: string): st
 }
 
 export async function runHandmade(options: RunHandmadeOptions): Promise<HandmadeTarget> {
-    const directory = await resolveTestcaseDirectory(options.projectRoot, options.folder);
+    const directory = await resolveTestcaseDirectory(
+        options.projectRoot,
+        options.folder,
+        options.src,
+    );
     const target = await findNextHandmadeTarget(directory, options.filename);
     const inputPath = formatCasePath(options.folder, target.baseName, ".in");
     const outputPath = formatCasePath(options.folder, target.baseName, ".out");
@@ -76,6 +82,7 @@ export function createHandmadeCommand(): Command {
                 await runHandmade({
                     projectRoot,
                     folder: config.testcase.folder,
+                    src: config.src,
                     filename: config.handmade.filename,
                     prompt: {
                         write: (text) => {

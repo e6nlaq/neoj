@@ -16,6 +16,7 @@ import {
     type ComparisonOptions,
     type ComparisonResult,
 } from "@/lib/util/judge";
+import { maxValue } from "@/lib/util/numbers";
 import { createProgressBar } from "@/lib/util/progress";
 import { resolveTestcaseDirectory } from "@/lib/util/testcase";
 
@@ -944,7 +945,11 @@ export async function buildSolution(options: BuildSolutionOptions): Promise<Buil
     const testDirectory =
         options.testDirectory ??
         ([...(language.compile ?? []), ...language.run].some((token) => token.includes("{testdir}"))
-            ? await resolveTestcaseDirectory(projectRoot, options.config.testcase.folder)
+            ? await resolveTestcaseDirectory(
+                  projectRoot,
+                  options.config.testcase.folder,
+                  options.config.src,
+              )
             : undefined);
 
     const cacheEnabled = options.cache ?? options.config.test.cache;
@@ -1080,6 +1085,7 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
     const testDirectory = await resolveTestcaseDirectory(
         projectRoot,
         options.config.testcase.folder,
+        options.config.src,
     );
     const cases = await discoverTestCases(testDirectory, options.filters ?? []);
 
@@ -1132,7 +1138,10 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
 
         const results: TestCaseResult[] = [];
         const counters = { ac: 0, unjudged: 0, failed: 0 };
-        const nameWidth = Math.max(...cases.map((item) => item.name.length));
+        const nameWidth = maxValue(
+            cases.map((item) => item.name.length),
+            0,
+        );
         let nextIndex = 0;
         let firstError: unknown;
         const startedAt = performance.now();
@@ -1196,11 +1205,14 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         }
 
         const total = results.length;
-        const slowest = Math.max(...results.map((result) => result.durationMs));
+        const slowest = maxValue(
+            results.map((result) => result.durationMs),
+            0,
+        );
         const rated = results
             .map((result) => result.maxRssBytes)
             .filter((bytes): bytes is number => bytes !== undefined);
-        const peak = rated.length === 0 ? undefined : Math.max(...rated);
+        const peak = rated.length === 0 ? undefined : maxValue(rated);
         const summary = `${total} case(s): ${counters.ac} passed, ${counters.failed} failed, ${counters.unjudged} unjudged (${formatDuration(elapsed)}; slowest ${formatDuration(slowest)}, peak ${formatMemory(peak)}).`;
         stdout.write(`${counters.failed > 0 ? styles.red(summary) : styles.green(summary)}\n`);
 

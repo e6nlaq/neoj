@@ -60,6 +60,8 @@ export function parseAtCoderProblemUrl(value: string): URL {
     const problemUrl = new URL(value);
     if (
         problemUrl.origin !== ATCODER_ORIGIN ||
+        problemUrl.username ||
+        problemUrl.password ||
         !/^\/contests\/[^/]+\/tasks\/[^/]+\/?$/.test(problemUrl.pathname)
     ) {
         throw new TypeError("Expected an AtCoder contest task URL.");

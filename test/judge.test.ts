@@ -172,6 +172,20 @@ describe("formatComparison", () => {
         expect(colored.find((line) => line.includes("\u001B[32m"))).toContain("x");
         expect(colored[1]).not.toContain("\u001B[");
     });
+
+    it("formats outputs with more lines than the spread argument limit", () => {
+        const lineCount = 150_000;
+        const large = compareOutput(
+            `${"x\n".repeat(lineCount)}`,
+            `${"y\n".repeat(lineCount)}`,
+            strict,
+        );
+
+        const lines = formatComparison(large, options);
+
+        expect(lines).toHaveLength(lineCount + 1);
+        expect(lines[0]).toBe("Expected │ Output");
+    });
 });
 
 describe("formatLinesTable", () => {
