@@ -5,20 +5,25 @@ import { findProblemSource } from "@/feature/problem-sources";
 import { buildAtCoderContestUrl, buildAtCoderSubmissionsUrl } from "@/lib/service/atcoder";
 import { buildYukicoderSubmissionsUrl, fetchYukicoderContestUrl } from "@/lib/service/yukicoder";
 import { openInBrowser } from "@/lib/util/browser";
+import { copyToClipboard } from "@/lib/util/clipboard";
 import { readProblemMetadata } from "@/lib/util/problem-metadata";
 import { requireInitializedProject } from "@/lib/util/project";
 
 export type OpenTarget = "problem" | "contest" | "submissions";
 
+export type OpenOutput = "browser" | "clipboard" | "url";
+
 export interface OpenProblemOptions {
     openUrl?: (url: string) => Promise<boolean>;
+    copyUrl?: (url: string) => Promise<boolean>;
     fetchContestUrl?: (problemUrl: string) => Promise<URL>;
 }
 
 export interface OpenProblemResult {
     target: OpenTarget;
+    output: OpenOutput;
     url: string;
-    opened: boolean;
+    completed: boolean;
 }
 
 export async function resolveOpenUrl(
@@ -52,6 +57,7 @@ export async function resolveOpenUrl(
 
 export async function openProblem(
     target: OpenTarget = "problem",
+    output: OpenOutput = "browser",
     options: OpenProblemOptions = {},
 ): Promise<OpenProblemResult> {
     const projectRoot = await requireInitializedProject(process.cwd());
@@ -61,8 +67,13 @@ export async function openProblem(
     }
 
     const url = await resolveOpenUrl(target, metadata.url, options);
-    const opened = await (options.openUrl ?? openInBrowser)(url);
-    return { target, url, opened };
+    const completed =
+        output === "clipboard"
+            ? await (options.copyUrl ?? copyToClipboard)(url)
+            : output === "browser"
+              ? await (options.openUrl ?? openInBrowser)(url)
+              : true;
+    return { target, output, url, completed };
 }
 
 export function createOpenCommand(): Command {
@@ -71,10 +82,15 @@ export function createOpenCommand(): Command {
         .description("Open the current problem in the browser")
         .option("-c, --contest", "Open the contest page instead of the problem")
         .option("-s, --submissions", "Open your submissions for the current problem")
+        .option("--clip", "Copy the URL to the clipboard instead of opening it")
+        .option("--url", "Print the URL instead of opening it")
         .action(async (options) => {
             try {
                 if (options.contest && options.submissions) {
                     throw new Error("--contest and --submissions cannot be used together.");
+                }
+                if (options.clip && options.url) {
+                    throw new Error("--clip and --url cannot be used together.");
                 }
 
                 const target: OpenTarget = options.contest
@@ -82,16 +98,36 @@ export function createOpenCommand(): Command {
                     : options.submissions
                       ? "submissions"
                       : "problem";
-                const result = await openProblem(target);
-                if (!result.opened) {
-                    consola.warn(
-                        `Could not open the browser automatically. Open this URL manually: ${result.url}`,
-                    );
-                    process.exitCode = 1;
-                    return;
-                }
+                const output: OpenOutput = options.clip
+                    ? "clipboard"
+                    : options.url
+                      ? "url"
+                      : "browser";
+                const result = await openProblem(target, output);
 
-                consola.success(`Opened ${result.url}`);
+                switch (output) {
+                    case "url":
+                        process.stdout.write(`${result.url}\n`);
+                        return;
+                    case "clipboard":
+                        if (!result.completed) {
+                            consola.error(`Could not copy the URL to the clipboard: ${result.url}`);
+                            process.exitCode = 1;
+                            return;
+                        }
+                        consola.success(`Copied ${result.url}`);
+                        return;
+                    case "browser":
+                        if (!result.completed) {
+                            consola.warn(
+                                `Could not open the browser automatically. Open this URL manually: ${result.url}`,
+                            );
+                            process.exitCode = 1;
+                            return;
+                        }
+                        consola.success(`Opened ${result.url}`);
+                        return;
+                }
             } catch (error) {
                 consola.error(error instanceof Error ? error.message : String(error));
                 process.exitCode = 1;

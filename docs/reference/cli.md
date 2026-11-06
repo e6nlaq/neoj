@@ -39,12 +39,15 @@ Requires an initialized project. See
 Opens the page for the problem recorded by the last successful download, so run
 `neoj download <url>` first.
 
-| Option                | Description                                        |
-| --------------------- | -------------------------------------------------- |
-| `-c`, `--contest`     | Open the contest page of the current problem.      |
-| `-s`, `--submissions` | Open your own submissions for the current problem. |
+| Option                | Description                                          |
+| --------------------- | ---------------------------------------------------- |
+| `-c`, `--contest`     | Open the contest page of the current problem.        |
+| `-s`, `--submissions` | Open your own submissions for the current problem.   |
+| `--clip`              | Copy the URL to the clipboard instead of opening it. |
+| `--url`               | Print the URL instead of opening it.                 |
 
-`--contest` and `--submissions` cannot be combined.
+`--contest` and `--submissions` cannot be combined, and neither can `--clip` and
+`--url`.
 
 | Target          | AtCoder                                                                  | yukicoder                                                                |
 | --------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
@@ -59,6 +62,10 @@ a problem appears in several contests, the API reports only one of them.
 
 If the browser cannot be started, the URL is printed so it can be opened by
 hand and the command exits with `1`.
+
+`--url` prints only the URL to standard output, so it can be used in scripts.
+`--clip` copies the URL and prints the result; when the clipboard is unavailable
+the command reports the URL on standard error and exits with `1`.
 
 ### `handmade`
 

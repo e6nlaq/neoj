@@ -138,10 +138,11 @@ describe("openProblem", () => {
         await createProject(atCoderProblemUrl);
         const { opened, openUrl } = captureOpenedUrls();
 
-        await expect(openProblem("problem", { openUrl })).resolves.toEqual({
+        await expect(openProblem("problem", "browser", { openUrl })).resolves.toEqual({
             target: "problem",
+            output: "browser",
             url: atCoderProblemUrl,
-            opened: true,
+            completed: true,
         });
         expect(opened).toEqual([atCoderProblemUrl]);
     });
@@ -150,7 +151,7 @@ describe("openProblem", () => {
         await createProject(atCoderProblemUrl);
         const { opened, openUrl } = captureOpenedUrls();
 
-        await openProblem("contest", { openUrl });
+        await openProblem("contest", "browser", { openUrl });
 
         expect(opened).toEqual(["https://atcoder.jp/contests/abc300"]);
     });
@@ -158,16 +159,69 @@ describe("openProblem", () => {
     it("reports when the browser could not be started", async () => {
         await createProject(atCoderProblemUrl);
 
-        await expect(openProblem("problem", { openUrl: async () => false })).resolves.toMatchObject(
-            { opened: false },
-        );
+        await expect(
+            openProblem("problem", "browser", { openUrl: async () => false }),
+        ).resolves.toMatchObject({ completed: false });
+    });
+
+    it("copies the URL when the clipboard output is selected", async () => {
+        await createProject(atCoderProblemUrl);
+        const copied: string[] = [];
+        const { opened, openUrl } = captureOpenedUrls();
+
+        await expect(
+            openProblem("submissions", "clipboard", {
+                openUrl,
+                copyUrl: async (url) => {
+                    copied.push(url);
+                    return true;
+                },
+            }),
+        ).resolves.toEqual({
+            target: "submissions",
+            output: "clipboard",
+            url: "https://atcoder.jp/contests/abc300/submissions/me?f.Task=abc300_a",
+            completed: true,
+        });
+        expect(copied).toEqual([
+            "https://atcoder.jp/contests/abc300/submissions/me?f.Task=abc300_a",
+        ]);
+        expect(opened).toEqual([]);
+    });
+
+    it("reports when the clipboard is unavailable", async () => {
+        await createProject(atCoderProblemUrl);
+
+        await expect(
+            openProblem("problem", "clipboard", { copyUrl: async () => false }),
+        ).resolves.toMatchObject({ completed: false });
+    });
+
+    it("neither opens nor copies when the URL output is selected", async () => {
+        await createProject(atCoderProblemUrl);
+        const { opened, openUrl } = captureOpenedUrls();
+
+        await expect(
+            openProblem("problem", "url", {
+                openUrl,
+                copyUrl: async () => {
+                    throw new Error("the clipboard must not be used");
+                },
+            }),
+        ).resolves.toEqual({
+            target: "problem",
+            output: "url",
+            url: atCoderProblemUrl,
+            completed: true,
+        });
+        expect(opened).toEqual([]);
     });
 
     it("requires a recorded problem", async () => {
         await createProject();
         const { opened, openUrl } = captureOpenedUrls();
 
-        await expect(openProblem("problem", { openUrl })).rejects.toThrow(
+        await expect(openProblem("problem", "browser", { openUrl })).rejects.toThrow(
             'No problem is recorded. Run "neoj download <url>" first.',
         );
         expect(opened).toEqual([]);
