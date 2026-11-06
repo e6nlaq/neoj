@@ -257,7 +257,8 @@ cache_files = ["src/**/*.hpp"]
 The cache key covers the language, the compile command, the source contents,
 `cache_files`, and the platform. Each key gets its own directory under
 `.neoj/build/`; older entries are kept, so switching between two solutions stays
-fast. Delete the directory whenever you want to start clean.
+fast. `neoj prune` deletes every cached build, and `neoj prune --dry-run` reports
+the count and size first.
 
 `neoj test --cache` and `neoj test --no-cache` override the setting for one run,
 and `--no-cache` removes that run's build directory when it finishes.

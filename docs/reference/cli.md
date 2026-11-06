@@ -14,6 +14,7 @@
 | `neoj stash [save\|list\|apply\|pop\|drop\|clear]`    | Save and restore the working files of the current problem.                  |
 | `neoj test [source]` (alias: `neoj t`)                | Build the solution and run it against the sample tests.                     |
 | `neoj run [source] [args...]` (alias: `neoj r`)       | Build the solution and run it without tests, forwarding `args`.             |
+| `neoj prune [--dry-run]`                              | Remove every cached build under `.neoj/build/`.                             |
 | `neoj completions <shell>` (alias: `neoj completion`) | Print a completion script for bash, zsh, fish, or PowerShell.               |
 
 ### `init`
@@ -209,6 +210,21 @@ also hidden automatically when standard error is not a terminal, so piped or
 redirected output stays clean. See
 [Run a solution without tests](../how-to/run-a-solution.md).
 
+### `prune`
+
+Removes every cached build under `.neoj/build/`, so the next `neoj test` or
+`neoj run` compiles from scratch. The nearest initialized project is used, and
+`.neoj/problem.json`, saved stashes, and the test-case directory are left
+untouched.
+
+| Option      | Description                                     |
+| ----------- | ----------------------------------------------- |
+| `--dry-run` | Report the cached builds without deleting them. |
+
+The command reports the number of cached builds and their total size. It runs
+without confirmation because the cache can be rebuilt, and it succeeds with
+`No cached builds.` when there is nothing to remove.
+
 ### `completions`
 
 | Argument  | Description                                                                |
@@ -228,14 +244,14 @@ examples. PowerShell completion requires `pwsh` 7.2 or later.
 
 ## Files
 
-| Path                 | Description                                                                                                 |
-| -------------------- | ----------------------------------------------------------------------------------------------------------- |
-| `<testcase.folder>/` | Sample and handmade inputs and outputs; `test/` by default.                                                 |
-| `.neoj/build/`       | Compiled programs, one directory per cache key when `test.cache` is enabled; shared by `test` and `run`.    |
-| `.neoj/problem.json` | URL of the last successful download. AtCoder also stores its contest window; yukicoder stores only the URL. |
-| `.neoj/stash/`       | Per-problem snapshots of `src` and the test-case directory.                                                 |
-| `neoj.toml`          | Project configuration.                                                                                      |
-| `~/.neoj.toml`       | Global configuration.                                                                                       |
+| Path                 | Description                                                                                                                        |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `<testcase.folder>/` | Sample and handmade inputs and outputs; `test/` by default.                                                                        |
+| `.neoj/build/`       | Compiled programs, one directory per cache key when `test.cache` is enabled; shared by `test` and `run`. Delete with `neoj prune`. |
+| `.neoj/problem.json` | URL of the last successful download. AtCoder also stores its contest window; yukicoder stores only the URL.                        |
+| `.neoj/stash/`       | Per-problem snapshots of `src` and the test-case directory.                                                                        |
+| `neoj.toml`          | Project configuration.                                                                                                             |
+| `~/.neoj.toml`       | Global configuration.                                                                                                              |
 
 `neoj` does not download or update `neoj.toml`; it only reads it. See the
 [configuration reference](configuration.md) for keys and defaults.

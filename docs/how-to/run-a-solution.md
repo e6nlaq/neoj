@@ -123,7 +123,8 @@ neoj run > out.txt 2>&1
 `neoj run` shares `test.cache` and the `.neoj/build/` directory with
 `neoj test`, so a build made by one command is reused by the other. Override the
 setting for one run with `--cache` or `--no-cache`; `--no-cache` deletes that
-run's build directory when the program exits.
+run's build directory when the program exits. `neoj prune` removes every cached
+build.
 
 ## Exit status
 

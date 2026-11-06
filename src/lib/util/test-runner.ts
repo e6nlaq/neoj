@@ -5,6 +5,7 @@ import { arch, availableParallelism, platform } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
+import { getBuildCacheDirectory } from "@/lib/util/build-cache";
 import { runCommand, type CommandResult } from "@/lib/util/command-runner";
 import type { Config, ShowStderrMode } from "@/lib/util/config";
 import { hasErrorCode } from "@/lib/util/errors";
@@ -20,7 +21,6 @@ import { maxValue } from "@/lib/util/numbers";
 import { createProgressBar } from "@/lib/util/progress";
 import { resolveTestcaseDirectory } from "@/lib/util/testcase";
 
-const buildDirectoryName = "build";
 const executableBaseName = "a";
 const compileTimeoutMs = 10 * 60 * 1000;
 
@@ -969,7 +969,7 @@ export async function buildSolution(options: BuildSolutionOptions): Promise<Buil
         arch: arch(),
     });
 
-    const buildDirectory = join(projectRoot, ".neoj", buildDirectoryName, buildKey);
+    const buildDirectory = getBuildCacheDirectory(projectRoot, buildKey);
     const outfilePath = join(buildDirectory, executableBaseName);
     const placeholders: Record<PlaceholderName, string> = {
         source: resolved.absolutePath,
