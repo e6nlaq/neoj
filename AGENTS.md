@@ -89,6 +89,9 @@ The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messag
 - `git diff` does not list untracked files. Check `git status --short` before deciding a change set is complete.
 - Add a failure-path test for destructive filesystem changes, not only the success path.
 - When a test compares absolute paths, canonicalize them first: `process.cwd()` resolves symlinks (macOS `/var` → `/private/var`), so build expected paths from `realpath()` instead of a `tmpdir()` string.
+- `Bun.spawn` stdin is a `FileSink`: `write()` may return a promise that rejects with `EPIPE` after the reader exits. Await the result and treat a failed write as the end of that relay; an unhandled rejection escapes the pump and fails the entire test run on Windows.
+- When one side of an interactive pipe exits first, keep draining the other side's output until EOF instead of cancelling the reader. Cancelling hands the surviving writer an `EPIPE` it cannot handle, which turns a normal early exit into a spurious judge error.
+- Reap both interactive children in a `finally` before returning. On Windows a leaked process keeps its working directory and executables locked, so later `rm` calls fail with `EBUSY` and hide the real failure; test cleanup should also pass `maxRetries` to `rm`.
 
 ## Response
 

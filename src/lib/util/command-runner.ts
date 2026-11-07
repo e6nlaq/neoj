@@ -138,6 +138,9 @@ async function pumpStream(
     let pending = "";
     let size = 0;
     let overflow = false;
+    // Once the other program exits, the relay stops but the stream keeps being
+    // drained: cancelling it would hand the writer an EPIPE it cannot handle.
+    let relaying = true;
 
     const flushLines = (final: boolean) => {
         while (true) {
@@ -151,6 +154,28 @@ async function pumpStream(
         if (final && pending !== "") {
             options.transcript.push(options.direction, pending.replace(/\r$/u, ""));
             pending = "";
+        }
+    };
+
+    const relay = async (text: string): Promise<void> => {
+        if (!relaying || options.isDestinationClosed()) {
+            relaying = false;
+            return;
+        }
+
+        try {
+            // Bun returns a promise when its write buffer is full; that promise
+            // rejects with EPIPE once the reader has exited, and an unhandled
+            // rejection would abort the whole run instead of just this relay.
+            await Promise.race([to.write(text) as unknown, options.destinationExit]);
+            await Promise.race([to.flush(), options.destinationExit]);
+        } catch {
+            relaying = false;
+            return;
+        }
+
+        if (options.isDestinationClosed()) {
+            relaying = false;
         }
     };
 
@@ -177,28 +202,23 @@ async function pumpStream(
             flushLines(false);
 
             if (text !== "") {
-                try {
-                    to.write(text);
-                    // A dead destination must not leave the pump waiting forever.
-                    await Promise.race([to.flush(), options.destinationExit]);
-                } catch {
-                    break;
-                }
-            }
-            if (options.isDestinationClosed()) {
-                break;
+                await relay(text);
             }
         }
 
         pending += decoder.decode();
         flushLines(true);
+    } catch {
+        // A cancelled stream or a closed pipe ends the relay. The verdict comes
+        // from the exit codes, so this must not surface as an unhandled error.
+        relaying = false;
     } finally {
         try {
             await reader.cancel();
         } catch {
             // The stream is already closed.
         }
-        if (!overflow) {
+        if (relaying && !overflow) {
             endQuietly(to);
         }
     }
@@ -342,6 +362,10 @@ export async function runInteractiveCommand(
         if (sessionTimer !== undefined) {
             clearTimeout(sessionTimer);
         }
+        // Never leave a child behind: a leaked process keeps its working
+        // directory open, which makes the caller's cleanup fail on Windows.
+        killBoth();
+        await Promise.allSettled([solutionExit, interactorExit]);
     }
 
     const durationMs = solutionDurationMs > 0 ? solutionDurationMs : performance.now() - startedAt;

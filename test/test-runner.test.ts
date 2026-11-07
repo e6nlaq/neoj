@@ -29,7 +29,9 @@ let testRoot: string | undefined;
 
 afterEach(async () => {
     if (testRoot !== undefined) {
-        await rm(testRoot, { recursive: true, force: true });
+        // A child process that just exited can keep its directory busy for a
+        // moment on Windows, so retry instead of failing the test.
+        await rm(testRoot, { recursive: true, force: true, maxRetries: 10, retryDelay: 50 });
         testRoot = undefined;
     }
 });
@@ -1364,6 +1366,34 @@ describe("interactive judging", () => {
             ["interactive", "AC"],
         ]);
         expect(out.text()).toContain("1 case(s): 1 passed");
+    });
+
+    it("keeps draining when the solution exits before the interactor writes", async () => {
+        const projectRoot = await createProject();
+        await mkdir(join(projectRoot, "src"), { recursive: true });
+        await writeFile(join(projectRoot, "src", "main.ts"), "process.exit(0);\n");
+        // The delay guarantees the solution is gone before the first prompt, so
+        // the relay writes into a closed pipe. That used to escape as an
+        // unhandled EPIPE rejection and fail the whole test run on Windows.
+        await writeFile(
+            join(projectRoot, "src", "interactor.ts"),
+            'await Bun.sleep(100);\nconsole.log("go");\nawait Bun.stdin.text().catch(() => {});\n',
+        );
+        await writeCase(join(projectRoot, "test"), "sample-1", "1 2\n");
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: interactiveConfig(),
+            interactive: true,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        expect(result.results.map((item) => [item.name, item.verdict])).toEqual([
+            ["sample-1", "AC"],
+        ]);
+        expect(result.exitCode).toBe(0);
     });
 
     it("rejects {infile} when the case has no input file", async () => {
