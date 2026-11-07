@@ -13,7 +13,7 @@ cache = true
 # Interactive judging (`neoj test --interactive`) reads this section. The
 # interactor and the solution run at the same time and talk over pipes.
 # [test.interactor]
-# source = "src/interactor.cpp"
+# source = "judge/interactor.cpp"
 # run = ["{outfile}", "{infile}"]
 # timeout = 15
 
