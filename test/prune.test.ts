@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { mkdir, mkdtemp, rm, stat } from "node:fs/promises";
+import { mkdir, mkdtemp, realpath, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -96,9 +96,12 @@ describe("pruneProjectCache", () => {
         await Bun.write(getBuildCacheDirectory(root, "key", "a"), "build");
         process.chdir(nested);
 
+        // `process.cwd()` resolves symlinks (for example `/var` to `/private/var`
+        // on macOS), so compare against the canonical project path.
+        const expectedDirectory = getBuildCacheDirectory(await realpath(root));
         const result = await pruneProjectCache();
 
-        expect(result.directory).toBe(getBuildCacheDirectory(root));
+        expect(result.directory).toBe(expectedDirectory);
         await expect(pathExists(getBuildCacheDirectory(root))).resolves.toBe(false);
     });
 

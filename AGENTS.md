@@ -88,6 +88,7 @@ The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messag
 - After editing imports, verify that sibling type and value imports still exist; a single-line replacement can drop one.
 - `git diff` does not list untracked files. Check `git status --short` before deciding a change set is complete.
 - Add a failure-path test for destructive filesystem changes, not only the success path.
+- When a test compares absolute paths, canonicalize them first: `process.cwd()` resolves symlinks (macOS `/var` → `/private/var`), so build expected paths from `realpath()` instead of a `tmpdir()` string.
 
 ## Response
 
