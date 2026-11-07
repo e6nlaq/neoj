@@ -121,9 +121,9 @@ jobs:
               # NODE_AUTH_TOKEN secret is required.
               run: |
                   if [ "${{ inputs.dry_run }}" = "true" ]; then
-                      npm publish --ignore-scripts --dry-run
+                      npm stage-publish --ignore-scripts --dry-run
                   else
-                      npm publish --ignore-scripts
+                      npm stage-publish --ignore-scripts
                   fi
 
     binaries:
