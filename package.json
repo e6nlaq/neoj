@@ -1,6 +1,6 @@
 {
     "name": "neo-oj",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "A CLI for competitive programming workflows",
     "license": "MIT",
     "author": {
