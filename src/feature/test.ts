@@ -44,6 +44,7 @@ export function createTestCommand(): Command<[string | undefined]> {
         .option("-t, --timeout <seconds>", "Time limit per test case", parsePositiveSeconds)
         .option("-m, --memory <MiB>", "Memory limit per test case", parsePositiveInteger)
         .option("-f, --filter <name...>", "Only run the named test cases")
+        .option("-i, --interactive", "Judge with the interactor in [test.interactor]")
         .option("--cache", "Keep compiled binaries in .neoj/build and reuse them")
         .option("--no-cache", "Delete the build directory after the run")
         .option("-S, --ignore-trailing-space", "Ignore whitespace at the end of each output line")
@@ -76,6 +77,7 @@ export function createTestCommand(): Command<[string | undefined]> {
                     memoryMiB: options.memory,
                     filters: options.filter,
                     cache: options.cache,
+                    interactive: options.interactive,
                     ignoreTrailingSpace: options.ignoreTrailingSpace,
                     ignoreTrailingNewline: options.ignoreTrailingNewline,
                     showStderr: options.showStderr,

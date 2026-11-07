@@ -10,6 +10,13 @@ folder = "test"
 source = "src/main.cpp"
 cache = true
 
+# Interactive judging (`neoj test --interactive`) reads this section. The
+# interactor and the solution run at the same time and talk over pipes.
+# [test.interactor]
+# source = "src/interactor.cpp"
+# run = ["{outfile}", "{infile}"]
+# timeout = 15
+
 # Extra names for source files: `neoj test main` builds src/main.cpp.
 # [alias]
 # main = "src/main.cpp"

@@ -13,7 +13,7 @@ the test-case directory, and compares the output with the matching `.out` file.
 
 The command needs a project with a `neoj.toml`, a `[languages.<key>]` section,
 and at least one `*.in` file in the test-case directory. Download the samples
-first:
+first (interactive mode can run a single session without any `*.in` file):
 
 ```bash
 neoj init
@@ -155,6 +155,61 @@ tabs, and long lines fall back to two stacked tables that keep their headers.
 
 A case that did not pass is separated from the next one by two blank lines.
 
+## Test an interactive problem
+
+Some problems require your program to talk to a judge instead of reading all of
+the input at once. `neoj test --interactive` (or `-i`) starts your solution and
+an interactor at the same time and connects them with pipes:
+
+```text
+test/sample-1.in ──▶ interactor (path passed with {infile})
+interactor stdout ──▶ solution stdin
+solution stdout   ──▶ interactor stdin
+```
+
+Describe the interactor in `neoj.toml`:
+
+```toml
+[test.interactor]
+source = "src/interactor.cpp"
+run = ["{outfile}", "{infile}"]
+```
+
+- `source` is required. It is a plain path relative to the project root.
+- `compile` and `run` default to the `[languages.<key>]` entry whose `source`
+  glob matches the interactor file, so a C++ interactor needs only `run` here to
+  receive `{infile}`.
+- `{infile}` expands to the path of the case's `.in` file. It is available in
+  `run` only; standard input belongs to the solution's output.
+- The interactor decides the verdict: exit status `0` is `AC`, and anything else
+  is `WA`. Its first non-empty stderr line becomes the `WA (...)` reason.
+- Your solution's own failures win: `TLE`, `MLE`, `RE`, and the output cap are
+  reported even if the interactor would have accepted the answer.
+- `.out` files are ignored. When the directory has no `*.in` file, one session
+  runs without `{infile}`, for interactors that generate their own input.
+- Both programs must flush every line they write, or the other side waits
+  forever. In C++ use `std::endl` or `std::cout.flush()`; in Python use
+  `flush=True` or `sys.stdout.flush()`.
+- `test.interactor.timeout` (default 15 seconds) caps the whole session; the
+  solution's own limit is still `test.timeout` / `-t`.
+
+The report replaces the input and output tables with the conversation:
+
+```text
+✗ sample-1     41 ms    12 MiB  WA (wrong answer: 3 != 7)
+    interactive:
+      J> 1 2
+      S> 3
+      J> 5
+      S> 8
+    interactor stderr:
+      wrong answer: 3 != 7
+```
+
+`J>` marks a line from the interactor to the solution and `S>` a line from the
+solution to the interactor. Failures show the transcript; `-v` shows it for `AC`
+too. `test.display_lines` limits how many lines are printed.
+
 ## Number and trim the lines
 
 The `Line` column numbers the rows of every table. It is on by default; set
@@ -235,12 +290,16 @@ complete. See [Create a test case by hand](create-handmade-tests.md).
 ## Limits
 
 - `test.timeout` defaults to 10 seconds. `neoj test -t 2` or
-  `languages.<key>.timeout` changes it.
+  `languages.<key>.timeout` changes it. In interactive mode it limits the
+  solution process, while `test.interactor.timeout` (default 15 seconds) limits
+  the whole session.
 - `test.memory` defaults to 1024 MiB. The limit is judged from the peak resident
   memory of the program process after it exits; a program that spawns children
-  is measured for the direct child only.
+  is measured for the direct child only. Interactive mode applies it to the
+  solution only, never to the interactor.
 - Standard output and standard error are each capped at 8 MiB. A program that
-  exceeds the cap is stopped and reported as `RE`.
+  exceeds the cap is stopped and reported as `RE`. Interactive mode applies the
+  cap to both programs.
 
 ## Cache compiled programs
 

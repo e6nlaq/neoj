@@ -155,7 +155,9 @@ directories match the stash exactly. See
 | ---------- | ------------------------------------------------------------------------------ |
 | `[source]` | Source file to test. An `[alias]` name is accepted. Defaults to `test.source`. |
 
-Runs every `*.in` file in the test-case directory against the built program.
+Runs every `*.in` file in the test-case directory against the built program. With
+`--interactive`, the interactor named by `[test.interactor]` judges each case
+instead of comparing the output with `*.out`.
 
 | Option                                           | Description                                                  |
 | ------------------------------------------------ | ------------------------------------------------------------ |
@@ -165,6 +167,7 @@ Runs every `*.in` file in the test-case directory against the built program.
 | `-t`, `--timeout <seconds>`                      | Time limit per test case.                                    |
 | `-m`, `--memory <MiB>`                           | Memory limit per test case.                                  |
 | `-f`, `--filter <name...>`                       | Run only the named cases (`sample-1` for `sample-1.in`).     |
+| `-i`, `--interactive`                            | Judge with the interactor in `[test.interactor]`.            |
 | `--cache` / `--no-cache`                         | Keep or delete the compiled program under `.neoj/build/`.    |
 | `-S`, `--ignore-trailing-space`                  | Ignore trailing whitespace on each line.                     |
 | `-N`, `--ignore-trailing-newline`                | Ignore newlines at the end of the output.                    |

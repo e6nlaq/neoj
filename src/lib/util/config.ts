@@ -192,6 +192,48 @@ export const configSchema = v.pipe(
                             ),
                         ),
                     ),
+                    interactor: v.optional(
+                        v.pipe(
+                            v.strictObject({
+                                source: v.pipe(
+                                    v.string(),
+                                    v.minLength(1),
+                                    v.description(
+                                        "Interactor file that judges an interactive solution, relative to the project root.",
+                                    ),
+                                ),
+                                compile: v.optional(
+                                    v.pipe(
+                                        v.array(v.pipe(v.string(), v.minLength(1))),
+                                        v.description(
+                                            "Command and arguments that build the interactor into {outfile} or {outdir}. Defaults to the matching [languages.<key>].compile.",
+                                        ),
+                                    ),
+                                ),
+                                run: v.optional(
+                                    v.pipe(
+                                        v.array(v.pipe(v.string(), v.minLength(1))),
+                                        v.description(
+                                            "Command and arguments that run the interactor. Defaults to the matching [languages.<key>].run. Add {infile} to receive the test case path.",
+                                        ),
+                                    ),
+                                ),
+                                timeout: v.optional(
+                                    v.pipe(
+                                        v.number(),
+                                        v.minValue(0.001),
+                                        v.description(
+                                            "Wall-clock limit for the whole interactive session in seconds.",
+                                        ),
+                                    ),
+                                    15,
+                                ),
+                            }),
+                            v.description(
+                                "Interactor used by neoj test --interactive. It reads the solution's output on standard input and writes the next prompt to standard output.",
+                            ),
+                        ),
+                    ),
                     timeout: v.optional(
                         v.pipe(
                             v.number(),

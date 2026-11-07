@@ -6,7 +6,12 @@ import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
 import { getBuildCacheDirectory } from "@/lib/util/build-cache";
-import { runCommand, type CommandResult } from "@/lib/util/command-runner";
+import {
+    runCommand,
+    runInteractiveCommand,
+    type CommandResult,
+    type InteractiveLine,
+} from "@/lib/util/command-runner";
 import type { Config, ShowStderrMode } from "@/lib/util/config";
 import { hasErrorCode } from "@/lib/util/errors";
 import {
@@ -25,6 +30,9 @@ const executableBaseName = "a";
 const compileTimeoutMs = 10 * 60 * 1000;
 
 export const placeholderNames = ["source", "outfile", "outdir", "dir", "testdir"] as const;
+
+/** `{infile}` is only valid for the interactor, where the test case path is known. */
+export const interactorPlaceholderNames = [...placeholderNames, "infile"] as const;
 
 type PlaceholderName = (typeof placeholderNames)[number];
 
@@ -58,6 +66,17 @@ export interface TestCaseResult {
     maxRssBytes: number | undefined;
     comparison: ComparisonResult | undefined;
     detail: string | undefined;
+    /** Filled in only when the case was judged by an interactor. */
+    interactive?: InteractiveSummary;
+}
+
+/** What the report needs from an interactive session. */
+export interface InteractiveSummary {
+    transcript: readonly InteractiveLine[];
+    transcriptOmitted: number;
+    interactorStderr: string;
+    sessionTimedOut: boolean;
+    sessionTimeoutSeconds: number;
 }
 
 export interface RunTestsOptions {
@@ -75,6 +94,8 @@ export interface RunTestsOptions {
     cache?: boolean;
     ignoreTrailingSpace?: boolean;
     ignoreTrailingNewline?: boolean;
+    /** Judge with an interactor instead of comparing against `*.out`. */
+    interactive?: boolean;
     showStderr?: ShowStderrMode;
     /** Defaults to `test.show_line_numbers`. */
     lineNumbers?: boolean;
@@ -381,22 +402,24 @@ export function detectLanguage(
 /** Replace `{source}`, `{outfile}`, and friends, rejecting unknown placeholders. */
 export function expandTokens(
     tokens: readonly string[],
-    values: Readonly<Record<PlaceholderName, string>>,
+    values: Readonly<Record<string, string>>,
     label: string,
+    extraNames: readonly string[] = [],
 ): string[] {
+    const allowed = [...placeholderNames, ...extraNames];
     return tokens.map((token) => {
         for (const match of token.matchAll(placeholderPattern)) {
             const name = match[1] ?? "";
-            if (!(placeholderNames as readonly string[]).includes(name)) {
+            if (!allowed.includes(name)) {
                 throw new Error(
-                    `${label} uses the unknown placeholder "{${name}}". Supported placeholders: ${placeholderNames.map((placeholder) => `{${placeholder}}`).join(", ")}.`,
+                    `${label} uses the unknown placeholder "{${name}}". Supported placeholders: ${allowed.map((placeholder) => `{${placeholder}}`).join(", ")}.`,
                 );
             }
         }
 
         let expanded = token;
-        for (const name of placeholderNames) {
-            expanded = expanded.replaceAll(`{${name}}`, values[name]);
+        for (const name of allowed) {
+            expanded = expanded.replaceAll(`{${name}}`, values[name] ?? "");
         }
 
         return expanded;
@@ -439,11 +462,12 @@ export function naturalCompare(left: string, right: string): number {
     return left === right ? 0 : left < right ? -1 : 1;
 }
 
-/** Collect `*.in` / `*.out` pairs from the test-case directory, in natural order. */
-export async function discoverTestCases(
-    directory: string,
-    filters: readonly string[],
-): Promise<TestCase[]> {
+interface CaseDirectory {
+    names: string[];
+    outputs: Set<string>;
+}
+
+async function readCaseDirectory(directory: string): Promise<CaseDirectory> {
     let entries;
     try {
         entries = await readdir(directory, { withFileTypes: true });
@@ -457,34 +481,77 @@ export async function discoverTestCases(
         throw error;
     }
 
-    const outputs = new Set(
-        entries
-            .filter((entry) => entry.isFile() && entry.name.endsWith(".out"))
-            .map((entry) => entry.name.slice(0, -".out".length)),
-    );
-    const names = entries
-        .filter((entry) => entry.isFile() && entry.name.endsWith(".in"))
-        .map((entry) => entry.name.slice(0, -".in".length))
-        .sort(naturalCompare);
+    return {
+        outputs: new Set(
+            entries
+                .filter((entry) => entry.isFile() && entry.name.endsWith(".out"))
+                .map((entry) => entry.name.slice(0, -".out".length)),
+        ),
+        names: entries
+            .filter((entry) => entry.isFile() && entry.name.endsWith(".in"))
+            .map((entry) => entry.name.slice(0, -".in".length))
+            .sort(naturalCompare),
+    };
+}
 
+function selectCaseNames(names: readonly string[], filters: readonly string[]): string[] {
+    if (filters.length === 0) {
+        return [...names];
+    }
+
+    const selected = names.filter((name) => filters.includes(name));
+    if (selected.length === 0) {
+        throw new Error(
+            `No test case matches ${filters.map((filter) => `"${filter}"`).join(", ")}. Available: ${names.map((name) => `"${name}"`).join(", ")}.`,
+        );
+    }
+
+    return selected;
+}
+
+/** Collect `*.in` / `*.out` pairs from the test-case directory, in natural order. */
+export async function discoverTestCases(
+    directory: string,
+    filters: readonly string[],
+): Promise<TestCase[]> {
+    const { names, outputs } = await readCaseDirectory(directory);
     if (names.length === 0) {
         throw new Error(`No test case ("*.in") found in "${directory}".`);
     }
 
-    let selected = names;
-    if (filters.length > 0) {
-        selected = names.filter((name) => filters.includes(name));
-        if (selected.length === 0) {
-            throw new Error(
-                `No test case matches ${filters.map((filter) => `"${filter}"`).join(", ")}. Available: ${names.map((name) => `"${name}"`).join(", ")}.`,
-            );
-        }
-    }
-
-    return selected.map((name) => ({
+    return selectCaseNames(names, filters).map((name) => ({
         name,
         inputPath: join(directory, `${name}.in`),
         expectedOutputPath: outputs.has(name) ? join(directory, `${name}.out`) : undefined,
+    }));
+}
+
+/**
+ * Collect `*.in` files for an interactive judge.
+ *
+ * `*.out` files are ignored because the interactor decides the verdict. A
+ * directory without any `*.in` still produces one session, for interactors
+ * that generate their own input.
+ */
+export async function discoverInteractiveTestCases(
+    directory: string,
+    filters: readonly string[],
+): Promise<TestCase[]> {
+    const { names } = await readCaseDirectory(directory);
+    if (names.length === 0) {
+        if (filters.length > 0) {
+            throw new Error(
+                `No test case matches ${filters.map((filter) => `"${filter}"`).join(", ")}. The directory has no "*.in" files.`,
+            );
+        }
+
+        return [{ name: "interactive", inputPath: "", expectedOutputPath: undefined }];
+    }
+
+    return selectCaseNames(names, filters).map((name) => ({
+        name,
+        inputPath: join(directory, `${name}.in`),
+        expectedOutputPath: undefined,
     }));
 }
 
@@ -592,6 +659,9 @@ interface CaseContext {
     memoryMiB: number;
     comparison: ComparisonOptions;
     verbose: boolean;
+    interactor: BuiltInteractor | undefined;
+    /** Wall-clock limit for a whole interactive session. */
+    sessionTimeoutSeconds: number;
 }
 
 export interface JudgeInput {
@@ -650,7 +720,104 @@ export function judgeCommandResult(input: JudgeInput): JudgeResult {
     };
 }
 
+export interface InteractiveJudgeInput {
+    solution: {
+        exitCode: number | null;
+        signal: string | null;
+        timedOut: boolean;
+        outputLimitExceeded: boolean;
+        maxRssBytes: number | undefined;
+    };
+    interactor: {
+        exitCode: number | null;
+        signal: string | null;
+        outputLimitExceeded: boolean;
+    };
+    sessionTimedOut: boolean;
+    memoryMiB: number;
+    /** Used as the reason when the interactor exits with a non-zero status. */
+    interactorStderr: string;
+}
+
+/** Shorten the interactor's complaint so it fits on the case line. */
+function interactorReason(stderr: string, exitCode: number | null): string {
+    const first = outputLines(stderr)
+        .find((line) => line.trim() !== "")
+        ?.trim();
+    if (first === undefined || first === "") {
+        return `interactor exited with code ${exitCode ?? "unknown"}`;
+    }
+
+    const limit = 120;
+    return first.length <= limit ? first : `${first.slice(0, limit - 1)}…`;
+}
+
+/**
+ * Turn one interactive session into a verdict.
+ *
+ * The solution's own failures win over the interactor's verdict, so a crash or
+ * a timeout is never reported as a wrong answer.
+ */
+export function judgeInteractiveResult(input: InteractiveJudgeInput): JudgeResult {
+    if (input.solution.outputLimitExceeded) {
+        return { verdict: "RE", detail: "output limit exceeded", comparison: undefined };
+    }
+    if (input.solution.timedOut) {
+        return { verdict: "TLE", detail: undefined, comparison: undefined };
+    }
+    if (
+        input.solution.maxRssBytes !== undefined &&
+        input.solution.maxRssBytes > input.memoryMiB * 1024 * 1024
+    ) {
+        return { verdict: "MLE", detail: undefined, comparison: undefined };
+    }
+    // The session timer kills both processes with SIGKILL; that kill is a
+    // timeout, not a crash.
+    if (
+        input.sessionTimedOut &&
+        (input.solution.exitCode === null || input.solution.signal === "SIGKILL")
+    ) {
+        return { verdict: "TLE", detail: "interactive session", comparison: undefined };
+    }
+    if (input.solution.exitCode !== 0) {
+        return {
+            verdict: "RE",
+            detail:
+                input.solution.signal !== null
+                    ? `killed by ${input.solution.signal}`
+                    : `exit code ${input.solution.exitCode ?? "unknown"}`,
+            comparison: undefined,
+        };
+    }
+    if (input.interactor.outputLimitExceeded) {
+        return { verdict: "RE", detail: "interactor output limit exceeded", comparison: undefined };
+    }
+    if (input.sessionTimedOut) {
+        return { verdict: "TLE", detail: "interactive session", comparison: undefined };
+    }
+    if (input.interactor.signal !== null) {
+        return {
+            verdict: "RE",
+            detail: `interactor killed by ${input.interactor.signal}`,
+            comparison: undefined,
+        };
+    }
+    if (input.interactor.exitCode !== 0) {
+        return {
+            verdict: "WA",
+            detail: interactorReason(input.interactorStderr, input.interactor.exitCode),
+            comparison: undefined,
+        };
+    }
+
+    return { verdict: "AC", detail: undefined, comparison: undefined };
+}
+
 async function runTestCase(testCase: TestCase, context: CaseContext): Promise<TestCaseResult> {
+    if (context.interactor !== undefined) {
+        return runInteractiveTestCase(testCase, context, context.interactor);
+    }
+
     const result = await runCommand({
         argv: context.runTokens,
         cwd: context.projectRoot,
@@ -692,6 +859,62 @@ async function runTestCase(testCase: TestCase, context: CaseContext): Promise<Te
     };
 }
 
+async function runInteractiveTestCase(
+    testCase: TestCase,
+    context: CaseContext,
+    interactor: BuiltInteractor,
+): Promise<TestCaseResult> {
+    if (
+        testCase.inputPath === "" &&
+        interactor.runTokens.some((token) => token.includes("{infile}"))
+    ) {
+        throw new Error(
+            `Test case "${testCase.name}" has no input file, but test.interactor.run uses {infile}.`,
+        );
+    }
+
+    const interactorTokens = expandTokens(
+        interactor.runTokens,
+        { ...interactor.placeholders, infile: testCase.inputPath },
+        "test.interactor.run",
+        interactorPlaceholderNames,
+    );
+    const result = await runInteractiveCommand({
+        solution: { argv: context.runTokens, cwd: context.projectRoot },
+        interactor: { argv: interactorTokens, cwd: context.projectRoot },
+        solutionTimeoutMs: Math.round(context.timeoutSeconds * 1000),
+        sessionTimeoutMs: Math.round(context.sessionTimeoutSeconds * 1000),
+    });
+    const judged = judgeInteractiveResult({
+        solution: result.solution,
+        interactor: result.interactor,
+        sessionTimedOut: result.sessionTimedOut,
+        memoryMiB: context.memoryMiB,
+        interactorStderr: result.interactor.stderr,
+    });
+
+    return {
+        name: testCase.name,
+        durationMs: result.solution.durationMs,
+        stdout: "",
+        stderr: result.solution.stderr,
+        input: undefined,
+        exitCode: result.solution.exitCode,
+        signal: result.solution.signal,
+        maxRssBytes: result.solution.maxRssBytes,
+        verdict: judged.verdict,
+        detail: judged.detail,
+        comparison: undefined,
+        interactive: {
+            transcript: result.transcript,
+            transcriptOmitted: result.transcriptOmitted,
+            interactorStderr: result.interactor.stderr,
+            sessionTimedOut: result.sessionTimedOut,
+            sessionTimeoutSeconds: context.sessionTimeoutSeconds,
+        },
+    };
+}
+
 function verdictDescription(
     result: TestCaseResult,
     timeoutSeconds: number,
@@ -702,10 +925,16 @@ function verdictDescription(
             return "AC";
         }
         case "WA": {
+            if (result.interactive !== undefined) {
+                return result.detail === undefined ? "WA" : `WA (${result.detail})`;
+            }
             const line = result.comparison?.firstMismatchLine;
             return line === undefined ? "WA" : `WA (line ${line})`;
         }
         case "TLE": {
+            if (result.interactive?.sessionTimedOut === true) {
+                return `TLE (interactive session > ${result.interactive.sessionTimeoutSeconds} s)`;
+            }
             return `TLE (${formatDuration(result.durationMs)} > ${timeoutSeconds} s)`;
         }
         case "MLE": {
@@ -798,6 +1027,29 @@ function tableBlock(
     });
 }
 
+function interactiveBlock(
+    summary: InteractiveSummary,
+    options: CaseDetailOptions,
+    styles: AnsiStyles,
+): string[] {
+    const shown = summary.transcript.slice(0, options.displayLines);
+    const omitted = summary.transcriptOmitted + (summary.transcript.length - shown.length);
+    if (shown.length === 0 && omitted === 0) {
+        return [];
+    }
+
+    const lines = ["interactive:"];
+    for (const entry of shown) {
+        const prefix = entry.direction === "judge" ? "J>" : "S>";
+        lines.push(entry.text === "" ? `  ${prefix}` : `  ${prefix} ${entry.text}`);
+    }
+    if (omitted > 0) {
+        lines.push(`  ${styles.dim(`… ${omitted} more line(s)`)}`);
+    }
+
+    return lines;
+}
+
 function buildCaseDetails(
     result: TestCaseResult,
     options: CaseDetailOptions,
@@ -805,20 +1057,31 @@ function buildCaseDetails(
     columns: number,
 ): string[] {
     const details = verdictDetails(result, options, styles, columns);
-
-    if (result.stderr.trim() !== "" && shouldShowStderr(result.verdict, options.showStderr)) {
-        // Standard error is printed verbatim, without color, so a compiler or
-        // interpreter's own formatting stays intact.
-        if (details.length > 0) {
-            details.push("");
-        }
-        details.push(`${detailIndent}stderr:`);
-        for (const line of outputLines(result.stderr)) {
-            details.push(`${detailIndent}  ${line}`);
-        }
+    if (!shouldShowStderr(result.verdict, options.showStderr)) {
+        return details;
     }
 
+    if (result.interactive !== undefined) {
+        appendStderrBlock(details, result.interactive.interactorStderr, "interactor stderr:");
+    }
+    appendStderrBlock(details, result.stderr, "stderr:");
+
     return details;
+}
+
+function appendStderrBlock(details: string[], text: string, header: string): void {
+    if (text.trim() === "") {
+        return;
+    }
+    if (details.length > 0) {
+        details.push("");
+    }
+    // Standard error is printed verbatim, without color, so a compiler or
+    // interpreter's own formatting stays intact.
+    details.push(`${detailIndent}${header}`);
+    for (const line of outputLines(text)) {
+        details.push(`${detailIndent}  ${line}`);
+    }
 }
 
 function shouldShowStderr(verdict: CaseVerdict, mode: ShowStderrMode): boolean {
@@ -838,6 +1101,14 @@ function verdictDetails(
     styles: AnsiStyles,
     columns: number,
 ): string[] {
+    if (result.interactive !== undefined) {
+        if (options.verbose !== true && result.verdict === "AC") {
+            return [];
+        }
+        const block = interactiveBlock(result.interactive, options, styles);
+        return block.length === 0 ? [] : indent(block);
+    }
+
     const blocks: string[][] = [];
     const input = result.input;
     if (input !== undefined) {
@@ -912,6 +1183,17 @@ export interface BuiltSolution {
     /** Defined when `{testdir}` was needed or the caller supplied a directory. */
     testDirectory: string | undefined;
     runTokens: string[];
+    buildDirectory: string;
+    outfilePath: string;
+    cacheEnabled: boolean;
+    buildDirectoryCreated: boolean;
+}
+
+export interface BuiltInteractor {
+    projectRoot: string;
+    /** Raw tokens; `{infile}` is expanded for each test case. */
+    runTokens: readonly string[];
+    placeholders: Record<PlaceholderName, string>;
     buildDirectory: string;
     outfilePath: string;
     cacheEnabled: boolean;
@@ -1060,9 +1342,230 @@ export async function buildSolution(options: BuildSolutionOptions): Promise<Buil
 }
 
 /** Delete the build directory after a run, unless the build is cached. */
-export async function cleanupBuild(solution: BuiltSolution): Promise<void> {
+export async function cleanupBuild(
+    solution: Pick<BuiltSolution, "cacheEnabled" | "buildDirectoryCreated" | "buildDirectory">,
+): Promise<void> {
     if (!solution.cacheEnabled && solution.buildDirectoryCreated) {
         await rm(solution.buildDirectory, { recursive: true, force: true });
+    }
+}
+
+export interface BuildInteractorOptions {
+    projectRoot: string;
+    config: Config;
+    cache?: boolean;
+    /** Test-case directory the caller already resolved for `{testdir}`. */
+    testDirectory?: string;
+    onCompilerOutput?: (chunk: string) => void;
+    onCompiled?: (line: string) => void;
+    onCached?: (line: string) => void;
+}
+
+function interactorSourceError(reason: SourceResolveFailure, spec: string): Error {
+    switch (reason) {
+        case "empty": {
+            return new Error("test.interactor.source must not be empty.");
+        }
+        case "outside": {
+            return new Error(`Interactor source "${spec}" must be inside the project.`);
+        }
+        case "missing": {
+            return new Error(`Interactor source "${spec}" does not exist.`);
+        }
+        case "resolves-outside": {
+            return new Error(`Interactor source "${spec}" resolves outside the project.`);
+        }
+        case "not-a-file": {
+            return new Error(`Interactor source "${spec}" is not a regular file.`);
+        }
+    }
+}
+
+function requireInteractorSettings(config: Config): NonNullable<Config["test"]["interactor"]> {
+    const settings = config.test.interactor;
+    if (settings === undefined) {
+        throw new Error(
+            'Interactive mode needs [test.interactor]. Add it to neoj.toml:\n\n  [test.interactor]\n  source = "src/interactor.cpp"',
+        );
+    }
+
+    return settings;
+}
+
+/**
+ * Resolve, compile, and cache the interactor named by `[test.interactor]`.
+ *
+ * `compile` and `run` fall back to the language that matches the interactor
+ * file, so a C++ interactor needs no extra command configuration.
+ */
+export async function buildInteractor(options: BuildInteractorOptions): Promise<BuiltInteractor> {
+    const settings = requireInteractorSettings(options.config);
+
+    const projectRoot = await realpath(options.projectRoot);
+    const resolved = await tryResolveSource(projectRoot, projectRoot, settings.source);
+    if (!resolved.ok) {
+        throw interactorSourceError(resolved.reason, settings.source);
+    }
+
+    let language: TestLanguage | undefined;
+    if (settings.compile === undefined || settings.run === undefined) {
+        const matches = [...readLanguages(options.config).values()].filter((candidate) =>
+            candidate.sourcePatterns.some((pattern) =>
+                new Bun.Glob(pattern).match(resolved.source.relativePath),
+            ),
+        );
+        if (matches.length === 0) {
+            throw new Error(
+                `No [languages.<key>] source glob matches interactor "${resolved.source.relativePath}". Set [test.interactor] compile and run, or adjust a languages source glob.`,
+            );
+        }
+        if (matches.length > 1) {
+            throw new Error(
+                `Interactor "${resolved.source.relativePath}" matches several languages: ${matches.map((candidate) => `languages.${candidate.key}`).join(", ")}. Set [test.interactor] compile and run to choose one.`,
+            );
+        }
+        language = matches[0]!;
+    }
+
+    const compile =
+        settings.compile === undefined ? language?.compile : [...(settings.compile ?? [])];
+    const run = settings.run === undefined ? language?.run : [...(settings.run ?? [])];
+    if (run === undefined) {
+        throw new Error(
+            "test.interactor.run is missing, and no [languages.<key>] matches the interactor.",
+        );
+    }
+    if (compile !== undefined && compile.some((token) => token.includes("{infile}"))) {
+        throw new Error(
+            "test.interactor.compile cannot use {infile}; it is only available in test.interactor.run.",
+        );
+    }
+
+    const effectiveLanguage: TestLanguage = {
+        key: language?.key ?? "interactor",
+        sourcePatterns: language?.sourcePatterns ?? [],
+        compile,
+        run,
+        timeoutSeconds: undefined,
+        memoryMiB: undefined,
+        cacheFiles: language?.cacheFiles ?? [],
+    };
+
+    const testDirectory =
+        options.testDirectory ??
+        ([...(compile ?? []), ...run].some((token) => token.includes("{testdir}"))
+            ? await resolveTestcaseDirectory(
+                  projectRoot,
+                  options.config.testcase.folder,
+                  options.config.src,
+              )
+            : undefined);
+
+    const cacheEnabled = options.cache ?? options.config.test.cache;
+    const cacheFiles = await collectCacheFiles(projectRoot, effectiveLanguage.cacheFiles);
+    const cacheFileContents = await Promise.all(
+        cacheFiles.map(async (file) => ({
+            relativePath: file.relativePath,
+            contents: await readFile(file.absolutePath),
+        })),
+    );
+    const buildKey = computeBuildKey({
+        language: effectiveLanguage,
+        sourceRelativePath: resolved.source.relativePath,
+        sourceContents: await readFile(resolved.source.absolutePath),
+        cacheFiles: cacheFileContents,
+        platform: platform(),
+        arch: arch(),
+    });
+
+    const buildDirectory = getBuildCacheDirectory(projectRoot, buildKey);
+    const outfilePath = join(buildDirectory, executableBaseName);
+    const placeholders: Record<PlaceholderName, string> = {
+        source: resolved.source.absolutePath,
+        outfile: outfilePath,
+        outdir: buildDirectory,
+        dir: projectRoot,
+        testdir: testDirectory ?? "",
+    };
+
+    const label = "test.interactor";
+    const compileTokens =
+        compile === undefined ? undefined : expandTokens(compile, placeholders, `${label}.compile`);
+    if (compile !== undefined) {
+        const referencesOutput = compile.some(
+            (token) => token.includes("{outfile}") || token.includes("{outdir}"),
+        );
+        if (!referencesOutput) {
+            throw new Error(`${label}.compile must reference {outfile} or {outdir}.`);
+        }
+    }
+
+    let buildDirectoryCreated = false;
+    try {
+        if (compileTokens !== undefined) {
+            if (cacheEnabled && existsSync(resolveExecutablePath(outfilePath))) {
+                options.onCached?.(
+                    `Reused the cached build for ${resolved.source.relativePath} (${label}).`,
+                );
+            } else {
+                await rm(buildDirectory, { recursive: true, force: true });
+                await mkdir(buildDirectory, { recursive: true });
+                buildDirectoryCreated = true;
+
+                const compiled = await runCommand({
+                    argv: compileTokens,
+                    cwd: projectRoot,
+                    timeoutMs: compileTimeoutMs,
+                });
+                if (compiled.timedOut || compiled.exitCode !== 0) {
+                    if (compiled.stdout.trim() !== "") {
+                        options.onCompilerOutput?.(compiled.stdout.trimEnd());
+                    }
+                    if (compiled.stderr.trim() !== "") {
+                        options.onCompilerOutput?.(compiled.stderr.trimEnd());
+                    }
+                    throw new Error(
+                        compiled.timedOut
+                            ? `Compilation timed out for ${label} after 10 minutes.`
+                            : `Compilation failed for ${label} (${describeExit(compiled)}).`,
+                    );
+                }
+
+                options.onCompiled?.(
+                    `Compiled ${resolved.source.relativePath} (${label}) in ${formatDuration(compiled.durationMs)}.`,
+                );
+            }
+        } else if (run.some((token) => token.includes("{outdir}"))) {
+            await mkdir(buildDirectory, { recursive: true });
+            buildDirectoryCreated = true;
+        }
+
+        const runPlaceholders: Record<PlaceholderName, string> = {
+            ...placeholders,
+            outfile: resolveExecutablePath(outfilePath),
+        };
+        // Fail on unknown placeholders before running the interactor.
+        expandTokens(
+            run,
+            { ...runPlaceholders, infile: "" },
+            `${label}.run`,
+            interactorPlaceholderNames,
+        );
+
+        return {
+            projectRoot,
+            runTokens: run,
+            placeholders: runPlaceholders,
+            buildDirectory,
+            outfilePath,
+            cacheEnabled,
+            buildDirectoryCreated,
+        };
+    } catch (error) {
+        if (!cacheEnabled && buildDirectoryCreated) {
+            await rm(buildDirectory, { recursive: true, force: true });
+        }
+        throw error;
     }
 }
 
@@ -1087,7 +1590,14 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         options.config.testcase.folder,
         options.config.src,
     );
-    const cases = await discoverTestCases(testDirectory, options.filters ?? []);
+    const interactive = options.interactive === true;
+    if (interactive) {
+        // Report a missing section before spending time on the solution build.
+        requireInteractorSettings(options.config);
+    }
+    const cases = interactive
+        ? await discoverInteractiveTestCases(testDirectory, options.filters ?? [])
+        : await discoverTestCases(testDirectory, options.filters ?? []);
 
     const built = await buildSolution({
         projectRoot,
@@ -1114,7 +1624,9 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
             options.ignoreTrailingNewline ?? options.config.test.ignore_trailing_newline,
     };
     const showStderr = options.showStderr ?? options.config.test.show_stderr;
+    const sessionTimeoutSeconds = options.config.test.interactor?.timeout ?? 15;
 
+    let interactor: BuiltInteractor | undefined;
     const progress = createProgressBar({
         total: cases.length,
         label: "Testing",
@@ -1123,6 +1635,19 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
     });
 
     try {
+        if (interactive) {
+            interactor = await buildInteractor({
+                projectRoot,
+                config: options.config,
+                cache: options.cache,
+                testDirectory,
+                onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
+                onCompiled: (line) => stderr.write(`${line}\n`),
+                onCached:
+                    options.verbose === true ? (line) => stderr.write(`${line}\n`) : undefined,
+            });
+        }
+
         const parallel = options.parallel ?? options.config.test.parallel;
         const jobCount = !parallel ? 1 : (options.jobs ?? defaultJobCount(cases.length));
         const jobLimit = Math.max(1, Math.min(jobCount, cases.length));
@@ -1134,6 +1659,8 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
             memoryMiB,
             comparison,
             verbose: options.verbose === true,
+            interactor,
+            sessionTimeoutSeconds,
         };
 
         const results: TestCaseResult[] = [];
@@ -1220,5 +1747,8 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
     } finally {
         progress.finish();
         await cleanupBuild(built);
+        if (interactor !== undefined) {
+            await cleanupBuild(interactor);
+        }
     }
 }

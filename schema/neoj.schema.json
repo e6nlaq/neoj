@@ -90,6 +90,41 @@
                     "minLength": 1,
                     "description": "Source file that neoj test builds by default, relative to the project root."
                 },
+                "interactor": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Interactor file that judges an interactive solution, relative to the project root."
+                        },
+                        "compile": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "description": "Command and arguments that build the interactor into {outfile} or {outdir}. Defaults to the matching [languages.<key>].compile."
+                        },
+                        "run": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "description": "Command and arguments that run the interactor. Defaults to the matching [languages.<key>].run. Add {infile} to receive the test case path."
+                        },
+                        "timeout": {
+                            "type": "number",
+                            "minimum": 0.001,
+                            "description": "Wall-clock limit for the whole interactive session in seconds.",
+                            "default": 15
+                        }
+                    },
+                    "required": ["source"],
+                    "additionalProperties": false,
+                    "description": "Interactor used by neoj test --interactive. It reads the solution's output on standard input and writes the next prompt to standard output."
+                },
                 "timeout": {
                     "type": "number",
                     "minimum": 0.001,

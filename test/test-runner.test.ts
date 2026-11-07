@@ -8,9 +8,11 @@ import {
     collectCacheFiles,
     computeBuildKey,
     detectLanguage,
+    discoverInteractiveTestCases,
     discoverTestCases,
     expandTokens,
     judgeCommandResult,
+    judgeInteractiveResult,
     naturalCompare,
     readLanguages,
     resolveSourceFile,
@@ -1058,5 +1060,330 @@ describe("runTests", () => {
                 stderr: err.stream,
             }),
         ).rejects.toThrow("No source file to test");
+    });
+});
+
+const interactiveSolutionScript = `const reader = Bun.stdin.stream().getReader();
+const decoder = new TextDecoder();
+let buffer = "";
+async function readLine() {
+    while (true) {
+        const index = buffer.indexOf("\\n");
+        if (index >= 0) {
+            const line = buffer.slice(0, index);
+            buffer = buffer.slice(index + 1);
+            return line;
+        }
+        const result = await reader.read();
+        if (result.done) {
+            return buffer === "" ? null : buffer;
+        }
+        buffer += decoder.decode(result.value, { stream: true });
+    }
+}
+const line = await readLine();
+if (line === "hang") {
+    while (true) {}
+}
+if (line === "re") {
+    process.exit(3);
+}
+if (line === "wa") {
+    console.log("0");
+    console.log("0");
+} else {
+    const parts = line.split(" ").map(Number);
+    console.log(String(parts[0] + parts[1]));
+    console.log(String(parts[0] * parts[1]));
+}
+`;
+
+const interactiveInteractorScript = `import { readFileSync } from "node:fs";
+const input = readFileSync(process.argv[2], "utf8").trim();
+console.log(input);
+if (input === "hang") {
+    await new Promise(() => {});
+}
+const reader = Bun.stdin.stream().getReader();
+const decoder = new TextDecoder();
+let buffer = "";
+async function readLine() {
+    while (true) {
+        const index = buffer.indexOf("\\n");
+        if (index >= 0) {
+            const line = buffer.slice(0, index);
+            buffer = buffer.slice(index + 1);
+            return line;
+        }
+        const result = await reader.read();
+        if (result.done) {
+            return buffer === "" ? null : buffer;
+        }
+        buffer += decoder.decode(result.value, { stream: true });
+    }
+}
+const first = await readLine();
+const second = await readLine();
+const parts = input.split(" ").map(Number);
+const expected =
+    input === "wa"
+        ? ["1", "1"]
+        : [String(parts[0] + parts[1]), String(parts[0] * parts[1])];
+if (first === expected[0] && second === expected[1]) {
+    process.exit(0);
+}
+console.error("wrong answer: expected " + expected.join(" ") + ", got " + first + " " + second);
+process.exit(1);
+`;
+
+describe("interactive judging", () => {
+    async function createInteractiveProject(cases?: Record<string, string>): Promise<string> {
+        const projectRoot = await createProject();
+        await mkdir(join(projectRoot, "src"), { recursive: true });
+        await writeFile(join(projectRoot, "src", "main.ts"), interactiveSolutionScript);
+        await writeFile(join(projectRoot, "src", "interactor.ts"), interactiveInteractorScript);
+        for (const [name, input] of Object.entries(cases ?? { "sample-1": "1 2" })) {
+            await writeCase(join(projectRoot, "test"), name, `${input}\n`);
+        }
+        return projectRoot;
+    }
+
+    function interactiveConfig(
+        options: {
+            timeout?: number;
+            interactor?: Partial<NonNullable<Config["test"]["interactor"]>>;
+        } = {},
+    ): Config {
+        return createConfig({
+            source: "src/main.ts",
+            languages: {
+                ts: { source: "src/*.ts", run: [process.execPath, "run", "{source}"] },
+            },
+            test: {
+                timeout: 2,
+                interactor: {
+                    source: "src/interactor.ts",
+                    run: [process.execPath, "run", "{source}", "{infile}"],
+                    timeout: options.timeout ?? 2,
+                    ...options.interactor,
+                },
+            },
+        });
+    }
+
+    it("discovers *.in files, ignores *.out, and falls back to one session", async () => {
+        const projectRoot = await createProject();
+        await writeCase(join(projectRoot, "test"), "sample-1", "1 2\n", "wrong\n");
+        await writeCase(join(projectRoot, "test"), "sample-2", "3 4\n", "wrong\n");
+
+        const cases = await discoverInteractiveTestCases(join(projectRoot, "test"), []);
+        expect(cases.map((item) => [item.name, item.expectedOutputPath])).toEqual([
+            ["sample-1", undefined],
+            ["sample-2", undefined],
+        ]);
+
+        await rm(join(projectRoot, "test"), { recursive: true, force: true });
+        await mkdir(join(projectRoot, "test"), { recursive: true });
+        expect(await discoverInteractiveTestCases(join(projectRoot, "test"), [])).toEqual([
+            { name: "interactive", inputPath: "", expectedOutputPath: undefined },
+        ]);
+        await expect(
+            discoverInteractiveTestCases(join(projectRoot, "test"), ["x"]),
+        ).rejects.toThrow('The directory has no "*.in" files.');
+    });
+
+    it("prefers the solution's failures over the interactor's verdict", () => {
+        const base = {
+            solution: {
+                exitCode: 0,
+                signal: null,
+                timedOut: false,
+                outputLimitExceeded: false,
+                maxRssBytes: 1024,
+            },
+            interactor: { exitCode: 0, signal: null, outputLimitExceeded: false },
+            sessionTimedOut: false,
+            memoryMiB: 1024,
+            interactorStderr: "",
+        };
+
+        expect(judgeInteractiveResult(base).verdict).toBe("AC");
+        expect(
+            judgeInteractiveResult({ ...base, interactor: { ...base.interactor, exitCode: 1 } }),
+        ).toEqual({
+            verdict: "WA",
+            detail: "interactor exited with code 1",
+            comparison: undefined,
+        });
+        expect(
+            judgeInteractiveResult({
+                ...base,
+                interactor: { ...base.interactor, exitCode: 1 },
+                interactorStderr: "\nwrong answer: 3 != 7\n",
+            }).detail,
+        ).toBe("wrong answer: 3 != 7");
+        expect(
+            judgeInteractiveResult({
+                ...base,
+                solution: { ...base.solution, exitCode: 3 },
+                interactor: { ...base.interactor, exitCode: 0 },
+            }).verdict,
+        ).toBe("RE");
+        expect(
+            judgeInteractiveResult({
+                ...base,
+                solution: { ...base.solution, timedOut: true },
+            }).verdict,
+        ).toBe("TLE");
+        expect(judgeInteractiveResult({ ...base, sessionTimedOut: true }).verdict).toBe("TLE");
+        expect(
+            judgeInteractiveResult({
+                ...base,
+                solution: { ...base.solution, maxRssBytes: 2 * 1024 * 1024 },
+                memoryMiB: 1,
+            }).verdict,
+        ).toBe("MLE");
+        expect(
+            judgeInteractiveResult({
+                ...base,
+                interactor: { ...base.interactor, signal: "SIGSEGV" },
+                interactorStderr: "",
+            }),
+        ).toEqual({
+            verdict: "RE",
+            detail: "interactor killed by SIGSEGV",
+            comparison: undefined,
+        });
+    });
+
+    it("judges with an interactor and shows the transcript for a failure", async () => {
+        const projectRoot = await createInteractiveProject({ "sample-1": "1 2", "sample-2": "wa" });
+        const out = createCapture();
+        const err = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: interactiveConfig(),
+            interactive: true,
+            stdout: out.stream,
+            stderr: err.stream,
+        });
+
+        expect(result.results.map((item) => [item.name, item.verdict])).toEqual([
+            ["sample-1", "AC"],
+            ["sample-2", "WA"],
+        ]);
+        expect(result.exitCode).toBe(2);
+        const text = out.text();
+        expect(text).toContain("WA (wrong answer: expected 1 1, got 0 0)");
+        expect(text).toContain("interactive:");
+        expect(text).toContain("J> wa");
+        expect(text).toContain("S> 0");
+        expect(text).toContain("interactor stderr:");
+        expect(text).not.toContain("J> 1 2");
+    });
+
+    it("shows the transcript of a passing case only with verbose", async () => {
+        const projectRoot = await createInteractiveProject({ "sample-1": "1 2" });
+        const out = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: interactiveConfig(),
+            interactive: true,
+            filters: ["sample-1"],
+            verbose: true,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(text).toContain("J> 1 2");
+        expect(text).toContain("S> 3");
+        expect(text).toContain("S> 2");
+    });
+
+    it("stops a session that exceeds the interactor timeout", async () => {
+        const projectRoot = await createInteractiveProject({ "sample-1": "hang" });
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: interactiveConfig({ timeout: 0.4, interactor: { timeout: 0.4 } }),
+            interactive: true,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        expect(result.results[0]?.verdict).toBe("TLE");
+        expect(result.exitCode).toBe(2);
+        expect(out.text()).toContain("TLE (interactive session > 0.4 s)");
+    });
+
+    it("requires [test.interactor] when --interactive is passed", async () => {
+        const projectRoot = await createInteractiveProject();
+
+        await expect(
+            runTests({
+                projectRoot,
+                config: createConfig({
+                    source: "src/main.ts",
+                    languages: {
+                        ts: { source: "src/*.ts", run: [process.execPath, "run", "{source}"] },
+                    },
+                }),
+                interactive: true,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+            }),
+        ).rejects.toThrow("Interactive mode needs [test.interactor]");
+    });
+
+    it("runs one session when the directory has no *.in", async () => {
+        const projectRoot = await createProject();
+        await mkdir(join(projectRoot, "src"), { recursive: true });
+        await writeFile(join(projectRoot, "src", "main.ts"), "console.log('hi');\n");
+        await writeFile(
+            join(projectRoot, "src", "interactor.ts"),
+            "console.log('go');\nawait Bun.stdin.text().catch(() => {});\n",
+        );
+        await mkdir(join(projectRoot, "test"), { recursive: true });
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: interactiveConfig({
+                interactor: { run: [process.execPath, "run", "{source}"] },
+            }),
+            interactive: true,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        expect(result.results.map((item) => [item.name, item.verdict])).toEqual([
+            ["interactive", "AC"],
+        ]);
+        expect(out.text()).toContain("1 case(s): 1 passed");
+    });
+
+    it("rejects {infile} when the case has no input file", async () => {
+        const projectRoot = await createProject();
+        await mkdir(join(projectRoot, "src"), { recursive: true });
+        await writeFile(join(projectRoot, "src", "main.ts"), "console.log('hi');\n");
+        await writeFile(
+            join(projectRoot, "src", "interactor.ts"),
+            "await Bun.stdin.text().catch(() => {});\n",
+        );
+        await mkdir(join(projectRoot, "test"), { recursive: true });
+
+        await expect(
+            runTests({
+                projectRoot,
+                config: interactiveConfig(),
+                interactive: true,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+            }),
+        ).rejects.toThrow("test.interactor.run uses {infile}");
     });
 });

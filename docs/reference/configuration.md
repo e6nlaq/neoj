@@ -127,6 +127,55 @@ Source file that `neoj test` builds when no source is passed on the command line
 It is resolved from the project root and must be a plain path that exists; globs
 are rejected. `neoj test <source>` overrides it for one run.
 
+### `test.interactor.source`
+
+| Type        | Default | Scope             |
+| ----------- | ------- | ----------------- |
+| string path | none    | global or project |
+
+Interactor file used by `neoj test --interactive`. It is resolved from the
+project root and must be a plain path that exists. The section is only read when
+`--interactive` is passed, so a project without an interactor keeps working.
+
+```toml
+[test.interactor]
+source = "src/interactor.cpp"
+run = ["{outfile}", "{infile}"]
+```
+
+### `test.interactor.compile`
+
+| Type            | Default                            | Scope             |
+| --------------- | ---------------------------------- | ----------------- |
+| array of string | matching `languages.<key>.compile` | global or project |
+
+Command and arguments that build the interactor. When it is omitted, `neoj`
+picks the `[languages.<key>]` whose `source` glob matches the interactor file
+and reuses its `compile`. If several languages match, set `compile` and `run`
+here to choose one. The command must reference `{outfile}` or `{outdir}`, as
+with a language `compile`.
+
+### `test.interactor.run`
+
+| Type            | Default                        | Scope             |
+| --------------- | ------------------------------ | ----------------- |
+| array of string | matching `languages.<key>.run` | global or project |
+
+Command and arguments that run the interactor. In addition to the placeholders
+listed in [Build and run the sample tests](../how-to/run-tests.md#placeholders),
+`{infile}` expands to the test case's `.in` path. `{infile}` is not available in
+`compile`, because the path changes per case.
+
+### `test.interactor.timeout`
+
+| Type             | Default | Scope             |
+| ---------------- | ------- | ----------------- |
+| number (seconds) | `15`    | global or project |
+
+Wall-clock limit for one interactive session. When it expires, both the
+solution and the interactor are stopped and the case is reported as `TLE`. The
+solution's own `test.timeout` still applies and can stop it earlier.
+
 ### `test.timeout`
 
 | Type             | Default | Scope             |
