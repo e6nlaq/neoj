@@ -3,6 +3,7 @@ import { join } from "node:path";
 
 import * as v from "valibot";
 
+import { errorExponentBounds } from "@/lib/util/judge";
 import { findProjectConfig } from "@/lib/util/project";
 
 function createFilenamePatternSchema(description: string) {
@@ -263,6 +264,18 @@ export const configSchema = v.pipe(
                             ),
                         ),
                         false,
+                    ),
+                    error: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.integer(),
+                            v.minValue(errorExponentBounds.min),
+                            v.maxValue(errorExponentBounds.max),
+                            v.description(
+                                "Exponent of the floating-point tolerance used by neoj test --error: 10^-error. The option turns the tolerance on; this value is used when it has no argument.",
+                            ),
+                        ),
+                        6,
                     ),
                     ignore_trailing_space: v.optional(
                         v.pipe(

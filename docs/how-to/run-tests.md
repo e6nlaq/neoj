@@ -265,6 +265,47 @@ Set `test.ignore_trailing_space` or `test.ignore_trailing_newline` to make the
 behavior the default. Whitespace inside a line is always significant, and CRLF
 is normalized automatically.
 
+## Judge floating-point output
+
+When a problem accepts answers with a small numeric error, pass `-e`. It turns
+the tolerance on; the exponent selects its size:
+
+```bash
+neoj test -e       # 10^-6 (the default)
+neoj test -e 9     # 10^-9
+```
+
+A token matches when
+
+```text
+|actual - expected| <= 10^-exponent * max(1, |expected|)
+```
+
+so the same rule accepts an absolute error near zero and a relative error for
+larger values. Numeric tokens are compared as numbers even when they are
+written differently (`1e-7` and `0.0000001` match, and so do `1` and `1.0`).
+`NaN`, `Infinity`, and hexadecimal spellings are compared as text.
+
+With `-e`, the whole output is split on ASCII whitespace, so line breaks and
+runs of spaces do not matter; only the token order and values do. `-S` and `-N`
+have no additional effect.
+
+Set `test.error` to change the default exponent used when `-e` has no argument:
+
+```toml
+[test]
+error = 9
+```
+
+A numeric difference outside the tolerance is reported with both values:
+
+```text
+✗ sample-1     45 ms    28 MiB  WA (line 1: 0 vs 0.000002)
+```
+
+The option is ignored with `--interactive`, because the interactor decides the
+verdict; `neoj` prints a warning when both are given.
+
 ## Run selected cases
 
 ```bash

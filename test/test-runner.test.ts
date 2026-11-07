@@ -62,6 +62,7 @@ function createConfig(options: {
             memory: 1024,
             parallel: true,
             cache: false,
+            error: 6,
             ignore_trailing_space: false,
             ignore_trailing_newline: false,
             show_stderr: "always",
@@ -1062,6 +1063,49 @@ describe("runTests", () => {
                 stderr: err.stream,
             }),
         ).rejects.toThrow("No source file to test");
+    });
+
+    it("judges floating-point output only when an exponent is given", async () => {
+        testRoot = await mkdtemp(join(tmpdir(), "neoj-test-runner-"));
+        const projectRoot = testRoot;
+        await writeFile(
+            join(projectRoot, "float.ts"),
+            `const text = (await Bun.stdin.text()).trim();
+console.log(text === "far" ? "0.000002" : "0.0000004");
+`,
+        );
+        await writeCase(join(projectRoot, "test"), "close", "close\n", "0\n");
+        await writeCase(join(projectRoot, "test"), "far", "far\n", "0\n");
+        const config = createConfig({
+            source: "float.ts",
+            languages: {
+                ts: { source: "float.ts", run: [process.execPath, "run", "float.ts"] },
+            },
+        });
+
+        const out = createCapture();
+        const tolerant = await runTests({
+            projectRoot,
+            config,
+            errorExponent: 6,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        expect(tolerant.results.map((item) => [item.name, item.verdict])).toEqual([
+            ["close", "AC"],
+            ["far", "WA"],
+        ]);
+        expect(out.text()).toContain("WA (line 1: 0 vs 0.000002)");
+
+        const exact = await runTests({
+            projectRoot,
+            config,
+            filters: ["close"],
+            stdout: createCapture().stream,
+            stderr: createCapture().stream,
+        });
+        expect(exact.results[0]?.verdict).toBe("WA");
     });
 });
 

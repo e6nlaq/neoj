@@ -94,6 +94,8 @@ export interface RunTestsOptions {
     cache?: boolean;
     ignoreTrailingSpace?: boolean;
     ignoreTrailingNewline?: boolean;
+    /** Exponent of the accepted floating-point error; undefined compares text. */
+    errorExponent?: number;
     /** Judge with an interactor instead of comparing against `*.out`. */
     interactive?: boolean;
     showStderr?: ShowStderrMode;
@@ -915,6 +917,12 @@ async function runInteractiveTestCase(
     };
 }
 
+/** Shorten one numeric token so the verdict line stays readable. */
+function shortToken(text: string): string {
+    const limit = 24;
+    return text.length <= limit ? text : `${text.slice(0, limit - 1)}…`;
+}
+
 function verdictDescription(
     result: TestCaseResult,
     timeoutSeconds: number,
@@ -929,6 +937,10 @@ function verdictDescription(
                 return result.detail === undefined ? "WA" : `WA (${result.detail})`;
             }
             const line = result.comparison?.firstMismatchLine;
+            const mismatch = result.comparison?.numericMismatch;
+            if (line !== undefined && mismatch !== undefined) {
+                return `WA (line ${line}: ${shortToken(mismatch.expected)} vs ${shortToken(mismatch.actual)})`;
+            }
             return line === undefined ? "WA" : `WA (line ${line})`;
         }
         case "TLE": {
@@ -1622,6 +1634,7 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
             options.ignoreTrailingSpace ?? options.config.test.ignore_trailing_space,
         ignoreTrailingNewline:
             options.ignoreTrailingNewline ?? options.config.test.ignore_trailing_newline,
+        errorExponent: options.errorExponent,
     };
     const showStderr = options.showStderr ?? options.config.test.show_stderr;
     const sessionTimeoutSeconds = options.config.test.interactor?.timeout ?? 15;

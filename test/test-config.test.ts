@@ -18,6 +18,7 @@ describe("test configuration", () => {
             memory: 1024,
             parallel: true,
             cache: false,
+            error: 6,
             ignore_trailing_space: false,
             ignore_trailing_newline: false,
             show_stderr: "always",
@@ -74,6 +75,17 @@ describe("test configuration", () => {
         expect(v.safeParse(configSchema, { test: { show_line_numbers: "yes" } }).success).toBe(
             false,
         );
+    });
+
+    it("defaults the error exponent to 6 and accepts only 0 through 15", () => {
+        expect(parse({}).test.error).toBe(6);
+        expect(parse({ test: { error: 9 } }).test.error).toBe(9);
+        expect(parse({ test: { error: 0 } }).test.error).toBe(0);
+
+        expect(v.safeParse(configSchema, { test: { error: 16 } }).success).toBe(false);
+        expect(v.safeParse(configSchema, { test: { error: -1 } }).success).toBe(false);
+        expect(v.safeParse(configSchema, { test: { error: 1.5 } }).success).toBe(false);
+        expect(v.safeParse(configSchema, { test: { error: "6" } }).success).toBe(false);
     });
 
     it("accepts a language with compile, run, limits, and extra cache inputs", () => {

@@ -60,6 +60,7 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
             memory: 1024,
             parallel: true,
             cache: false,
+            error: 6,
             ignore_trailing_space: false,
             ignore_trailing_newline: false,
             show_stderr: "always",

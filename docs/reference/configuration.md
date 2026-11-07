@@ -218,6 +218,17 @@ same source, commands, and extra inputs are unchanged. With `false`, the build
 directory for the run is deleted afterwards. `--cache` and `--no-cache` override
 it for one run.
 
+### `test.error`
+
+| Type               | Default | Scope             |
+| ------------------ | ------- | ----------------- |
+| integer (`0`–`15`) | `6`     | global or project |
+
+Exponent of the floating-point tolerance used by `neoj test --error`. `-e`
+turns the tolerance on, and this value is the default when the option has no
+argument. `-e 9` overrides it for one run. The comparison accepts a token when
+`|actual - expected| <= 10^-error * max(1, |expected|)`.
+
 ### `test.ignore_trailing_space`
 
 | Type    | Default | Scope             |

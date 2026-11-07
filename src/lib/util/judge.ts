@@ -8,6 +8,20 @@ export type CaseVerdict = (typeof caseVerdicts)[number];
 export interface ComparisonOptions {
     ignoreTrailingSpace: boolean;
     ignoreTrailingNewline: boolean;
+    /**
+     * When set, compare whitespace-separated tokens and accept a numeric
+     * difference of up to `10 ** -errorExponent` instead of comparing text.
+     */
+    errorExponent?: number;
+}
+
+/** Range accepted by `neoj test --error` and `test.error`. */
+export const errorExponentBounds = { min: 0, max: 15 } as const;
+
+/** The pair of numeric tokens behind a tolerance failure, kept for the report. */
+export interface NumericMismatch {
+    expected: string;
+    actual: string;
 }
 
 export interface ComparisonResult {
@@ -20,6 +34,8 @@ export interface ComparisonResult {
     trailingNewlineOnly: boolean;
     expectedTrailingNewline: boolean;
     actualTrailingNewline: boolean;
+    /** Set when the first difference is two numbers that exceed the tolerance. */
+    numericMismatch: NumericMismatch | undefined;
 }
 
 export interface ComparisonFormatOptions {
@@ -102,6 +118,120 @@ function firstDifferentLine(left: readonly string[], right: readonly string[]): 
     return undefined;
 }
 
+/** Decimal and scientific notation only; hex, `NaN`, and `Infinity` stay text. */
+const numericTokenPattern = /^[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?$/u;
+
+/** ASCII whitespace, which is what judges treat as a token separator. */
+function isTokenSeparator(char: string): boolean {
+    return (
+        char === " " ||
+        char === "\t" ||
+        char === "\n" ||
+        char === "\r" ||
+        char === "\f" ||
+        char === "\v"
+    );
+}
+
+interface OutputToken {
+    text: string;
+    /** 1-based line the token starts on. */
+    line: number;
+}
+
+function splitTokens(text: string): OutputToken[] {
+    const tokens: OutputToken[] = [];
+    let line = 1;
+    let index = 0;
+    while (index < text.length) {
+        const char = text[index]!;
+        if (char === "\n") {
+            line += 1;
+            index += 1;
+            continue;
+        }
+        if (isTokenSeparator(char)) {
+            index += 1;
+            continue;
+        }
+
+        let end = index;
+        while (end < text.length) {
+            const next = text[end]!;
+            if (next === "\n" || isTokenSeparator(next)) {
+                break;
+            }
+            end += 1;
+        }
+        tokens.push({ text: text.slice(index, end), line });
+        index = end;
+    }
+
+    return tokens;
+}
+
+function withinTolerance(actual: number, expected: number, exponent: number): boolean {
+    return Math.abs(actual - expected) <= 10 ** -exponent * Math.max(1, Math.abs(expected));
+}
+
+interface TokenComparison {
+    matched: boolean;
+    firstMismatchLine: number | undefined;
+    numericMismatch: NumericMismatch | undefined;
+}
+
+function compareTokens(
+    expected: string,
+    actual: string,
+    exponent: number,
+    expectedLineCount: number,
+): TokenComparison {
+    const expectedTokens = splitTokens(expected);
+    const actualTokens = splitTokens(actual);
+    const length = Math.max(expectedTokens.length, actualTokens.length);
+
+    for (let index = 0; index < length; index += 1) {
+        const left = expectedTokens[index];
+        const right = actualTokens[index];
+        if (left === undefined) {
+            // The actual output has tokens the expected output never had.
+            return {
+                matched: false,
+                firstMismatchLine: expectedLineCount + 1,
+                numericMismatch: undefined,
+            };
+        }
+        if (right === undefined) {
+            return { matched: false, firstMismatchLine: left.line, numericMismatch: undefined };
+        }
+        if (left.text === right.text) {
+            continue;
+        }
+
+        if (numericTokenPattern.test(left.text) && numericTokenPattern.test(right.text)) {
+            const expectedValue = Number(left.text);
+            const actualValue = Number(right.text);
+            if (
+                Number.isFinite(expectedValue) &&
+                Number.isFinite(actualValue) &&
+                withinTolerance(actualValue, expectedValue, exponent)
+            ) {
+                continue;
+            }
+
+            return {
+                matched: false,
+                firstMismatchLine: left.line,
+                numericMismatch: { expected: left.text, actual: right.text },
+            };
+        }
+
+        return { matched: false, firstMismatchLine: left.line, numericMismatch: undefined };
+    }
+
+    return { matched: true, firstMismatchLine: undefined, numericMismatch: undefined };
+}
+
 /**
  * Compare program output with the expected output.
  *
@@ -128,6 +258,27 @@ export function compareOutput(
         actualLines = dropTrailingEmptyLines(actualLines);
     }
 
+    if (options.errorExponent !== undefined) {
+        const compared = compareTokens(
+            expectedText,
+            actualText,
+            options.errorExponent,
+            expectedLines.length,
+        );
+        // Whitespace is a separator, so trailing-newline differences cannot
+        // make the output wrong once a tolerance is requested.
+        return {
+            matched: compared.matched,
+            expectedLines,
+            actualLines,
+            firstMismatchLine: compared.firstMismatchLine,
+            trailingNewlineOnly: false,
+            expectedTrailingNewline,
+            actualTrailingNewline,
+            numericMismatch: compared.numericMismatch,
+        };
+    }
+
     const contentsEqual = sameLines(expectedLines, actualLines);
     const newlinesEqual =
         options.ignoreTrailingNewline || expectedTrailingNewline === actualTrailingNewline;
@@ -144,6 +295,7 @@ export function compareOutput(
         trailingNewlineOnly,
         expectedTrailingNewline,
         actualTrailingNewline,
+        numericMismatch: undefined,
     };
 }
 

@@ -168,6 +168,7 @@ instead of comparing the output with `*.out`.
 | `-m`, `--memory <MiB>`                           | Memory limit per test case.                                  |
 | `-f`, `--filter <name...>`                       | Run only the named cases (`sample-1` for `sample-1.in`).     |
 | `-i`, `--interactive`                            | Judge with the interactor in `[test.interactor]`.            |
+| `-e`, `--error [exponent]`                       | Accept floating-point errors up to `10^-exponent`.           |
 | `--cache` / `--no-cache`                         | Keep or delete the compiled program under `.neoj/build/`.    |
 | `-S`, `--ignore-trailing-space`                  | Ignore trailing whitespace on each line.                     |
 | `-N`, `--ignore-trailing-newline`                | Ignore newlines at the end of the output.                    |

@@ -2,6 +2,7 @@ import { Command, InvalidArgumentError } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
 import { loadConfig, showStderrModes, type ShowStderrMode } from "@/lib/util/config";
+import { errorExponentBounds } from "@/lib/util/judge";
 import { requireInitializedProject } from "@/lib/util/project";
 import { runTests } from "@/lib/util/test-runner";
 
@@ -12,6 +13,17 @@ function parsePositiveInteger(value: string): number {
     }
 
     return parsed;
+}
+
+export function parseErrorExponent(value: string): number {
+    const { min, max } = errorExponentBounds;
+    if (!/^\d+$/u.test(value) || Number(value) < min || Number(value) > max) {
+        throw new InvalidArgumentError(
+            `Expected an exponent from ${min} to ${max}, got "${value}". If that is a source file, put it before the option: neoj test <source> -e 9.`,
+        );
+    }
+
+    return Number(value);
 }
 
 function parsePositiveSeconds(value: string): number {
@@ -33,6 +45,24 @@ function parseShowStderr(value: string): ShowStderrMode {
     );
 }
 
+/**
+ * Tell the user that `--error` has no effect on an interactive run.
+ *
+ * Returns whether a warning was printed. The injectable `warn` keeps this
+ * testable without capturing the console.
+ */
+export function warnIfErrorIgnored(
+    options: { interactive?: boolean; error?: number | true },
+    warn: (message: string) => void = (message) => consola.warn(message),
+): boolean {
+    if (options.interactive !== true || options.error === undefined) {
+        return false;
+    }
+
+    warn("The --error option is ignored in interactive mode; the interactor decides the verdict.");
+    return true;
+}
+
 export function createTestCommand(): Command<[string | undefined]> {
     return new Command("test")
         .alias("t")
@@ -45,6 +75,11 @@ export function createTestCommand(): Command<[string | undefined]> {
         .option("-m, --memory <MiB>", "Memory limit per test case", parsePositiveInteger)
         .option("-f, --filter <name...>", "Only run the named test cases")
         .option("-i, --interactive", "Judge with the interactor in [test.interactor]")
+        .option(
+            "-e, --error [exponent]",
+            "Accept floating-point errors up to 10^-exponent (default: test.error)",
+            parseErrorExponent,
+        )
         .option("--cache", "Keep compiled binaries in .neoj/build and reuse them")
         .option("--no-cache", "Delete the build directory after the run")
         .option("-S, --ignore-trailing-space", "Ignore whitespace at the end of each output line")
@@ -65,6 +100,7 @@ export function createTestCommand(): Command<[string | undefined]> {
             try {
                 const projectRoot = await requireInitializedProject(process.cwd());
                 const config = await loadConfig();
+                warnIfErrorIgnored(options);
                 const result = await runTests({
                     projectRoot,
                     config,
@@ -77,6 +113,7 @@ export function createTestCommand(): Command<[string | undefined]> {
                     memoryMiB: options.memory,
                     filters: options.filter,
                     cache: options.cache,
+                    errorExponent: options.error === true ? config.test.error : options.error,
                     interactive: options.interactive,
                     ignoreTrailingSpace: options.ignoreTrailingSpace,
                     ignoreTrailingNewline: options.ignoreTrailingNewline,

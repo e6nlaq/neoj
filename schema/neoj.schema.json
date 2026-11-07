@@ -147,6 +147,13 @@
                     "description": "Keep compiled binaries in .neoj/build and skip compiling unchanged sources.",
                     "default": false
                 },
+                "error": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 15,
+                    "description": "Exponent of the floating-point tolerance used by neoj test --error: 10^-error. The option turns the tolerance on; this value is used when it has no argument.",
+                    "default": 6
+                },
                 "ignore_trailing_space": {
                     "type": "boolean",
                     "description": "Ignore whitespace at the end of each output line when comparing.",

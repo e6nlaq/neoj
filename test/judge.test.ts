@@ -65,6 +65,65 @@ describe("compareOutput", () => {
     });
 });
 
+describe("compareOutput with an error tolerance", () => {
+    const tolerant = { ...strict, errorExponent: 6 };
+
+    it("accepts an absolute error at the limit and rejects a larger one", () => {
+        expect(compareOutput("0\n", "0.000001\n", tolerant).matched).toBe(true);
+        expect(compareOutput("0\n", "0.0000011\n", tolerant).matched).toBe(false);
+    });
+
+    it("uses the expected value for the relative error", () => {
+        expect(compareOutput("1000000\n", "1000000.5\n", tolerant).matched).toBe(true);
+        expect(compareOutput("1000000\n", "1000002\n", tolerant).matched).toBe(false);
+    });
+
+    it("compares whitespace-separated tokens, ignoring line breaks", () => {
+        expect(compareOutput("1 2\n3\n", "1\n2 3\n", tolerant).matched).toBe(true);
+        expect(compareOutput("1 2\n", "1  2", tolerant).matched).toBe(true);
+        expect(compareOutput("1 2\n", "1\n", tolerant).matched).toBe(false);
+    });
+
+    it("keeps non-numeric tokens exact", () => {
+        const result = compareOutput("abc\n", "abd\n", tolerant);
+
+        expect(result.matched).toBe(false);
+        expect(result.firstMismatchLine).toBe(1);
+        expect(result.numericMismatch).toBeUndefined();
+    });
+
+    it("does not treat hex or non-finite spellings as numbers", () => {
+        expect(compareOutput("0x10\n", "16\n", tolerant).matched).toBe(false);
+        expect(compareOutput("NaN\n", "NaN\n", tolerant).matched).toBe(true);
+        expect(compareOutput("NaN\n", "nan\n", tolerant).matched).toBe(false);
+    });
+
+    it("accepts scientific notation and signed zero", () => {
+        expect(compareOutput("1e-7\n", "0.0000001\n", tolerant).matched).toBe(true);
+        expect(compareOutput("-0\n", "0\n", tolerant).matched).toBe(true);
+    });
+
+    it("reports the numeric pair that exceeded the tolerance", () => {
+        const result = compareOutput("1 2.5\n3\n", "1 2.6\n3\n", tolerant);
+
+        expect(result.matched).toBe(false);
+        expect(result.firstMismatchLine).toBe(1);
+        expect(result.numericMismatch).toEqual({ expected: "2.5", actual: "2.6" });
+    });
+
+    it("reports the line of a missing or extra token", () => {
+        expect(compareOutput("1\n2\n", "1\n", tolerant).firstMismatchLine).toBe(2);
+        expect(compareOutput("1\n", "1 2\n", tolerant).firstMismatchLine).toBe(2);
+    });
+
+    it("honours the requested exponent", () => {
+        const lenient = { ...strict, errorExponent: 1 };
+
+        expect(compareOutput("1\n", "1.01\n", lenient).matched).toBe(true);
+        expect(compareOutput("1\n", "1.2\n", lenient).matched).toBe(false);
+    });
+});
+
 describe("displayWidth", () => {
     it("counts ASCII as one cell and East Asian characters as two", () => {
         expect(displayWidth("abc")).toBe(3);

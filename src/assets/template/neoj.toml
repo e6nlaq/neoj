@@ -10,6 +10,10 @@ folder = "test"
 source = "src/main.cpp"
 cache = true
 
+# Exponent of the floating-point tolerance accepted by `neoj test -e`:
+# `-e` alone allows errors up to 10^-error, and `-e 9` overrides it to 1e-9.
+# error = 6
+
 # Interactive judging (`neoj test --interactive`) reads this section. The
 # interactor and the solution run at the same time and talk over pipes.
 # [test.interactor]
