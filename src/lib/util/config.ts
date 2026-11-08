@@ -590,6 +590,15 @@ export const configSchema = v.pipe(
                             ),
                         ),
                     ),
+                    exclude: v.optional(
+                        v.pipe(
+                            v.array(v.pipe(v.string(), v.minLength(1))),
+                            v.description(
+                                "Globs for files in template.folder that must not be copied. Patterns match the path relative to template.folder and the entry name, so they also exclude matches inside subdirectories.",
+                            ),
+                        ),
+                        [],
+                    ),
                     mode: v.optional(
                         v.pipe(
                             v.picklist(["overlay", "replace"]),
@@ -610,7 +619,7 @@ export const configSchema = v.pipe(
                 }),
                 v.description("Template files applied to src after a download."),
             ),
-            { enable: false, mode: "overlay" },
+            { enable: false, exclude: [], mode: "overlay" },
         ),
     }),
     v.description("neoj configuration, read from ~/.neoj.toml and the nearest project neoj.toml."),

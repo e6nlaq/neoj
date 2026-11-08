@@ -85,7 +85,13 @@ export async function downloadProblem(url: string): Promise<void> {
                 "Configuration requires src and template.folder when template.enable is true.",
             );
         }
-        await applyProjectTemplate(projectRoot, templateFolder, sourcePath, config.template.mode);
+        await applyProjectTemplate(
+            projectRoot,
+            templateFolder,
+            sourcePath,
+            config.template.mode,
+            config.template.exclude,
+        );
     }
 
     if (config.stash.auto_apply && problemChanged) {

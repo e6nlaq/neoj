@@ -41,6 +41,32 @@ describe("applyProjectTemplate", () => {
         expect(await readFile(join(source, "conflict", "nested.txt"), "utf8")).toBe("nested");
     });
 
+    it("skips excluded files and directories in subdirectories", async () => {
+        const projectRoot = await createProject();
+        const template = join(projectRoot, "template");
+        const source = join(projectRoot, "src");
+        await mkdir(join(template, "nested"), { recursive: true });
+        await mkdir(join(template, "generated"), { recursive: true });
+        await mkdir(source);
+        await writeFile(join(template, "keep.txt"), "keep");
+        await writeFile(join(template, "README.md"), "template readme");
+        await writeFile(join(template, "nested", "notes.md"), "template notes");
+        await writeFile(join(template, "nested", "keep.txt"), "nested keep");
+        await writeFile(join(template, "generated", "code.txt"), "generated");
+        await writeFile(join(source, "README.md"), "old readme");
+
+        await applyProjectTemplate(projectRoot, "template", "src", "overlay", [
+            "*.md",
+            "generated",
+        ]);
+
+        expect(await readFile(join(source, "keep.txt"), "utf8")).toBe("keep");
+        expect(await readFile(join(source, "nested", "keep.txt"), "utf8")).toBe("nested keep");
+        expect(await readFile(join(source, "README.md"), "utf8")).toBe("old readme");
+        await expect(readFile(join(source, "nested", "notes.md"), "utf8")).rejects.toThrow();
+        await expect(readFile(join(source, "generated", "code.txt"), "utf8")).rejects.toThrow();
+    });
+
     it("removes all existing contents in replace mode", async () => {
         const projectRoot = await createProject();
         const template = join(projectRoot, "template");

@@ -78,7 +78,7 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
         languages: {},
         download: { show_sample: false },
         stash: { auto_stash: false, auto_apply: false, force: true },
-        template: { enable: false, mode: "overlay" },
+        template: { enable: false, exclude: [], mode: "overlay" },
     };
 }
 

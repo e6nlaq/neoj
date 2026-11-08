@@ -83,7 +83,7 @@ function createConfig(options: {
         languages: options.languages ?? {},
         download: { show_sample: false },
         stash: { auto_stash: false, auto_apply: false, force: true },
-        template: { enable: false, mode: "overlay" },
+        template: { enable: false, exclude: [], mode: "overlay" },
     };
 }
 
