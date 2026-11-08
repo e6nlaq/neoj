@@ -2,20 +2,21 @@
 
 ## Commands
 
-| Command                                               | Description                                                                 |
-| ----------------------------------------------------- | --------------------------------------------------------------------------- |
-| `neoj init [--force]`                                 | Copy the bundled templates into the current project.                        |
-| `neoj download <url>` (alias: `neoj d`)               | Download a problem's sample tests into the test-case directory.             |
-| `neoj open [options]` (alias: `neoj o`)               | Open the current problem in the browser.                                    |
-| `neoj handmade` (alias: `neoj h`)                     | Create a handmade test case from interactive input.                         |
-| `neoj login <platform>`                               | Log in to a platform. The supported names are `atcoder` and `yukicoder`.    |
-| `neoj logout [--service <name...>]`                   | Log out of the given platforms, or of every platform when no name is given. |
-| `neoj status [--offline]`                             | Show the login status of every supported platform.                          |
-| `neoj stash [save\|list\|apply\|pop\|drop\|clear]`    | Save and restore the working files of the current problem.                  |
-| `neoj test [source]` (alias: `neoj t`)                | Build the solution and run it against the sample tests.                     |
-| `neoj run [source] [args...]` (alias: `neoj r`)       | Build the solution and run it without tests, forwarding `args`.             |
-| `neoj prune [--dry-run]`                              | Remove every cached build under `.neoj/build/`.                             |
-| `neoj completions <shell>` (alias: `neoj completion`) | Print a completion script for bash, zsh, fish, or PowerShell.               |
+| Command                                                    | Description                                                                 |
+| ---------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `neoj init [--force]`                                      | Copy the bundled templates into the current project.                        |
+| `neoj download <url>` (alias: `neoj d`)                    | Download a problem's sample tests into the test-case directory.             |
+| `neoj open [options]` (alias: `neoj o`)                    | Open the current problem in the browser.                                    |
+| `neoj handmade` (alias: `neoj h`)                          | Create a handmade test case from interactive input.                         |
+| `neoj login <platform>`                                    | Log in to a platform. The supported names are `atcoder` and `yukicoder`.    |
+| `neoj logout [--service <name...>]`                        | Log out of the given platforms, or of every platform when no name is given. |
+| `neoj status [--offline]`                                  | Show the login status of every supported platform.                          |
+| `neoj stash [save\|list\|apply\|pop\|drop\|clear]`         | Save and restore the working files of the current problem.                  |
+| `neoj test [source]` (alias: `neoj t`)                     | Build the solution and run it against the sample tests.                     |
+| `neoj run [source] [args...]` (alias: `neoj r`)            | Build the solution and run it without tests, forwarding `args`.             |
+| `neoj submit [source]` (aliases: `neoj s`, `neoj submits`) | Submit the solution for the current problem.                                |
+| `neoj prune [--dry-run]`                                   | Remove every cached build under `.neoj/build/`.                             |
+| `neoj completions <shell>` (alias: `neoj completion`)      | Print a completion script for bash, zsh, fish, or PowerShell.               |
 
 ### `init`
 
@@ -214,6 +215,72 @@ also hidden automatically when standard error is not a terminal, so piped or
 redirected output stays clean. See
 [Run a solution without tests](../how-to/run-a-solution.md).
 
+### `submit`
+
+| Argument   | Description                                                                      |
+| ---------- | -------------------------------------------------------------------------------- |
+| `[source]` | Source file to submit. An `[alias]` name is accepted. Defaults to `test.source`. |
+
+Submits the solution to the problem recorded in `.neoj/problem.json`, so run
+`neoj download <url>` first. The source is resolved like `neoj test`: an `[alias]`
+name, a path, or `test.source`; `-l`, `--language <key>` chooses among several
+matching `[languages.<key>]` entries. The file is not compiled before submission.
+
+| Option                           | Description                                                  |
+| -------------------------------- | ------------------------------------------------------------ |
+| `-l`, `--language <key>`         | Use this `[languages.<key>]` entry instead of detecting one. |
+| `-p`, `--platform-language <id>` | Submit as this platform language ID.                         |
+| `--yes`                          | Skip the confirmation prompt. The wait still runs.           |
+| `--wait <seconds>`               | Override `submit.wait` for one run.                          |
+| `--no-wait`                      | Submit immediately, as if `--wait 0` were given.             |
+| `--no-presubmit`                 | Submit the source file without running `presubmit`.          |
+| `--dry-run`                      | Show the preview without contacting the platform.            |
+| `--open` / `--no-open`           | Open or do not open the submission page afterwards.          |
+
+The command runs these steps in order: the language's `presubmit` command, a
+preview, the confirmation prompt (default **No**), the wait, and the submission.
+
+The preview shows the first and last `submit.preview_lines` lines with their real
+line numbers and `...` between them; a file with at most `2 * preview_lines`
+lines is shown in full. The preview and the size are printed for `--yes` and
+`--dry-run` too, so a script can still inspect what would be sent.
+
+Before submitting, `neoj` runs `languages.<key>.presubmit` in the project root
+when it is configured. `{source}` is the absolute path of the original file and
+`{outfile}` is a temporary file that keeps the source extension; write the text
+to submit there, or print it to standard output when the command does not use
+`{outfile}`. The original file is never modified, and the temporary directory is
+removed afterwards. A failing command reports its standard error and exits with
+`1`, and so does an empty result. The default time limit is
+`submit.presubmit_timeout` (30 seconds).
+
+When no platform session is valid, `neoj submit` starts the login flow if
+`login.auto_login` is `true` (the default). Cancelling the login exits with `0`;
+a failed login exits with `1`. The platform language ID comes from
+`--platform-language`, then `languages.<key>.submit.<platform>`. When neither is
+set, the command lists the available language IDs and exits with `1` instead of
+prompting.
+
+After a successful submission, the command prints the submission ID and URL and
+opens the submission page in the browser unless `--no-open` or
+`submit.open = false` is set. A browser that cannot be started only produces a
+warning, and the command still exits with `0`. `submit.clip` copies the submitted
+text to the clipboard: `"never"` (default), `"always"` (before submitting, while
+still submitting), or `"fail"` (only when submitting fails, which still exits
+with `1`).
+
+`--dry-run` performs no network request, login, language-ID lookup, or clipboard
+copy; it runs the presubmit command and prints the preview and size. It cannot be
+combined with `--platform-language`, and it ignores `--wait`, `--no-wait`,
+`--open`, `--no-open`, and `--yes`.
+
+Submission automation depends on the platform. AtCoder shows warnings for Daily
+Training contests (`adt_...`), outside the contest window recorded by `neoj
+download`, and when the submit page contains a Turnstile challenge. If AtCoder
+rejects the request, the error tells you to open the submit page in your browser.
+yukicoder submissions use the same API as the web form. See
+[Submit a solution](../how-to/submit-solution.md).
+
 ### `prune`
 
 Removes every cached build under `.neoj/build/`, so the next `neoj test` or
@@ -274,3 +341,7 @@ configuration, or environment error, and `2` when at least one case failed
 `neoj run` exits with the program's own exit code. A configuration, compile, or
 start error sets `1`, and a program killed by a signal also sets `1` after a
 one-line notice (hidden by `--silent`).
+
+`neoj submit` exits with `0` after a successful submission and when the
+confirmation or the login is cancelled. Configuration, presubmit, network, and
+platform errors set `1`.

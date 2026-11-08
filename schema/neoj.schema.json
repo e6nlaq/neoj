@@ -32,13 +32,19 @@
                     "type": "boolean",
                     "description": "Open the browser automatically during the yukicoder device flow.",
                     "default": true
+                },
+                "auto_login": {
+                    "type": "boolean",
+                    "description": "Start the login flow automatically when neoj submit needs an account.",
+                    "default": true
                 }
             },
             "required": [],
             "additionalProperties": false,
             "description": "How neoj behaves during login.",
             "default": {
-                "open_browser": true
+                "open_browser": true,
+                "auto_login": true
             }
         },
         "testcase": {
@@ -213,6 +219,65 @@
                 "silent": false
             }
         },
+        "submit": {
+            "type": "object",
+            "properties": {
+                "confirm": {
+                    "type": "boolean",
+                    "description": "Ask for confirmation before submitting. --yes skips the prompt.",
+                    "default": true
+                },
+                "wait": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Seconds to wait before submitting, so a last check is still possible. --wait and --no-wait override it.",
+                    "default": 3
+                },
+                "open": {
+                    "type": "boolean",
+                    "description": "Open the submission page in the browser after a successful submit.",
+                    "default": true
+                },
+                "clip": {
+                    "enum": ["never", "always", "fail"],
+                    "type": "string",
+                    "evenBetterToml": {
+                        "docs": {
+                            "enumValues": [
+                                "Never copy the submitted source to the clipboard.",
+                                "Copy the source to the clipboard after the presubmit command, then submit it.",
+                                "Copy the source to the clipboard only when submitting fails."
+                            ]
+                        }
+                    },
+                    "description": "When neoj submit copies the source to the clipboard.",
+                    "default": "never"
+                },
+                "preview_lines": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Number of lines shown at the start and end of the submission preview.",
+                    "default": 5
+                },
+                "presubmit_timeout": {
+                    "type": "number",
+                    "minimum": 0.001,
+                    "description": "Wall-clock limit for the presubmit command in seconds.",
+                    "default": 30
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "How neoj submits a solution.",
+            "default": {
+                "confirm": true,
+                "wait": 3,
+                "open": true,
+                "clip": "never",
+                "preview_lines": 5,
+                "presubmit_timeout": 30
+            }
+        },
         "languages": {
             "type": "object",
             "propertyNames": {
@@ -282,6 +347,26 @@
                             }
                         ],
                         "description": "Extra files whose contents belong in the compile cache key, such as shared headers."
+                    },
+                    "presubmit": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "description": "Command and arguments that turn {source} into the text submitted for this language. Write the result to {outfile}, or let it print to standard output. Omit it to submit the source file as-is."
+                    },
+                    "submit": {
+                        "type": "object",
+                        "propertyNames": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "additionalProperties": {
+                            "type": "string",
+                            "minLength": 1
+                        },
+                        "description": "Platform language ID used by neoj submit, keyed by platform name such as atcoder or yukicoder."
                     }
                 },
                 "required": ["source", "run"],

@@ -41,6 +41,7 @@ contest platforms.
 - [Create a test case by hand](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/create-handmade-tests.md)
 - [Build and run the sample tests](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/run-tests.md)
 - [Run a solution without tests](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/run-a-solution.md)
+- [Submit a solution](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/submit-solution.md)
 - [Stash and restore work per problem](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/stash-work.md)
 - [Configure a project](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/configure-project.md)
 - [Contribute](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/contribute.md)

@@ -3,7 +3,10 @@ import { afterEach, describe, expect, it } from "bun:test";
 import {
     AtCoderClient,
     AtCoderProblemRequestError,
+    buildAtCoderSubmitUrl,
     normalizeRevelSession,
+    parseAtCoderLatestSubmission,
+    parseAtCoderSubmitPage,
 } from "@/lib/service/atcoder";
 
 const problemUrl = "https://atcoder.jp/contests/abc001/tasks/abc001_1";
@@ -313,5 +316,224 @@ describe("AtCoderClient", () => {
                 status: 404,
             });
         });
+    });
+});
+
+const submitHtml = `
+    <html>
+        <body>
+            <form action="/contests/abc001/submit" method="post">
+                <input type="hidden" name="csrf_token" value="csrf-token">
+                <input type="hidden" name="data.TaskScreenName" value="abc001_1">
+                <select name="data.LanguageId">
+                    <option value="">Choose a language</option>
+                    <optgroup label="C++">
+                        <option value="5001">C++ 20 (gcc 12.2.0)</option>
+                    </optgroup>
+                    <optgroup label="Python">
+                        <option value="5002">Python (CPython 3.11.4)</option>
+                    </optgroup>
+                </select>
+                <div class="cf-turnstile" data-sitekey="test"></div>
+            </form>
+        </body>
+    </html>
+`;
+
+describe("AtCoder submission helpers", () => {
+    it("builds a submit URL that preselects the task", () => {
+        expect(buildAtCoderSubmitUrl(problemUrl).href).toBe(
+            "https://atcoder.jp/contests/abc001/submit?taskScreenName=abc001_1",
+        );
+    });
+
+    it("parses the form, languages, groups, and Turnstile", () => {
+        const page = parseAtCoderSubmitPage(
+            submitHtml,
+            "https://atcoder.jp/contests/abc001/submit",
+            {
+                contestId: "abc001",
+                taskId: "abc001_1",
+            },
+        );
+
+        expect(page.csrfToken).toBe("csrf-token");
+        expect(page.taskScreenName).toBe("abc001_1");
+        expect(page.hasTurnstile).toBe(true);
+        expect(page.languages).toEqual([
+            { id: "5001", name: "C++ 20 (gcc 12.2.0)", group: "C++" },
+            { id: "5002", name: "Python (CPython 3.11.4)", group: "Python" },
+        ]);
+    });
+
+    it("rejects a form without a CSRF token", () => {
+        expect(() =>
+            parseAtCoderSubmitPage("<html></html>", "https://atcoder.jp/contests/abc001/submit", {
+                contestId: "abc001",
+                taskId: "abc001_1",
+            }),
+        ).toThrow("AtCoder submit page did not contain a CSRF token");
+    });
+
+    it("finds the newest submission link on a submissions page", () => {
+        const html = `
+            <table>
+                <tr><td><a href="/contests/abc001/submissions/123456">123456</a></td></tr>
+                <tr><td><a href="/contests/abc001/submissions/123455">123455</a></td></tr>
+            </table>
+        `;
+
+        expect(parseAtCoderLatestSubmission(html, "abc001")).toBe("123456");
+        expect(parseAtCoderLatestSubmission("<html></html>", "abc001")).toBeUndefined();
+    });
+});
+
+describe("AtCoderClient submission requests", () => {
+    it("fetches the submit page with the session cookie and task query", async () => {
+        const requests: Array<{ url: string; cookie: string | null }> = [];
+        setFetch(async (input, init) => {
+            requests.push({
+                url: String(input),
+                cookie: new Headers(init?.headers).get("Cookie"),
+            });
+            if (String(input).endsWith("/settings")) {
+                return new Response(null, { status: 200 });
+            }
+            return new Response(submitHtml, { status: 200 });
+        });
+
+        const client = new AtCoderClient();
+        await client.login("test-session");
+        requests.length = 0;
+
+        const page = await client.getSubmitPage(problemUrl);
+
+        expect(page.languages).toHaveLength(2);
+        expect(requests).toEqual([
+            {
+                url: "https://atcoder.jp/contests/abc001/submit?taskScreenName=abc001_1",
+                cookie: "REVEL_SESSION=test-session",
+            },
+        ]);
+    });
+
+    it("reports a redirected submit page as a login problem", async () => {
+        setFetch(async () => new Response(null, { status: 302, headers: { Location: "/login" } }));
+
+        await expect(new AtCoderClient().getSubmitPage(problemUrl)).rejects.toThrow(
+            'AtCoder redirected the submit page (302). Log in again with "neoj login atcoder".',
+        );
+    });
+
+    it("posts the form and reads the newest submission", async () => {
+        const page = parseAtCoderSubmitPage(
+            submitHtml.replace('<div class="cf-turnstile" data-sitekey="test"></div>', ""),
+            "https://atcoder.jp/contests/abc001/submit?taskScreenName=abc001_1",
+            { contestId: "abc001", taskId: "abc001_1" },
+        );
+        const requests: Array<{
+            url: string;
+            method: string | undefined;
+            cookie: string | null;
+            body: URLSearchParams | undefined;
+        }> = [];
+        setFetch(async (input, init) => {
+            if (init?.method === "POST") {
+                requests.push({
+                    url: String(input),
+                    method: init.method,
+                    cookie: new Headers(init.headers).get("Cookie"),
+                    body: init.body instanceof URLSearchParams ? init.body : undefined,
+                });
+                return new Response(null, {
+                    status: 302,
+                    headers: { Location: "/contests/abc001/submissions/me" },
+                });
+            }
+
+            return new Response('<a href="/contests/abc001/submissions/123456">123456</a>', {
+                status: 200,
+            });
+        });
+
+        const client = new AtCoderClient();
+        await client.login("test-session");
+        const result = await client.submit(problemUrl, "5001", "int main() {}", page);
+
+        expect(result).toEqual({
+            submissionId: "123456",
+            submissionUrl: "https://atcoder.jp/contests/abc001/submissions/123456",
+        });
+        expect(requests).toEqual([
+            {
+                url: "https://atcoder.jp/contests/abc001/submit?taskScreenName=abc001_1",
+                method: "POST",
+                cookie: "REVEL_SESSION=test-session",
+                body: expect.any(URLSearchParams),
+            },
+        ]);
+        expect(requests[0]?.body?.get("csrf_token")).toBe("csrf-token");
+        expect(requests[0]?.body?.get("data.TaskScreenName")).toBe("abc001_1");
+        expect(requests[0]?.body?.get("data.LanguageId")).toBe("5001");
+        expect(requests[0]?.body?.get("sourceCode")).toBe("int main() {}");
+    });
+
+    it("uses a submission ID from the redirect when AtCoder returns one", async () => {
+        const page = parseAtCoderSubmitPage(
+            submitHtml,
+            "https://atcoder.jp/contests/abc001/submit",
+            {
+                contestId: "abc001",
+                taskId: "abc001_1",
+            },
+        );
+        setFetch(
+            async () =>
+                new Response(null, {
+                    status: 302,
+                    headers: { Location: "/contests/abc001/submissions/987654" },
+                }),
+        );
+
+        await expect(
+            new AtCoderClient().submit(problemUrl, "5001", "source", page),
+        ).resolves.toEqual({
+            submissionId: "987654",
+            submissionUrl: "https://atcoder.jp/contests/abc001/submissions/987654",
+        });
+    });
+
+    it("reports a Turnstile rejection with a browser fallback", async () => {
+        const page = parseAtCoderSubmitPage(
+            submitHtml,
+            "https://atcoder.jp/contests/abc001/submit",
+            {
+                contestId: "abc001",
+                taskId: "abc001_1",
+            },
+        );
+        setFetch(async () => new Response(submitHtml, { status: 200 }));
+
+        await expect(
+            new AtCoderClient().submit(problemUrl, "5001", "source", page),
+        ).rejects.toThrow("AtCoder rejected the submission because of Turnstile.");
+    });
+
+    it("reports a non-redirect rejection with an actionable URL", async () => {
+        const page = parseAtCoderSubmitPage(
+            submitHtml,
+            "https://atcoder.jp/contests/abc001/submit",
+            {
+                contestId: "abc001",
+                taskId: "abc001_1",
+            },
+        );
+        setFetch(async () => new Response("<html>error</html>", { status: 200 }));
+
+        await expect(
+            new AtCoderClient().submit(problemUrl, "5001", "source", page),
+        ).rejects.toThrow(
+            "Open https://atcoder.jp/contests/abc001/submit in your browser and submit from there.",
+        );
     });
 });

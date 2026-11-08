@@ -29,6 +29,18 @@ cache = true
 source = "src/**/*.cpp"
 compile = ["g++", "-std=c++23", "-O2", "-o", "{outfile}", "{source}"]
 run = ["{outfile}"]
+# Platform language IDs for `neoj submit`, keyed by platform name.
+# submit = { atcoder = "5001", yukicoder = "5001" }
+# Convert the source into the submitted text before submitting.
+# presubmit = ["python", "tools/expand.py", "{source}", "{outfile}"]
+
+[submit]
+confirm = true
+wait = 3
+open = true
+clip = "never"
+preview_lines = 5
+presubmit_timeout = 30
 
 [template]
 enable = true

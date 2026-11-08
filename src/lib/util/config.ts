@@ -36,6 +36,11 @@ export const showStderrModes = ["always", "failure", "never"] as const;
 
 export type ShowStderrMode = (typeof showStderrModes)[number];
 
+/** When `neoj submit` copies the source to the clipboard. */
+export const submitClipModes = ["never", "always", "fail"] as const;
+
+export type SubmitClipMode = (typeof submitClipModes)[number];
+
 const aliasNameSchema = v.pipe(
     v.string(),
     v.metadata({
@@ -98,6 +103,22 @@ const languageSchema = v.pipe(
                 ),
             ),
         ),
+        presubmit: v.optional(
+            v.pipe(
+                v.array(v.pipe(v.string(), v.minLength(1))),
+                v.description(
+                    "Command and arguments that turn {source} into the text submitted for this language. Write the result to {outfile}, or let it print to standard output. Omit it to submit the source file as-is.",
+                ),
+            ),
+        ),
+        submit: v.optional(
+            v.pipe(
+                v.record(v.pipe(v.string(), v.minLength(1)), v.pipe(v.string(), v.minLength(1))),
+                v.description(
+                    "Platform language ID used by neoj submit, keyed by platform name such as atcoder or yukicoder.",
+                ),
+            ),
+        ),
     }),
     v.description("How to build and run one language."),
 );
@@ -143,10 +164,19 @@ export const configSchema = v.pipe(
                         ),
                         true,
                     ),
+                    auto_login: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Start the login flow automatically when neoj submit needs an account.",
+                            ),
+                        ),
+                        true,
+                    ),
                 }),
                 v.description("How neoj behaves during login."),
             ),
-            { open_browser: true },
+            { open_browser: true, auto_login: true },
         ),
         testcase: v.optional(
             v.pipe(
@@ -355,6 +385,86 @@ export const configSchema = v.pipe(
                 v.description("How neoj builds and runs a solution directly."),
             ),
             { silent: false },
+        ),
+        submit: v.optional(
+            v.pipe(
+                v.strictObject({
+                    confirm: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Ask for confirmation before submitting. --yes skips the prompt.",
+                            ),
+                        ),
+                        true,
+                    ),
+                    wait: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.minValue(0),
+                            v.description(
+                                "Seconds to wait before submitting, so a last check is still possible. --wait and --no-wait override it.",
+                            ),
+                        ),
+                        3,
+                    ),
+                    open: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Open the submission page in the browser after a successful submit.",
+                            ),
+                        ),
+                        true,
+                    ),
+                    clip: v.optional(
+                        v.pipe(
+                            v.picklist(submitClipModes),
+                            v.metadata({
+                                evenBetterToml: {
+                                    docs: {
+                                        enumValues: [
+                                            "Never copy the submitted source to the clipboard.",
+                                            "Copy the source to the clipboard after the presubmit command, then submit it.",
+                                            "Copy the source to the clipboard only when submitting fails.",
+                                        ],
+                                    },
+                                },
+                            }),
+                            v.description("When neoj submit copies the source to the clipboard."),
+                        ),
+                        "never",
+                    ),
+                    preview_lines: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.integer(),
+                            v.minValue(1),
+                            v.description(
+                                "Number of lines shown at the start and end of the submission preview.",
+                            ),
+                        ),
+                        5,
+                    ),
+                    presubmit_timeout: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.minValue(0.001),
+                            v.description("Wall-clock limit for the presubmit command in seconds."),
+                        ),
+                        30,
+                    ),
+                }),
+                v.description("How neoj submits a solution."),
+            ),
+            {
+                confirm: true,
+                wait: 3,
+                open: true,
+                clip: "never",
+                preview_lines: 5,
+                presubmit_timeout: 30,
+            },
         ),
         languages: v.optional(
             v.pipe(

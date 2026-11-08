@@ -429,3 +429,109 @@ describe("YukicoderClient", () => {
         });
     });
 });
+
+describe("YukicoderClient language and submission requests", () => {
+    const problemUrl = "https://yukicoder.me/problems/no/480";
+
+    it("lists languages from the public endpoint", async () => {
+        const requests: Array<{ url: string; method: string | undefined }> = [];
+        setFetch(async (input, init) => {
+            requests.push({ url: String(input), method: init?.method });
+            return jsonResponse([
+                { Id: 5001, Name: "C++17", Ver: "g++ 12.2" },
+                { Id: "5002", Name: "Python", Ver: null },
+                { Id: 5003, Name: "C#", Ver: "dotnet 8" },
+            ]);
+        });
+
+        const languages = await new YukicoderClient().getLanguages();
+
+        expect(requests).toEqual([
+            { url: "https://yukicoder.me/api/v1/languages", method: undefined },
+        ]);
+        expect(languages).toEqual([
+            { id: "5001", name: "C++17", version: "g++ 12.2" },
+            { id: "5002", name: "Python", version: undefined },
+            { id: "5003", name: "C#", version: "dotnet 8" },
+        ]);
+    });
+
+    it("reports language request failures", async () => {
+        setFetch(async () => new Response("error", { status: 500 }));
+        await expect(new YukicoderClient().getLanguages()).rejects.toThrow(
+            "yukicoder language request failed (500).",
+        );
+
+        setFetch(async () => new Response("not json", { status: 200 }));
+        await expect(new YukicoderClient().getLanguages()).rejects.toThrow(
+            "yukicoder language response was not valid JSON.",
+        );
+
+        setFetch(async () => jsonResponse({}));
+        await expect(new YukicoderClient().getLanguages()).rejects.toThrow(
+            "yukicoder language response was invalid.",
+        );
+    });
+
+    it("posts the source as multipart form data with the bearer credential", async () => {
+        const requests: Array<{
+            url: string;
+            method: string | undefined;
+            authorization: string | null;
+            userAgent: string | null;
+            body: FormData | undefined;
+        }> = [];
+        setFetch(async (input, init) => {
+            requests.push({
+                url: String(input),
+                method: init?.method,
+                authorization: new Headers(init?.headers).get("Authorization"),
+                userAgent: new Headers(init?.headers).get("User-Agent"),
+                body: init?.body instanceof FormData ? init.body : undefined,
+            });
+            return jsonResponse({ SubmissionId: 266299 }, 201);
+        });
+
+        const result = await new YukicoderClient().submit(
+            problemUrl,
+            "Bearer ysb_token",
+            "5001",
+            "int main() {}",
+        );
+
+        expect(result).toEqual({
+            submissionId: "266299",
+            submissionUrl: "https://yukicoder.me/submissions/266299",
+        });
+        expect(requests).toHaveLength(1);
+        expect(requests[0]?.url).toBe("https://yukicoder.me/api/v1/problems/no/480/submit");
+        expect(requests[0]?.method).toBe("POST");
+        expect(requests[0]?.authorization).toBe("Bearer ysb_token");
+        expect(requests[0]?.userAgent).toBe("neoj (+https://github.com/e6nlaq/neoj)");
+        expect(requests[0]?.body?.get("lang")).toBe("5001");
+        expect(requests[0]?.body?.get("source")).toBe("int main() {}");
+    });
+
+    it("rejects an invalid credential with an actionable message", async () => {
+        for (const status of [401, 403]) {
+            setFetch(async () => new Response("denied", { status }));
+            await expect(
+                new YukicoderClient().submit(problemUrl, "ysb_token", "5001", "source"),
+            ).rejects.toThrow(
+                'yukicoder rejected the submission because the login is not valid. Run "neoj login yukicoder" and try again.',
+            );
+        }
+    });
+
+    it("reports other submission failures", async () => {
+        setFetch(async () => new Response("error", { status: 500 }));
+        await expect(
+            new YukicoderClient().submit(problemUrl, "ysb_token", "5001", "source"),
+        ).rejects.toThrow("yukicoder submission failed (500).");
+
+        setFetch(async () => jsonResponse({}, 200));
+        await expect(
+            new YukicoderClient().submit(problemUrl, "ysb_token", "5001", "source"),
+        ).rejects.toThrow("yukicoder submission response was invalid.");
+    });
+});

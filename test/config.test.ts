@@ -78,7 +78,15 @@ describe("loadConfig", () => {
             src: undefined,
             alias: {},
             run: { silent: false },
-            login: { open_browser: true },
+            login: { open_browser: true, auto_login: true },
+            submit: {
+                confirm: true,
+                wait: 3,
+                open: true,
+                clip: "never",
+                preview_lines: 5,
+                presubmit_timeout: 30,
+            },
             testcase: { folder: "test", filename: "sample-{}" },
             handmade: { filename: "handmade-{}" },
             test: {
@@ -186,7 +194,15 @@ describe("loadConfig", () => {
         await expect(loadConfig()).resolves.toEqual({
             alias: {},
             run: { silent: false },
-            login: { open_browser: true },
+            login: { open_browser: true, auto_login: true },
+            submit: {
+                confirm: true,
+                wait: 3,
+                open: true,
+                clip: "never",
+                preview_lines: 5,
+                presubmit_timeout: 30,
+            },
             testcase: { folder: "tests", filename: "case-{}" },
             handmade: { filename: "handmade-{}" },
             test: {

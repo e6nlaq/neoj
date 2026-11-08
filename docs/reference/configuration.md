@@ -63,6 +63,16 @@ Open the browser automatically during the yukicoder CLI-token device flow. The
 command always prints the verification URL and code, so login still works when
 this is `false` or when the browser cannot be opened (for example over SSH).
 
+### `login.auto_login`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Start the platform login flow automatically when `neoj submit` finds no valid
+session. Cancelling the flow exits with `0`. With `false`, the command fails
+instead and tells you to run `neoj login <platform>`.
+
 ### `testcase.folder`
 
 | Type        | Default | Scope             |
@@ -300,6 +310,71 @@ to the program instead.
 The same logs are hidden automatically when standard error is not a terminal, so
 `neoj run > out.txt 2>&1` and scripts that capture the output stay quiet.
 
+### `submit.confirm`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Ask for confirmation before submitting. The prompt defaults to **No**.
+`--yes` skips the prompt for one run but keeps the wait.
+
+### `submit.wait`
+
+| Type             | Default | Scope             |
+| ---------------- | ------- | ----------------- |
+| number (seconds) | `3`     | global or project |
+
+Time to wait after the confirmation and before contacting the platform, so a
+last check is still possible. On a terminal the command draws a countdown bar on
+standard error; otherwise it prints one line. `--wait <seconds>` and `--no-wait`
+override it for one run, and `--yes` does not skip the wait.
+
+### `submit.open`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Open the submission page in the browser after a successful submission.
+`--open` and `--no-open` override it for one run. A browser that cannot be
+started only produces a warning, and the command still succeeds.
+
+### `submit.clip`
+
+| Type   | Default   | Scope             |
+| ------ | --------- | ----------------- |
+| string | `"never"` | global or project |
+
+When `neoj submit` copies the submitted text to the clipboard:
+
+- `"never"` — never copy it.
+- `"always"` — copy it after the presubmit command, then submit anyway. A
+  clipboard that is unavailable only produces a warning.
+- `"fail"` — copy it only when the submission fails, so it can be pasted into the
+  browser. The command still exits with `1`.
+
+There is no command-line flag for this setting.
+
+### `submit.preview_lines`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| integer | `5`     | global or project |
+
+Number of lines shown at the start and at the end of the submission preview, with
+the real line numbers and `...` between the two blocks. A file with at most
+`2 * preview_lines` lines is shown in full.
+
+### `submit.presubmit_timeout`
+
+| Type             | Default | Scope             |
+| ---------------- | ------- | ----------------- |
+| number (seconds) | `30`    | global or project |
+
+Wall-clock limit for `languages.<key>.presubmit`. When it expires, neoj stops the
+command and reports that the presubmit timed out.
+
 ### `languages.<key>.source`
 
 | Type                  | Default  | Scope             |
@@ -354,6 +429,48 @@ Memory limit for this language, in MiB.
 Extra files, such as shared headers, whose contents belong in the compile cache
 key. They are not passed to the compiler; they only invalidate the cache when
 they change.
+
+### `languages.<key>.presubmit`
+
+| Type            | Default | Scope             |
+| --------------- | ------- | ----------------- |
+| list of strings | none    | global or project |
+
+Command and arguments that turn the source into the text `neoj submit` sends. It
+runs in the project root with the same environment plus `NEOJ_PLATFORM`,
+`NEOJ_PROBLEM_URL`, and `NEOJ_LANGUAGE`. The original file is never modified.
+
+| Placeholder | Value                                                         |
+| ----------- | ------------------------------------------------------------- |
+| `{source}`  | Absolute path of the original source file.                    |
+| `{outfile}` | Temporary output path that keeps the source file's extension. |
+| `{outdir}`  | Directory holding `{outfile}` and other temporary output.     |
+| `{dir}`     | Project root.                                                 |
+
+Write the submission text to `{outfile}`. When the command does not reference
+`{outfile}`, its standard output is submitted instead; either way, an empty
+result is an error. `--no-presubmit` skips the command for one run.
+
+```toml
+[languages.cpp]
+source = "src/**/*.cpp"
+compile = ["g++", "-std=c++23", "-O2", "-o", "{outfile}", "{source}"]
+run = ["{outfile}"]
+presubmit = ["python", "tools/expand.py", "{source}", "{outfile}"]
+submit = { atcoder = "5001", yukicoder = "5001" }
+```
+
+### `languages.<key>.submit`
+
+| Type                   | Default | Scope             |
+| ---------------------- | ------- | ----------------- |
+| table of string values | none    | global or project |
+
+Platform language IDs for this language, keyed by platform name. `neoj submit`
+uses `submit.atcoder` for AtCoder and `submit.yukicoder` for yukicoder.
+`--platform-language <id>` overrides the value for one run. When the key is
+missing, the command lists the platform's available IDs and exits with `1`
+instead of prompting.
 
 ### Placeholders in `compile` and `run`
 
@@ -446,6 +563,7 @@ old = "archive/2019/a.cpp"
 
 [login]
 open_browser = true
+auto_login = true
 
 [testcase]
 folder = "test"
@@ -467,6 +585,14 @@ show_stderr = "always"
 [run]
 silent = false
 
+[submit]
+confirm = true
+wait = 3
+open = true
+clip = "never"
+preview_lines = 5
+presubmit_timeout = 30
+
 [languages.cpp]
 source = "src/**/*.cpp"
 compile = ["g++", "-std=c++23", "-O2", "-o", "{outfile}", "{source}"]
@@ -474,6 +600,8 @@ run = ["{outfile}"]
 timeout = 10
 memory = 1024
 cache_files = ["src/**/*.hpp"]
+presubmit = ["python", "tools/expand.py", "{source}", "{outfile}"]
+submit = { atcoder = "5001", yukicoder = "5001" }
 
 [download]
 show_sample = false

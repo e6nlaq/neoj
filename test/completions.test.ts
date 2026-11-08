@@ -30,6 +30,7 @@ describe("buildCompletionModel", () => {
             "stash",
             "test",
             "run",
+            "submit",
             "prune",
             "completions",
         ]);

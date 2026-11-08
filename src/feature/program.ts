@@ -12,6 +12,7 @@ import { createPruneCommand } from "@/feature/prune";
 import { createRunCommand } from "@/feature/run";
 import { createStashCommand } from "@/feature/stash";
 import { createStatusCommand } from "@/feature/status";
+import { createSubmitCommand } from "@/feature/submit";
 import { createTestCommand } from "@/feature/test";
 
 import { description, version } from "../../package.json";
@@ -34,6 +35,7 @@ export function createProgram(): Command {
     program.addCommand(createStashCommand());
     program.addCommand(createTestCommand());
     program.addCommand(createRunCommand());
+    program.addCommand(createSubmitCommand());
     program.addCommand(createPruneCommand());
     program.addCommand(createCompletionsCommand(program));
 

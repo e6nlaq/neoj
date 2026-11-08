@@ -52,7 +52,15 @@ function createConfig(options: {
     return {
         src: undefined,
         alias: options.alias ?? {},
-        login: { open_browser: true },
+        login: { open_browser: true, auto_login: true },
+        submit: {
+            confirm: true,
+            wait: 3,
+            open: true,
+            clip: "never",
+            preview_lines: 5,
+            presubmit_timeout: 30,
+        },
         testcase: { folder: "test", filename: "sample-{}", ...options.testcase },
         handmade: { filename: "handmade-{}" },
         run: { silent: false, ...options.run },
@@ -149,6 +157,8 @@ describe("readLanguages", () => {
             timeoutSeconds: 2,
             memoryMiB: 256,
             cacheFiles: ["src/*.hpp"],
+            presubmit: undefined,
+            submit: {},
         });
         expect(languages.get("py")?.sourcePatterns).toEqual(["a.py", "b.py"]);
         expect(languages.get("py")?.cacheFiles).toEqual([]);
@@ -444,6 +454,8 @@ describe("computeBuildKey", () => {
         timeoutSeconds: undefined,
         memoryMiB: undefined,
         cacheFiles: [],
+        presubmit: undefined,
+        submit: {},
     };
 
     function buildKey(options: {

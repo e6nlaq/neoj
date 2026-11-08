@@ -42,6 +42,18 @@ const deviceErrorSchema = v.object({
     error_description: v.optional(v.string()),
 });
 
+const languageSchema = v.object({
+    Id: v.union([v.pipe(v.number(), v.integer()), v.pipe(v.string(), v.nonEmpty())]),
+    Name: v.pipe(v.string(), v.nonEmpty()),
+    Ver: v.optional(v.nullable(v.string())),
+});
+
+const languagesSchema = v.array(languageSchema);
+
+const submissionSchema = v.object({
+    SubmissionId: v.union([v.pipe(v.number(), v.integer()), v.pipe(v.string(), v.nonEmpty())]),
+});
+
 export type YukicoderProblem = Problem;
 
 export interface YukicoderDeviceCode {
@@ -56,6 +68,17 @@ export interface YukicoderDeviceCode {
 export interface YukicoderDeviceToken {
     accessToken: string;
     expiresAt: Temporal.Instant;
+}
+
+export interface YukicoderLanguage {
+    id: string;
+    name: string;
+    version: string | undefined;
+}
+
+export interface YukicoderSubmissionResult {
+    submissionId: string;
+    submissionUrl: string;
 }
 
 export interface PollDeviceTokenOptions {
@@ -375,6 +398,68 @@ export class YukicoderClient {
         throw new Error(
             'yukicoder device authorization timed out. Run "neoj login yukicoder" again.',
         );
+    }
+
+    /** Public language list; the submission form uses the same IDs. */
+    async getLanguages(): Promise<YukicoderLanguage[]> {
+        const response = await request(`${API_ORIGIN}/v1/languages`, {
+            headers: { "User-Agent": USER_AGENT },
+        });
+        if (!response.ok) {
+            throw new Error(`yukicoder language request failed (${response.status}).`);
+        }
+
+        const languages = parseJsonWithSchema(
+            await readJson(response, "language"),
+            languagesSchema,
+            "language",
+        );
+        return languages.map((language) => ({
+            id: String(language.Id),
+            name: language.Name,
+            version: language.Ver ?? undefined,
+        }));
+    }
+
+    async submit(
+        problemUrl: string,
+        credential: string,
+        languageId: string,
+        source: string,
+    ): Promise<YukicoderSubmissionResult> {
+        const normalized = normalizeYukicoderCredential(credential);
+        const number = parseProblemNumber(problemUrl);
+        const body = new FormData();
+        body.set("lang", languageId);
+        body.set("source", source);
+
+        const response = await request(`${API_ORIGIN}/v1/problems/no/${number}/submit`, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${normalized}`,
+                "User-Agent": USER_AGENT,
+            },
+            body,
+        });
+        if (response.status === 401 || response.status === 403) {
+            throw new Error(
+                'yukicoder rejected the submission because the login is not valid. Run "neoj login yukicoder" and try again.',
+            );
+        }
+        if (!response.ok) {
+            throw new Error(`yukicoder submission failed (${response.status}).`);
+        }
+
+        const submission = parseJsonWithSchema(
+            await readJson(response, "submission"),
+            submissionSchema,
+            "submission",
+        );
+        const submissionId = String(submission.SubmissionId);
+        return {
+            submissionId,
+            submissionUrl: new URL(`/submissions/${submissionId}`, YUKICODER_ORIGIN).href,
+        };
     }
 
     async checkCredential(credential: string): Promise<boolean> {

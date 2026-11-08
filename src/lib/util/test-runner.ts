@@ -46,6 +46,10 @@ export interface TestLanguage {
     timeoutSeconds: number | undefined;
     memoryMiB: number | undefined;
     cacheFiles: readonly string[];
+    /** Command that converts the source into the submitted text, or undefined. */
+    presubmit: readonly string[] | undefined;
+    /** Platform language ID per platform name. */
+    submit: Readonly<Record<string, string>>;
 }
 
 export interface TestCase {
@@ -157,6 +161,10 @@ export function readLanguages(config: Config): Map<string, TestLanguage> {
             value.compile === undefined || value.compile.length === 0
                 ? undefined
                 : [...value.compile];
+        const presubmit =
+            value.presubmit === undefined || value.presubmit.length === 0
+                ? undefined
+                : [...value.presubmit];
 
         languages.set(key, {
             key,
@@ -170,6 +178,8 @@ export function readLanguages(config: Config): Map<string, TestLanguage> {
             cacheFiles: toPatternList(value.cache_files).map((pattern) =>
                 toRelativePattern(pattern, `${label}.cache_files`),
             ),
+            presubmit,
+            submit: { ...value.submit },
         });
     }
 
@@ -1461,6 +1471,8 @@ export async function buildInteractor(options: BuildInteractorOptions): Promise<
         timeoutSeconds: undefined,
         memoryMiB: undefined,
         cacheFiles: language?.cacheFiles ?? [],
+        presubmit: language?.presubmit,
+        submit: language?.submit ?? {},
     };
 
     const testDirectory =
