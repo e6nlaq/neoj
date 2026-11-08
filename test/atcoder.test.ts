@@ -570,6 +570,40 @@ describe("AtCoderClient contest languages", () => {
         ]);
     });
 
+    it("lists languages from unnamed per-task selects on the contest submit page", async () => {
+        const html = `
+            <form>
+                <select id="select-task" name="data.TaskScreenName">
+                    <option value="abc001_a">A</option>
+                </select>
+                <div id="select-lang" data-name="data.LanguageId">
+                    <div id="select-lang-abc001_a">
+                        <select>
+                            <option></option>
+                            <option value="6001">C++23 (GCC 15.2.0)</option>
+                            <option value="6002">Python (CPython 3.13.7)</option>
+                        </select>
+                    </div>
+                    <div id="select-lang-abc001_b">
+                        <select>
+                            <option></option>
+                            <option value="6001">C++23 (GCC 15.2.0)</option>
+                            <option value="6002">Python (CPython 3.13.7)</option>
+                        </select>
+                    </div>
+                </div>
+            </form>
+        `;
+        setFetch(async () => new Response(html, { status: 200 }));
+
+        const languages = await new AtCoderClient().getLanguagesForContest("abc001");
+
+        expect(languages).toEqual([
+            { id: "6001", name: "C++23 (GCC 15.2.0)", group: undefined },
+            { id: "6002", name: "Python (CPython 3.13.7)", group: undefined },
+        ]);
+    });
+
     it("reports a redirected contest submit page as a login problem", async () => {
         setFetch(async () => new Response(null, { status: 302, headers: { Location: "/login" } }));
 

@@ -134,7 +134,9 @@ export function parseAtCoderTask(value: string): { contestId: string; taskId: st
 }
 
 function parseLanguages(document: ReturnType<typeof parse>): AtCoderLanguage[] {
-    const select = document.querySelector('select[name="data.LanguageId"]');
+    const select =
+        document.querySelector('select[name="data.LanguageId"]') ??
+        document.querySelector('#select-lang[data-name="data.LanguageId"] select');
     if (!select) {
         throw new Error("AtCoder language list was not found in the submit page response.");
     }
