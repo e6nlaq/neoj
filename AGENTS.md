@@ -24,7 +24,7 @@ Build `neoj` as a modern, feature-rich alternative to `oj`, the competitive-prog
 
 ## Feature Design
 
-- Before implementing a user-facing feature, use the `grilling` skill to clarify requirements, explore design decisions in rounds, and get explicit confirmation of the resulting specification. Do not start implementation until the user confirms.
+- Before implementing a user-facing feature, use the `grilling` skill(`./.agents/skills/grilling`) to clarify requirements, explore design decisions in rounds, and get explicit confirmation of the resulting specification. Do not start implementation until the user confirms.
 - Download template behavior: `neoj download` applies `template.folder` to `src` with `template.mode` (`overlay` or `replace`) only when the downloaded problem differs from `.neoj/problem.json`. Re-downloading the same problem refreshes samples but must not reapply the template or a stash. `src`, `template.folder`, and `testcase.folder` must not overlap, and none may target `.git` or `.neoj`.
 - Existing template assets are under `src/assets/template/`: `src/` contains the starter source file, and `template/` contains the problem solution template that `neoj download` applies. `neoj init` copies all bundled template files.
 
