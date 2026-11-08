@@ -120,7 +120,7 @@ describe("deriveProblemKey", () => {
 
     it("rejects URLs from unsupported platforms", () => {
         expect(() => deriveProblemKey("https://example.com/problems/no/480")).toThrow(
-            "Expected a problem URL from a supported platform (AtCoder, yukicoder).",
+            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge).",
         );
     });
 });

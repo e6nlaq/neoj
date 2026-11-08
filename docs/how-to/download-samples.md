@@ -5,12 +5,13 @@ neoj download <url>
 neoj d <url>          # alias
 ```
 
-The command accepts an AtCoder or yukicoder problem URL and replaces the
-configured test-case directory with the problem's samples.
+The command accepts an AtCoder, yukicoder, or Aizu Online Judge problem URL and
+replaces the configured test-case directory with the problem's samples.
 
 ```bash
 neoj d https://atcoder.jp/contests/abc300/tasks/abc300_a
 neoj d https://yukicoder.me/problems/no/480
+neoj d https://onlinejudge.u-aizu.ac.jp/courses/lesson/1/ALDS1/1/ALDS1_1_A
 ```
 
 For yukicoder, `neoj` accepts both `/problems/no/<number>` and
@@ -18,6 +19,16 @@ For yukicoder, `neoj` accepts both `/problems/no/<number>` and
 numeric value can refer to different problems in each form. Only public problems
 can be downloaded: the yukicoder CLI token and API key cannot authenticate the
 HTML problem page, so private problems are not supported yet.
+
+For AOJ, `neoj` accepts the v1 URL
+(`https://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=<id>`), the v2
+`/problems/<id>` URL, and the v2 course URL
+(`https://onlinejudge.u-aizu.ac.jp/courses/lesson/<...>/<id>`). All three forms
+identify the problem by its ID, so re-downloading through another form keeps
+your stash and working files. Samples are always read from the v1 page, because
+v2 pages render the statement client-side. A `lang=ja` parameter on the v1 URL
+is honored and changes the recorded title's language; otherwise the English
+page is used.
 
 ## Before you run it
 
@@ -57,6 +68,8 @@ The summary reports how many samples were written. Set
 - A yukicoder URL that does not point to an existing problem is reported as a
   missing problem page, even though the site responds with HTTP 200.
 - A problem without samples recreates the test-case folder as an empty directory.
+- AOJ URLs that do not follow one of the three supported forms are rejected with
+  a message naming the expected forms.
 
 ## Related
 

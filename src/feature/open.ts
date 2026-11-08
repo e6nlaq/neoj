@@ -48,9 +48,13 @@ export async function resolveOpenUrl(
                 return buildYukicoderSubmissionsUrl(problemUrl).href;
             }
             return (await (options.fetchContestUrl ?? fetchYukicoderContestUrl)(problemUrl)).href;
+        case "aoj":
+            throw new TypeError(
+                'AOJ does not support "neoj open --contest" or "neoj open --submissions" yet.',
+            );
         default:
             throw new TypeError(
-                "Expected a problem URL from a supported platform (AtCoder, yukicoder).",
+                "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge).",
             );
     }
 }

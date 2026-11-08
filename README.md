@@ -24,6 +24,17 @@
 a clear CLI, a reliable problem workflow, and a consistent interface across
 contest platforms.
 
+## Supported services
+
+| Service                 | Sample download (`download`) | Submit (`submit`) | Login / sessions (`login`, `status`) |
+| ----------------------- | ---------------------------- | ----------------- | ------------------------------------ |
+| AtCoder                 | ✅                           | ✅                | ✅                                   |
+| yukicoder               | ✅                           | ✅                | ✅                                   |
+| Aizu Online Judge (AOJ) | ✅                           | —                 | —                                    |
+
+AOJ support is download-only for now: samples can be fetched, but submissions
+and sessions are not implemented yet.
+
 ## Documentation
 
 ### Learn
