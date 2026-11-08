@@ -1,5 +1,3 @@
-[日本語](README.ja.md) | English
-
 <div align="center">
 
 <p align="center">
@@ -20,6 +18,8 @@
 </div>
 
 ---
+
+[日本語](README.ja.md) | English
 
 `neoj` is a command-line tool for competitive programming workflows, built with
 [Bun](https://bun.com) and TypeScript. It aims to be a modern alternative to `oj`:

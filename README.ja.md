@@ -1,5 +1,3 @@
-[English](README.md) | 日本語
-
 <div align="center">
 
 <p align="center">
@@ -20,6 +18,8 @@
 </div>
 
 ---
+
+[English](README.md) | 日本語
 
 `neoj` は、競技プログラミングの作業の流れを支えるコマンドラインツールです。[Bun](https://bun.com) とTypeScriptで作りました。`oj` の現代的な代替を目指しています。分かりやすいCLI、信頼できる問題の作業の流れ、競技プラットフォームに共通する一貫したインターフェースを備えます。
 
