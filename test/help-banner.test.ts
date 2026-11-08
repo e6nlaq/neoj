@@ -36,7 +36,7 @@ describe("helpBanner", () => {
     it("credits the version and author after the wordmark", () => {
         const lastLine = helpBanner.split("\n")[6];
 
-        expect(lastLine).toMatch(/ v\d+\.\d+\.\d+ \/ by \S+$/u);
+        expect(lastLine).toMatch(/ v\d+\.\d+\.\d+(-.+)? \/ by \S+$/u);
     });
 
     it("uses plain text without ANSI escapes", () => {
