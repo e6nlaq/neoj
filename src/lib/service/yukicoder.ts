@@ -441,13 +441,8 @@ export class YukicoderClient {
             },
             body,
         });
-        if (response.status === 401 || response.status === 403) {
-            throw new Error(
-                'yukicoder rejected the submission because the login is not valid. Run "neoj login yukicoder" and try again.',
-            );
-        }
         if (!response.ok) {
-            throw new Error(`yukicoder submission failed (${response.status}).`);
+            throw await this.createSubmissionError(response.status, normalized, languageId);
         }
 
         const submission = parseJsonWithSchema(
@@ -460,6 +455,60 @@ export class YukicoderClient {
             submissionId,
             submissionUrl: new URL(`/submissions/${submissionId}`, YUKICODER_ORIGIN).href,
         };
+    }
+
+    /**
+     * Explain a rejected submission without blaming the login when the
+     * credential is still valid. yukicoder can reject a request with 401/403
+     * for other reasons, such as an unknown language ID.
+     */
+    private async createSubmissionError(
+        status: number,
+        credential: string,
+        languageId: string,
+    ): Promise<Error> {
+        let credentialValid: boolean | undefined;
+        if (status === 401 || status === 403) {
+            try {
+                credentialValid = await this.checkCredential(credential);
+            } catch {
+                credentialValid = undefined;
+            }
+            if (credentialValid === false) {
+                return new Error(
+                    'yukicoder rejected the submission because the login is not valid. Run "neoj login yukicoder" and try again.',
+                );
+            }
+        }
+
+        if (status >= 400 && status < 500) {
+            let languageKnown: boolean | undefined;
+            try {
+                languageKnown = (await this.getLanguages()).some(
+                    (language) => language.id === languageId,
+                );
+            } catch {
+                languageKnown = undefined;
+            }
+            if (languageKnown === false) {
+                return new Error(
+                    `yukicoder does not recognize the language ID "${languageId}". Set a valid ID with "neoj languages yukicoder", --platform-language, or languages.<key>.submit.yukicoder.`,
+                );
+            }
+        }
+
+        if (credentialValid === true) {
+            return new Error(
+                `yukicoder rejected the submission (${status}) even though the login is valid. Check the language ID ("${languageId}") and the source, then try again.`,
+            );
+        }
+        if (credentialValid === undefined && (status === 401 || status === 403)) {
+            return new Error(
+                `yukicoder rejected the submission (${status}) and the login could not be verified. Run "neoj login yukicoder" and try again, or check the language ID ("${languageId}").`,
+            );
+        }
+
+        return new Error(`yukicoder submission failed (${status}).`);
     }
 
     async checkCredential(credential: string): Promise<boolean> {

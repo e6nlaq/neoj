@@ -523,6 +523,60 @@ describe("YukicoderClient language and submission requests", () => {
         }
     });
 
+    it("reports an unknown language ID when the login is still valid", async () => {
+        setFetch(async (input) => {
+            const url = String(input);
+            if (url.endsWith("/v1/authUser")) {
+                return jsonResponse({ Id: 1, Name: "user" });
+            }
+            if (url.endsWith("/v1/languages")) {
+                return jsonResponse([{ Id: "cpp23", Name: "C++23" }]);
+            }
+            return new Response("denied", { status: 403 });
+        });
+
+        await expect(
+            new YukicoderClient().submit(problemUrl, "ysb_token", "5001", "source"),
+        ).rejects.toThrow(
+            'yukicoder does not recognize the language ID "5001". Set a valid ID with "neoj languages yukicoder", --platform-language, or languages.<key>.submit.yukicoder.',
+        );
+    });
+
+    it("does not blame the login when the credential is valid but the request is rejected", async () => {
+        setFetch(async (input) => {
+            const url = String(input);
+            if (url.endsWith("/v1/authUser")) {
+                return jsonResponse({ Id: 1, Name: "user" });
+            }
+            if (url.endsWith("/v1/languages")) {
+                return jsonResponse([{ Id: "5001", Name: "C++17" }]);
+            }
+            return new Response("denied", { status: 403 });
+        });
+
+        await expect(
+            new YukicoderClient().submit(problemUrl, "ysb_token", "5001", "source"),
+        ).rejects.toThrow(
+            'yukicoder rejected the submission (403) even though the login is valid. Check the language ID ("5001") and the source, then try again.',
+        );
+    });
+
+    it("asks for a login again when the credential cannot be verified after a rejection", async () => {
+        setFetch(async (input) => {
+            const url = String(input);
+            if (url.endsWith("/v1/authUser")) {
+                return new Response("error", { status: 500 });
+            }
+            return new Response("denied", { status: 401 });
+        });
+
+        await expect(
+            new YukicoderClient().submit(problemUrl, "ysb_token", "5001", "source"),
+        ).rejects.toThrow(
+            'yukicoder rejected the submission (401) and the login could not be verified. Run "neoj login yukicoder" and try again, or check the language ID ("5001").',
+        );
+    });
+
     it("reports other submission failures", async () => {
         setFetch(async () => new Response("error", { status: 500 }));
         await expect(
