@@ -77,6 +77,14 @@ function createConfig(overrides: Partial<Config["submit"]> = {}): Config {
         },
         testcase: { folder: "test", filename: "sample-{}" },
         handmade: { filename: "handmade-{}" },
+        generate: {
+            gen: undefined,
+            naive: undefined,
+            filename: "random-{}",
+            count: 1,
+            timeout: 10,
+            parallel: true,
+        },
         run: { silent: false },
         test: {
             source: "src/main.cpp",

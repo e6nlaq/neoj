@@ -12,6 +12,8 @@ export interface CommandOptions {
     timeoutMs?: number;
     outputLimitBytes?: number;
     env?: Record<string, string | undefined>;
+    /** Kills the process when aborted. */
+    signal?: AbortSignal;
 }
 
 export interface CommandResult {
@@ -500,6 +502,15 @@ export async function runCommand(options: CommandOptions): Promise<CommandResult
         }
     };
 
+    const onAbort = () => terminate();
+    if (options.signal !== undefined) {
+        if (options.signal.aborted) {
+            terminate();
+        } else {
+            options.signal.addEventListener("abort", onAbort, { once: true });
+        }
+    }
+
     const timer =
         options.timeoutMs !== undefined && options.timeoutMs > 0
             ? setTimeout(() => {
@@ -523,6 +534,7 @@ export async function runCommand(options: CommandOptions): Promise<CommandResult
         if (timer !== undefined) {
             clearTimeout(timer);
         }
+        options.signal?.removeEventListener("abort", onAbort);
     }
 
     const [stdoutResult, stderrResult] = await Promise.all([stdout, stderr]);

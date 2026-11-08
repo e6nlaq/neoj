@@ -39,6 +39,8 @@ filename = "handmade-{}"
   replaced by the 1-based sample number.
 - `handmade.filename` names the cases created by `neoj handmade`. They use the
   same `folder` and the same `{}` rules, and get the next free number.
+- `generate.filename` names the cases created by `neoj generate`, with the same
+  rules; see [Generate random test cases](generate-random-tests.md).
 
 Relative folders are resolved from the directory containing the nearest project
 `neoj.toml`. Downloading replaces the folder without prompting.

@@ -8,6 +8,7 @@
 | `neoj download <url>` (alias: `neoj d`)                    | Download a problem's sample tests into the test-case directory.             |
 | `neoj open [options]` (alias: `neoj o`)                    | Open the current problem in the browser.                                    |
 | `neoj handmade` (alias: `neoj h`)                          | Create a handmade test case from interactive input.                         |
+| `neoj generate` (alias: `neoj g`)                          | Create random test cases with a generator and a naive solution.             |
 | `neoj login <platform>`                                    | Log in to a platform. The supported names are `atcoder` and `yukicoder`.    |
 | `neoj logout [--service <name...>]`                        | Log out of the given platforms, or of every platform when no name is given. |
 | `neoj status [--offline]`                                  | Show the login status of every supported platform.                          |
@@ -100,6 +101,45 @@ an initialized project. See
 `neoj download` replaces the whole test-case directory, so handmade files placed
 there are removed by the next download. The directory must not be `src` or
 `.neoj`, and it must not contain or live inside `src`.
+
+### `generate`
+
+Creates random test cases by pairing two programs: the generator in
+`generate.gen` prints a test case's input, and the naive solution in
+`generate.naive` turns that input into the expected output. Both are built like
+a solution, with the language detected from `[languages.<key>]`.
+
+```text
+$ neoj generate
+✔ Compiled judge/gen.ts (generate.gen) in 0.12 s.
+✔ Compiled judge/naive.ts (generate.naive) in 0.10 s.
+✔ Created 2 test case(s): random-1, random-2.
+```
+
+The generator runs with the case number as its first argument, so a failing case
+is reproducible: `random-7` came out of `judge/gen.cpp 7`. The generator's
+standard input is closed immediately; its standard output becomes the `.in`
+file, which is piped to the naive solution's standard input, whose standard
+output becomes the `.out` file. Empty inputs and outputs are written as they
+are, and neither program's output is otherwise reformatted.
+
+Cases are written into the test-case directory with the next free case numbers,
+so existing cases are never replaced. Files are only written after both parts of
+a case are complete, and Ctrl-C kills the running programs and removes the
+partially written cases. A tool that exits with a non-zero status, times out
+after `generate.timeout` seconds, or floods the output cap stops the whole run;
+the cases completed before the failure stay on disk.
+
+| Option                         | Description                                                |
+| ------------------------------ | ---------------------------------------------------------- |
+| `-i`, `--input`                | Only create `.in` files; `generate.naive` is not needed.   |
+| `-c`, `--count <count>`        | Number of cases to create (default: `generate.count`).     |
+| `-J`, `--jobs <count>`         | Number of cases to generate at once.                       |
+| `--no-parallel`                | Generate one case at a time.                               |
+| `--cache` / `--no-cache`       | Keep or delete the compiled programs under `.neoj/build/`. |
+| `--progress` / `--no-progress` | Draw or hide the progress bar.                             |
+
+See [Generate random test cases](../how-to/generate-random-tests.md).
 
 ### `login`
 
@@ -363,6 +403,10 @@ examples. PowerShell completion requires `pwsh` 7.2 or later.
 `neoj` exits with `0` after a successful command and `1` when a command reports
 an error. Partial failures, such as an unreadable template file, also set `1`.
 `neoj handmade` sets `1` when it is cancelled before both blocks are complete.
+
+`neoj generate` sets `1` for configuration, compile, and tool failures, and
+`130` when Ctrl-C interrupts it; the cases completed before the interruption
+stay on disk.
 
 `neoj test` uses three values: `0` when every case passed, `1` for a compile,
 configuration, or environment error, and `2` when at least one case failed

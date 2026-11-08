@@ -117,6 +117,65 @@ a new case never replaces an existing one. Handmade cases live in the same
 directory as downloaded samples and are removed when `neoj download` replaces
 that directory.
 
+### `generate.gen`
+
+| Type   | Default | Scope             |
+| ------ | ------- | ----------------- |
+| string | —       | global or project |
+
+Source file of the generator used by `neoj generate`, relative to the project
+root. The generator is built and detected like a solution, and runs with the
+case number as its first argument; its standard output becomes the new case's
+`.in` file.
+
+### `generate.naive`
+
+| Type   | Default | Scope             |
+| ------ | ------- | ----------------- |
+| string | —       | global or project |
+
+Source file of the naive solution used by `neoj generate`, relative to the
+project root. It receives a generated input on standard input, and its standard
+output becomes the case's `.out` file. Required unless `neoj generate --input`
+only creates inputs.
+
+### `generate.filename`
+
+| Type   | Default     | Scope             |
+| ------ | ----------- | ----------------- |
+| string | `random-{}` | global or project |
+
+Base name for test cases created by `neoj generate`. It follows the same rules
+as `testcase.filename`: exactly one `{}` replaced by the 1-based case number,
+and a valid file name. The number is the smallest one whose `.in` and `.out`
+files do not exist yet, so a generated case never replaces an existing one,
+including an input-only case.
+
+### `generate.count`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| integer | `1`     | global or project |
+
+Number of test cases `neoj generate` creates per run. `--count` overrides it.
+
+### `generate.timeout`
+
+| Type   | Default | Scope             |
+| ------ | ------- | ----------------- |
+| number | `10`    | global or project |
+
+Time limit in seconds for each run of the generator and of the naive solution.
+A tool that exceeds it stops the run.
+
+### `generate.parallel`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Generate test cases in parallel. `--no-parallel` runs one case at a time.
+
 ### `download.show_sample`
 
 | Type    | Default | Scope             |
@@ -635,6 +694,14 @@ filename = "sample-{}"
 
 [handmade]
 filename = "handmade-{}"
+
+[generate]
+gen = "judge/gen.cpp"
+naive = "judge/naive.cpp"
+filename = "random-{}"
+count = 1
+timeout = 10
+parallel = true
 
 [test]
 source = "src/main.cpp"

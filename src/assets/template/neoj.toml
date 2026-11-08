@@ -29,6 +29,12 @@ cache = true
 # run = ["{outfile}", "{infile}"]
 # timeout = 10
 
+# Random test cases (`neoj generate`) run the generator with the case number
+# as its first argument, and feed its output to the naive solution.
+# [generate]
+# gen = "judge/gen.cpp"
+# naive = "judge/naive.cpp"
+
 # Extra names for source files: `neoj test main` builds src/main.cpp.
 # [alias]
 # main = "src/main.cpp"

@@ -39,6 +39,7 @@ contest platforms.
 - [Log in, check status, and log out](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/manage-sessions.md)
 - [Download sample tests](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/download-samples.md)
 - [Create a test case by hand](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/create-handmade-tests.md)
+- [Generate random test cases](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/generate-random-tests.md)
 - [Build and run the sample tests](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/run-tests.md)
 - [Run a solution without tests](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/run-a-solution.md)
 - [Submit a solution](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/submit-solution.md)

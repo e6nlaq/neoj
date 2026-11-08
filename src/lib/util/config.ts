@@ -211,6 +211,63 @@ export const configSchema = v.pipe(
             ),
             { filename: "handmade-{}" },
         ),
+        generate: v.optional(
+            v.pipe(
+                v.strictObject({
+                    gen: v.optional(
+                        v.pipe(
+                            v.string(),
+                            v.minLength(1),
+                            v.description(
+                                "Generator source that prints a random test case, relative to the project root. It receives the case number as its first argument.",
+                            ),
+                        ),
+                    ),
+                    naive: v.optional(
+                        v.pipe(
+                            v.string(),
+                            v.minLength(1),
+                            v.description(
+                                "Naive solution source that turns a generated input into the expected output, relative to the project root. Required unless generate is run with --input.",
+                            ),
+                        ),
+                    ),
+                    filename: v.optional(
+                        createFilenamePatternSchema(
+                            "Base name for each generated test case. Must contain exactly one {} that is replaced by the case number.",
+                        ),
+                        "random-{}",
+                    ),
+                    count: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.integer(),
+                            v.minValue(1),
+                            v.description(
+                                "Default number of test cases generated per run. --count overrides it.",
+                            ),
+                        ),
+                        1,
+                    ),
+                    timeout: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.minValue(0.001),
+                            v.description(
+                                "Time limit in seconds for each run of the generator and the naive solution.",
+                            ),
+                        ),
+                        10,
+                    ),
+                    parallel: v.optional(
+                        v.pipe(v.boolean(), v.description("Generate test cases in parallel.")),
+                        true,
+                    ),
+                }),
+                v.description("How neoj generate creates random test cases."),
+            ),
+            { filename: "random-{}", count: 1, timeout: 10, parallel: true },
+        ),
         test: v.optional(
             v.pipe(
                 v.strictObject({
@@ -671,7 +728,12 @@ function getIssueReason(issue: v.BaseIssue<unknown>, path: string): string {
     if (issue.kind === "schema") {
         return `Expected ${issue.expected ?? "a valid value"}.`;
     }
-    if ((path === "testcase.filename" || path === "handmade.filename") && issue.type === "check") {
+    if (
+        (path === "testcase.filename" ||
+            path === "handmade.filename" ||
+            path === "generate.filename") &&
+        issue.type === "check"
+    ) {
         return "Must contain exactly one {} and be a file name.";
     }
     if (path === "testcase.folder" && issue.type === "min_length") {
