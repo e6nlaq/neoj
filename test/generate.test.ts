@@ -25,7 +25,10 @@ afterEach(async () => {
 
 async function createProject(): Promise<string> {
     testRoot = await mkdtemp(join(tmpdir(), "neoj-generate-"));
-    return testRoot;
+    // runGenerate realpaths the project root, so derive test expectations from
+    // the same source: macOS resolves /var to /private/var and Windows may
+    // return 8.3 short names for the temp directory.
+    return realpath(testRoot);
 }
 
 function createConfig(options: {
