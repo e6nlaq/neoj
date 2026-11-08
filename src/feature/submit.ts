@@ -11,6 +11,7 @@ import { getYukicoderAuth, isYukicoderLoggedIn, loginToYukicoder } from "@/featu
 import { findProblemSource } from "@/feature/problem-sources";
 import { AtCoderClient, parseAtCoderTask, type AtCoderSubmitPage } from "@/lib/service/atcoder";
 import { YukicoderClient } from "@/lib/service/yukicoder";
+import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
 import { readAuth } from "@/lib/util/auth";
 import { openInBrowser } from "@/lib/util/browser";
 import { copyToClipboard } from "@/lib/util/clipboard";
@@ -107,15 +108,21 @@ function numberLines(
     lines: readonly string[],
     firstLineNumber: number,
     totalLines: number,
+    styles: AnsiStyles,
 ): string[] {
     const width = String(totalLines).length;
     return lines.map(
-        (line, index) => `${String(firstLineNumber + index).padStart(width)} | ${line}`,
+        (line, index) =>
+            `${styles.dim(String(firstLineNumber + index).padStart(width))} ${styles.dim("|")} ${line}`,
     );
 }
 
 /** Render the head and tail of a submission, with real line numbers. */
-export function formatSubmitPreview(text: string, previewLines: number): string[] {
+export function formatSubmitPreview(
+    text: string,
+    previewLines: number,
+    styles: AnsiStyles = createAnsiStyles(false),
+): string[] {
     const lines = splitSourceLines(text);
     const limit = Math.max(1, Math.floor(previewLines));
     const total = lines.length;
@@ -123,13 +130,13 @@ export function formatSubmitPreview(text: string, previewLines: number): string[
         return ["(empty)"];
     }
     if (total <= limit * 2) {
-        return numberLines(lines, 1, total);
+        return numberLines(lines, 1, total, styles);
     }
 
     return [
-        ...numberLines(lines.slice(0, limit), 1, total),
+        ...numberLines(lines.slice(0, limit), 1, total, styles),
         "...",
-        ...numberLines(lines.slice(-limit), total - limit + 1, total),
+        ...numberLines(lines.slice(-limit), total - limit + 1, total, styles),
     ];
 }
 
@@ -555,6 +562,7 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
 
     const stdout = options.stdout ?? process.stdout;
     const stderr = options.stderr ?? process.stderr;
+    const styles = createAnsiStyles(supportsColor(stdout));
     const dependencies = options.dependencies ?? {};
     const warn = dependencies.warn ?? ((message: string) => consola.warn(message));
     const info = dependencies.info ?? ((message: string) => consola.info(message));
@@ -613,7 +621,7 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
         `Submitting ${resolved.relativePath} (languages.${language.key}, ${problemSource.displayName})\n`,
     );
     stdout.write(`${describeSubmissionSize(content)}\n\n`);
-    for (const line of formatSubmitPreview(content, options.config.submit.preview_lines)) {
+    for (const line of formatSubmitPreview(content, options.config.submit.preview_lines, styles)) {
         stdout.write(`${line}\n`);
     }
     stdout.write("\n");

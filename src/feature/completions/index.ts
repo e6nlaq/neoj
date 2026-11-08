@@ -62,6 +62,7 @@ export function getCompletionHints(): CompletionHints {
                 value: shell,
                 description: shellDescriptions[shell],
             })),
+            "languages:platform": platformCandidates(),
         },
     };
 }

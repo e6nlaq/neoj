@@ -15,6 +15,7 @@
 | `neoj test [source]` (alias: `neoj t`)                     | Build the solution and run it against the sample tests.                     |
 | `neoj run [source] [args...]` (alias: `neoj r`)            | Build the solution and run it without tests, forwarding `args`.             |
 | `neoj submit [source]` (aliases: `neoj s`, `neoj submits`) | Submit the solution for the current problem.                                |
+| `neoj languages [platform]` (alias: `neoj langs`)          | List the language IDs a platform accepts.                                   |
 | `neoj prune [--dry-run]`                                   | Remove every cached build under `.neoj/build/`.                             |
 | `neoj completions <shell>` (alias: `neoj completion`)      | Print a completion script for bash, zsh, fish, or PowerShell.               |
 
@@ -242,8 +243,10 @@ preview, the confirmation prompt (default **No**), the wait, and the submission.
 
 The preview shows the first and last `submit.preview_lines` lines with their real
 line numbers and `...` between them; a file with at most `2 * preview_lines`
-lines is shown in full. The preview and the size are printed for `--yes` and
-`--dry-run` too, so a script can still inspect what would be sent.
+lines is shown in full. The line numbers are dimmed when standard output is a
+terminal and `NO_COLOR` is unset, like `neoj test`. The preview and the size are
+printed for `--yes` and `--dry-run` too, so a script can still inspect what
+would be sent.
 
 Before submitting, `neoj` runs `languages.<key>.presubmit` in the project root
 when it is configured. `{source}` is the absolute path of the original file and
@@ -280,6 +283,32 @@ download`, and when the submit page contains a Turnstile challenge. If AtCoder
 rejects the request, the error tells you to open the submit page in your browser.
 yukicoder submissions use the same API as the web form. See
 [Submit a solution](../how-to/submit-solution.md).
+
+### `languages`
+
+| Argument     | Description                                                               |
+| ------------ | ------------------------------------------------------------------------- |
+| `[platform]` | Platform name: `atcoder` or `yukicoder`. Defaults to the current problem. |
+
+Prints the language IDs that `--platform-language` and
+`languages.<key>.submit.<platform>` accept. The table lists each ID with the
+language name, and a `*` marks every ID already configured for that platform.
+The closing line names the `neoj.toml` keys that set those IDs, or explains how
+to configure one when none is set.
+
+| Option            | Description                                                                      |
+| ----------------- | -------------------------------------------------------------------------------- |
+| `--filter <text>` | Show only languages whose ID, name, or runtime matches this text, ignoring case. |
+
+When `[platform]` is omitted, the platform recorded in `.neoj/problem.json` is
+used; without a recorded problem the command asks for a platform instead.
+`yukicoder` needs no login. `atcoder` requires a session and follows
+`login.auto_login`: cancelling the login exits with `0`, and a failed login
+exits with `1`. Without a recorded AtCoder problem, the command queries contest
+`abc100` and labels it as a fallback in the header, because the language list
+is the same across contests.
+
+See [Submit a solution](../how-to/submit-solution.md) for how the IDs are used.
 
 ### `prune`
 
@@ -345,3 +374,7 @@ one-line notice (hidden by `--silent`).
 `neoj submit` exits with `0` after a successful submission and when the
 confirmation or the login is cancelled. Configuration, presubmit, network, and
 platform errors set `1`.
+
+`neoj languages` exits with `0` after printing the list and when the login is
+cancelled. An unsupported platform, a missing problem when no platform is given,
+and network or authentication errors set `1`.

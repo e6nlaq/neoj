@@ -5,6 +5,7 @@ import { createDownloadCommand } from "@/feature/download";
 import { createHandmadeCommand } from "@/feature/handmade";
 import { applyHelpBanner } from "@/feature/help-banner";
 import { createInitCommand } from "@/feature/init";
+import { createLanguagesCommand } from "@/feature/languages";
 import { createLoginCommand } from "@/feature/login";
 import { createLogoutCommand } from "@/feature/logout";
 import { createOpenCommand } from "@/feature/open";
@@ -36,6 +37,7 @@ export function createProgram(): Command {
     program.addCommand(createTestCommand());
     program.addCommand(createRunCommand());
     program.addCommand(createSubmitCommand());
+    program.addCommand(createLanguagesCommand());
     program.addCommand(createPruneCommand());
     program.addCommand(createCompletionsCommand(program));
 

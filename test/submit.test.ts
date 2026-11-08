@@ -14,6 +14,7 @@ import {
     waitBeforeSubmit,
     type SubmissionTarget,
 } from "@/feature/submit";
+import { createAnsiStyles } from "@/lib/util/ansi";
 import type { Config } from "@/lib/util/config";
 import type { ProblemMetadata } from "@/lib/util/problem-metadata";
 import type { TestLanguage } from "@/lib/util/test-runner";
@@ -205,6 +206,14 @@ describe("splitSourceLines and preview", () => {
         const preview = formatSubmitPreview(lines.join("\n"), 2);
 
         expect(preview).toEqual([" 1 | L1", " 2 | L2", "...", "10 | L10", "11 | L11"]);
+    });
+
+    it("dims line numbers only when styles are enabled", () => {
+        expect(formatSubmitPreview("a\nb", 5, createAnsiStyles(true))).toEqual([
+            "\u001B[2m1\u001B[0m \u001B[2m|\u001B[0m a",
+            "\u001B[2m2\u001B[0m \u001B[2m|\u001B[0m b",
+        ]);
+        expect(formatSubmitPreview("a\nb", 5, createAnsiStyles(false))).toEqual(["1 | a", "2 | b"]);
     });
 
     it("describes the line count and byte size", () => {

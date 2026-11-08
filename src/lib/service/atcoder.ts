@@ -424,6 +424,34 @@ export class AtCoderClient {
         return (await this.getSubmitPage(url)).languages;
     }
 
+    /**
+     * List the languages of a contest without a task.
+     *
+     * The submit page for a contest shows the same language select even when no
+     * task is preselected, so this works without a downloaded problem.
+     */
+    async getLanguagesForContest(contestId: string): Promise<AtCoderLanguage[]> {
+        if (!/^[\w-]+$/u.test(contestId)) {
+            throw new TypeError(`Invalid AtCoder contest ID: "${contestId}".`);
+        }
+
+        const submitUrl = new URL(`/contests/${contestId}/submit`, ATCODER_ORIGIN);
+        const response = await request(submitUrl, {
+            headers: this.createHeaders(),
+            redirect: "manual",
+        });
+        if (response.status >= 300 && response.status < 400) {
+            throw new Error(
+                `AtCoder redirected the submit page (${response.status}). Log in again with "neoj login atcoder".`,
+            );
+        }
+        if (!response.ok) {
+            throw new Error(`AtCoder submit page request failed (${response.status}).`);
+        }
+
+        return parseLanguages(parse(await response.text()));
+    }
+
     async submit(
         url: string,
         languageId: string,

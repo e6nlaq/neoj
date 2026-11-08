@@ -31,6 +31,7 @@ describe("buildCompletionModel", () => {
             "test",
             "run",
             "submit",
+            "languages",
             "prune",
             "completions",
         ]);
@@ -42,6 +43,9 @@ describe("buildCompletionModel", () => {
             "h",
         ]);
         expect(model.commands.find((command) => command.name === "run")?.aliases).toEqual(["r"]);
+        expect(model.commands.find((command) => command.name === "languages")?.aliases).toEqual([
+            "langs",
+        ]);
         expect(model.commands.find((command) => command.name === "completions")?.aliases).toEqual([
             "completion",
         ]);
@@ -102,6 +106,16 @@ describe("buildCompletionModel", () => {
         expect(completions?.args.map((argument) => argument.name)).toEqual(["shell"]);
         expect(completions?.args[0]?.candidates.map((candidate) => candidate.value)).toEqual([
             ...completionShells,
+        ]);
+    });
+
+    it("attaches platform names to the languages argument", () => {
+        const languages = createModel().commands.find((command) => command.name === "languages");
+
+        expect(languages?.args.map((argument) => argument.name)).toEqual(["platform"]);
+        expect(languages?.args[0]?.candidates.map((candidate) => candidate.value)).toEqual([
+            "atcoder",
+            "yukicoder",
         ]);
     });
 

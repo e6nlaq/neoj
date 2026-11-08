@@ -537,3 +537,54 @@ describe("AtCoderClient submission requests", () => {
         );
     });
 });
+
+describe("AtCoderClient contest languages", () => {
+    it("lists the languages from a contest submit page without a task", async () => {
+        const requests: Array<{ url: string; cookie: string | null }> = [];
+        setFetch(async (input, init) => {
+            requests.push({
+                url: String(input),
+                cookie: new Headers(init?.headers).get("Cookie"),
+            });
+            if (String(input).endsWith("/settings")) {
+                return new Response(null, { status: 200 });
+            }
+            return new Response(submitHtml, { status: 200 });
+        });
+
+        const client = new AtCoderClient();
+        await client.login("test-session");
+        requests.length = 0;
+
+        const languages = await client.getLanguagesForContest("abc001");
+
+        expect(languages).toEqual([
+            { id: "5001", name: "C++ 20 (gcc 12.2.0)", group: "C++" },
+            { id: "5002", name: "Python (CPython 3.11.4)", group: "Python" },
+        ]);
+        expect(requests).toEqual([
+            {
+                url: "https://atcoder.jp/contests/abc001/submit",
+                cookie: "REVEL_SESSION=test-session",
+            },
+        ]);
+    });
+
+    it("reports a redirected contest submit page as a login problem", async () => {
+        setFetch(async () => new Response(null, { status: 302, headers: { Location: "/login" } }));
+
+        await expect(new AtCoderClient().getLanguagesForContest("abc001")).rejects.toThrow(
+            'AtCoder redirected the submit page (302). Log in again with "neoj login atcoder".',
+        );
+    });
+
+    it("rejects an invalid contest ID before requesting", async () => {
+        setFetch(async () => {
+            throw new Error("should not fetch");
+        });
+
+        await expect(new AtCoderClient().getLanguagesForContest("../login")).rejects.toThrow(
+            'Invalid AtCoder contest ID: "../login".',
+        );
+    });
+});

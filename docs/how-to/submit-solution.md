@@ -27,10 +27,14 @@ submit = { atcoder = "<id>" }
 ```
 
 `submit` maps each platform to the language ID used by its submission form. When
-the key is missing, the command lists the available IDs and exits with `1`; copy
-the right one into `neoj.toml`. You can also pass it for one run:
+the key is missing, the command lists the available IDs and exits with `1`.
+`neoj languages <platform>` prints the same list at any time, marks the IDs you
+already configured with `*`, and accepts `--filter` to narrow the table; omit
+the platform to use the current problem. Copy the right ID into `neoj.toml`, or
+pass it for one run:
 
 ```bash
+neoj languages atcoder --filter python
 neoj submit --platform-language <id>
 ```
 
