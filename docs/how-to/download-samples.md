@@ -1,3 +1,5 @@
+English | [日本語](../ja/download-samples.md)
+
 # Download sample tests
 
 ```bash

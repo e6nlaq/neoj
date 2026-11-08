@@ -1,3 +1,5 @@
+English | [日本語](../ja/cli.md)
+
 # CLI reference
 
 ## Commands

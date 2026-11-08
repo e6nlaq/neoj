@@ -1,3 +1,5 @@
+English | [日本語](../ja/create-handmade-tests.md)
+
 # Create a test case by hand
 
 ```bash

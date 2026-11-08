@@ -1,3 +1,5 @@
+English | [日本語](../ja/run-tests.md)
+
 # Build and run the sample tests
 
 ```bash

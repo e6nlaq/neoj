@@ -1,3 +1,5 @@
+English | [日本語](../ja/install.md)
+
 # Install neoj
 
 `neoj` is published on npm as `@neoj/cli`. Install it globally with Bun or npm.

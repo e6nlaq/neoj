@@ -1,3 +1,5 @@
+[日本語](README.ja.md) | English
+
 <div align="center">
 
 <p align="center">

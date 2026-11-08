@@ -1,3 +1,5 @@
+English | [日本語](../ja/setup-editor-completions.md)
+
 # Set up editor completions
 
 `neoj` publishes a JSON Schema for its TOML configuration. Editors that attach a

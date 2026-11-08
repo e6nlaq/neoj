@@ -1,3 +1,5 @@
+English | [日本語](../ja/configure-project.md)
+
 # Configure a project
 
 `neoj` reads TOML from a global file and a project file, then merges them.

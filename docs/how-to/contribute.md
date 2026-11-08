@@ -1,3 +1,5 @@
+English | [日本語](../ja/contribute.md)
+
 # Contribute to neoj
 
 ## Set up the repository

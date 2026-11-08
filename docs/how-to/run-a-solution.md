@@ -1,3 +1,5 @@
+English | [日本語](../ja/run-a-solution.md)
+
 # Run a solution without tests
 
 ```bash

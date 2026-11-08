@@ -1,3 +1,5 @@
+English | [日本語](../ja/stash-work.md)
+
 # Stash and restore work per problem
 
 `neoj download` replaces the test-case directory and applies the template, so

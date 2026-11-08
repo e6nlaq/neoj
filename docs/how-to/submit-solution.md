@@ -1,3 +1,5 @@
+English | [日本語](../ja/submit-solution.md)
+
 # Submit a solution
 
 ```bash

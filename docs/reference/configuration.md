@@ -1,3 +1,5 @@
+English | [日本語](../ja/configuration.md)
+
 # Configuration reference
 
 `neoj` reads `~/.neoj.toml` and the nearest project `neoj.toml`, merges them, and

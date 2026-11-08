@@ -1,3 +1,5 @@
+English | [日本語](../ja/generate-random-tests.md)
+
 # Generate random test cases
 
 `neoj generate` creates random test cases by pairing two programs:

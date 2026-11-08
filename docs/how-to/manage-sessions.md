@@ -1,3 +1,5 @@
+English | [日本語](../ja/manage-sessions.md)
+
 # Log in, check status, and log out
 
 Credentials are stored per platform, so you can stay logged in to each one

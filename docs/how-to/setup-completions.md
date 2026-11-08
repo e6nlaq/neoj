@@ -1,3 +1,5 @@
+English | [日本語](../ja/setup-completions.md)
+
 # Set up shell completions
 
 `neoj` prints a static completion script for bash, zsh, fish, or PowerShell.

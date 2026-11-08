@@ -1,3 +1,5 @@
+English | [日本語](../ja/credentials.md)
+
 # Credential storage
 
 `neoj` stores every platform session in one JSON file inside the per-user data

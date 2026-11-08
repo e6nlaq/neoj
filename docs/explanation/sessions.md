@@ -1,3 +1,5 @@
+English | [日本語](../ja/sessions.md)
+
 # Sessions and credential security
 
 `neoj` stores credentials per platform. AtCoder uses a browser session cookie;

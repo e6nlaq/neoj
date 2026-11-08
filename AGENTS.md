@@ -66,6 +66,11 @@ The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messag
 - Keep `README.md` and the pages under `docs/` aligned with the actual CLI
   surface. Update them in the same change that alters commands, flags, or file
   locations.
+- When you add or change a documentation page, add or update its Japanese
+  version in the same change: Japanese pages mirror the English ones under
+  `docs/ja/`, and the Japanese README lives at `README.ja.md`. The English
+  pages are canonical; a Japanese page may lag behind an English one until it
+  is updated.
 
 ## Review Checklist
 

@@ -1,3 +1,5 @@
+English | [日本語](../ja/platforms.md)
+
 # Platforms and integrations
 
 `neoj` treats every contest site as a **platform**: a named integration that knows
