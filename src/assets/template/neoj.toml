@@ -21,6 +21,14 @@ cache = true
 # run = ["{outfile}", "{infile}"]
 # timeout = 15
 
+# Special judge (`neoj test --judge`) reads this section. The solution's
+# standard output arrives on the checker's standard input. Add {infile} to
+# pass the test case path to the checker.
+# [test.judge]
+# source = "judge/checker.cpp"
+# run = ["{outfile}", "{infile}"]
+# timeout = 10
+
 # Extra names for source files: `neoj test main` builds src/main.cpp.
 # [alias]
 # main = "src/main.cpp"

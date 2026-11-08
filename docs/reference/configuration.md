@@ -186,6 +186,58 @@ Wall-clock limit for one interactive session. When it expires, both the
 solution and the interactor are stopped and the case is reported as `TLE`. The
 solution's own `test.timeout` still applies and can stop it earlier.
 
+### `test.judge.source`
+
+| Type        | Default | Scope             |
+| ----------- | ------- | ----------------- |
+| string path | none    | global or project |
+
+Checker file used by `neoj test --judge`. It is resolved from the project root
+and must be a plain path that exists. The section is only read when `--judge` is
+passed, so a project without a checker keeps working.
+
+```toml
+[test.judge]
+source = "src/checker.cpp"
+run = ["{outfile}", "{infile}"]
+```
+
+### `test.judge.compile`
+
+| Type            | Default                            | Scope             |
+| --------------- | ---------------------------------- | ----------------- |
+| array of string | matching `languages.<key>.compile` | global or project |
+
+Command and arguments that build the checker. When it is omitted, `neoj` picks
+the `[languages.<key>]` whose `source` glob matches the checker file and reuses
+its `compile`. If several languages match, set `compile` and `run` here to
+choose one. The command must reference `{outfile}` or `{outdir}`, as with a
+language `compile`.
+
+### `test.judge.run`
+
+| Type            | Default                        | Scope             |
+| --------------- | ------------------------------ | ----------------- |
+| array of string | matching `languages.<key>.run` | global or project |
+
+Command and arguments that run the checker. The solution's standard output is
+written to the checker's standard input. In addition to the placeholders listed
+in [Build and run the sample tests](../how-to/run-tests.md#placeholders),
+`{infile}` expands to the test case's `.in` path when the checker needs the
+input. `{infile}` is optional, and it is not available in `compile` because the
+path changes per case.
+
+### `test.judge.timeout`
+
+| Type             | Default | Scope             |
+| ---------------- | ------- | ----------------- |
+| number (seconds) | `10`    | global or project |
+
+Wall-clock limit for one checker run. When it expires, the checker is stopped
+and the case is reported as `TLE`. The solution's own `test.timeout` applies
+separately and can stop it before the checker starts. The checker has no memory
+limit.
+
 ### `test.timeout`
 
 | Type             | Default | Scope             |

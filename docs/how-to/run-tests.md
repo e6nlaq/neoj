@@ -210,6 +210,56 @@ The report replaces the input and output tables with the conversation:
 solution to the interactor. Failures show the transcript; `-v` shows it for `AC`
 too. `test.display_lines` limits how many lines are printed.
 
+## Judge a multi-answer problem
+
+Some problems accept more than one correct output. `neoj test --judge` (or
+`-j`) runs a checker after your solution finishes and lets the checker decide
+whether the output is acceptable:
+
+```text
+test/sample-1.in ──▶ checker (path passed with {infile}, optional)
+solution stdout   ──▶ checker stdin
+```
+
+Describe the checker in `neoj.toml`:
+
+```toml
+[test.judge]
+source = "src/checker.cpp"
+run = ["{outfile}", "{infile}"]
+```
+
+- `source` is required. It is a plain path relative to the project root.
+- `compile` and `run` default to the `[languages.<key>]` entry whose `source`
+  glob matches the checker file, so a C++ checker needs only `run` here to
+  receive `{infile}`.
+- The solution's standard output is the checker's standard input. `{infile}`
+  expands to the case's `.in` path and is optional; leave it out when the
+  checker only validates the output.
+- The checker decides the verdict: exit status `0` is `AC`, and anything else
+  is `WA`. Its first non-empty stderr line becomes the `WA (...)` reason.
+- Your solution's own failures win: `TLE`, `MLE`, `RE`, and the output cap are
+  reported even if the checker would have accepted the answer.
+- `.out` files are ignored, and the directory must contain at least one `*.in`
+  file.
+- `test.judge.timeout` (default 10 seconds) limits the checker. It has no
+  memory limit.
+
+The report shows the input and the solution output, followed by the checker's
+stderr and the solution's stderr. There is no expected/actual comparison table.
+
+```text
+✗ sample-1     41 ms    12 MiB  WA (wrong values)
+    Line │ Input
+       1 │ 1 2 3
+
+    Line │ Output
+       1 │ 3 1 1
+
+    judge stderr:
+      wrong values
+```
+
 ## Number and trim the lines
 
 The `Line` column numbers the rows of every table. It is on by default; set
@@ -303,8 +353,9 @@ A numeric difference outside the tolerance is reported with both values:
 ✗ sample-1     45 ms    28 MiB  WA (line 1: 0 vs 0.000002)
 ```
 
-The option is ignored with `--interactive`, because the interactor decides the
-verdict; `neoj` prints a warning when both are given.
+The option is ignored with `--interactive` and `--judge`, because the interactor
+or checker decides the verdict; `neoj` prints a warning when either mode is
+combined with it.
 
 ## Run selected cases
 
@@ -333,14 +384,16 @@ complete. See [Create a test case by hand](create-handmade-tests.md).
 - `test.timeout` defaults to 10 seconds. `neoj test -t 2` or
   `languages.<key>.timeout` changes it. In interactive mode it limits the
   solution process, while `test.interactor.timeout` (default 15 seconds) limits
-  the whole session.
+  the whole session. In judge mode it limits the solution, and
+  `test.judge.timeout` (default 10 seconds) limits the checker.
 - `test.memory` defaults to 1024 MiB. The limit is judged from the peak resident
   memory of the program process after it exits; a program that spawns children
-  is measured for the direct child only. Interactive mode applies it to the
-  solution only, never to the interactor.
+  is measured for the direct child only. Interactive and judge modes apply it to
+  the solution only, never to the interactor or checker.
 - Standard output and standard error are each capped at 8 MiB. A program that
   exceeds the cap is stopped and reported as `RE`. Interactive mode applies the
-  cap to both programs.
+  cap to both programs; judge mode applies it to the solution and to the
+  checker's stderr.
 
 ## Cache compiled programs
 

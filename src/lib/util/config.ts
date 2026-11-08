@@ -265,6 +265,48 @@ export const configSchema = v.pipe(
                             ),
                         ),
                     ),
+                    judge: v.optional(
+                        v.pipe(
+                            v.strictObject({
+                                source: v.pipe(
+                                    v.string(),
+                                    v.minLength(1),
+                                    v.description(
+                                        "Checker file that judges a multi-answer solution, relative to the project root.",
+                                    ),
+                                ),
+                                compile: v.optional(
+                                    v.pipe(
+                                        v.array(v.pipe(v.string(), v.minLength(1))),
+                                        v.description(
+                                            "Command and arguments that build the checker into {outfile} or {outdir}. Defaults to the matching [languages.<key>].compile.",
+                                        ),
+                                    ),
+                                ),
+                                run: v.optional(
+                                    v.pipe(
+                                        v.array(v.pipe(v.string(), v.minLength(1))),
+                                        v.description(
+                                            "Command and arguments that run the checker. Defaults to the matching [languages.<key>].run. Add {infile} to receive the test case path.",
+                                        ),
+                                    ),
+                                ),
+                                timeout: v.optional(
+                                    v.pipe(
+                                        v.number(),
+                                        v.minValue(0.001),
+                                        v.description(
+                                            "Wall-clock limit for the checker in seconds.",
+                                        ),
+                                    ),
+                                    10,
+                                ),
+                            }),
+                            v.description(
+                                "Checker used by neoj test --judge. It reads the solution's output on standard input and exits 0 to accept it.",
+                            ),
+                        ),
+                    ),
                     timeout: v.optional(
                         v.pipe(
                             v.number(),

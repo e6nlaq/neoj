@@ -131,6 +131,41 @@
                     "additionalProperties": false,
                     "description": "Interactor used by neoj test --interactive. It reads the solution's output on standard input and writes the next prompt to standard output."
                 },
+                "judge": {
+                    "type": "object",
+                    "properties": {
+                        "source": {
+                            "type": "string",
+                            "minLength": 1,
+                            "description": "Checker file that judges a multi-answer solution, relative to the project root."
+                        },
+                        "compile": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "description": "Command and arguments that build the checker into {outfile} or {outdir}. Defaults to the matching [languages.<key>].compile."
+                        },
+                        "run": {
+                            "type": "array",
+                            "items": {
+                                "type": "string",
+                                "minLength": 1
+                            },
+                            "description": "Command and arguments that run the checker. Defaults to the matching [languages.<key>].run. Add {infile} to receive the test case path."
+                        },
+                        "timeout": {
+                            "type": "number",
+                            "minimum": 0.001,
+                            "description": "Wall-clock limit for the checker in seconds.",
+                            "default": 10
+                        }
+                    },
+                    "required": ["source"],
+                    "additionalProperties": false,
+                    "description": "Checker used by neoj test --judge. It reads the solution's output on standard input and exits 0 to accept it."
+                },
                 "timeout": {
                     "type": "number",
                     "minimum": 0.001,
