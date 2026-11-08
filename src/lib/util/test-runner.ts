@@ -658,7 +658,7 @@ function resolveExecutablePath(outfilePath: string): string {
     return outfilePath;
 }
 
-function describeExit(result: CommandResult): string {
+export function describeExit(result: CommandResult): string {
     if (result.signal !== null) {
         return `killed by ${result.signal}`;
     }
@@ -1415,7 +1415,7 @@ function verdictDetails(
     return details;
 }
 
-function defaultJobCount(caseCount: number): number {
+export function defaultJobCount(caseCount: number): number {
     let cpuCount = 1;
     try {
         cpuCount = availableParallelism();
@@ -1652,7 +1652,7 @@ function requireJudgeSettings(config: Config): NonNullable<Config["test"]["judge
     return settings;
 }
 
-interface AuxiliarySettings {
+export interface AuxiliarySettings {
     source: string;
     compile?: readonly string[];
     run?: readonly string[];
@@ -1662,6 +1662,15 @@ type AuxiliaryKind = "interactor" | "judge";
 
 function auxiliarySettings(kind: AuxiliaryKind, config: Config): AuxiliarySettings {
     return kind === "interactor" ? requireInteractorSettings(config) : requireJudgeSettings(config);
+}
+
+export interface BuildAuxiliaryToolOptions extends BuildInteractorOptions {
+    /** Tool settings; `compile` and `run` fall back to the matching language. */
+    settings: AuxiliarySettings;
+    /** Config label used in errors, such as `test.judge`. */
+    label: string;
+    /** Capitalized noun used in errors, such as `Judge`. */
+    noun: string;
 }
 
 function auxiliarySourceError(
@@ -1696,13 +1705,8 @@ function auxiliarySourceError(
  * `compile` and `run` fall back to the language that matches the auxiliary
  * file, so a C++ helper needs no extra command configuration.
  */
-async function buildAuxiliary(
-    kind: AuxiliaryKind,
-    options: BuildInteractorOptions,
-): Promise<BuiltInteractor> {
-    const settings = auxiliarySettings(kind, options.config);
-    const label = `test.${kind}`;
-    const noun = kind === "interactor" ? "Interactor" : "Judge";
+async function buildAuxiliary(options: BuildAuxiliaryToolOptions): Promise<BuiltInteractor> {
+    const { settings, label, noun } = options;
 
     const projectRoot = await realpath(options.projectRoot);
     const resolved = await tryResolveSource(projectRoot, projectRoot, settings.source);
@@ -1710,6 +1714,7 @@ async function buildAuxiliary(
         throw auxiliarySourceError(resolved.reason, settings.source, noun, label);
     }
 
+    const kind = noun.toLowerCase();
     let language: TestLanguage | undefined;
     if (settings.compile === undefined || settings.run === undefined) {
         const matches = [...readLanguages(options.config).values()].filter((candidate) =>
@@ -1871,14 +1876,29 @@ async function buildAuxiliary(
     }
 }
 
+/** Build an auxiliary program from explicit settings, such as a generator. */
+export function buildAuxiliaryTool(options: BuildAuxiliaryToolOptions): Promise<BuiltInteractor> {
+    return buildAuxiliary(options);
+}
+
 /** Build the interactor named by `[test.interactor]`. */
 export function buildInteractor(options: BuildInteractorOptions): Promise<BuiltInteractor> {
-    return buildAuxiliary("interactor", options);
+    return buildAuxiliary({
+        ...options,
+        settings: auxiliarySettings("interactor", options.config),
+        label: "test.interactor",
+        noun: "Interactor",
+    });
 }
 
 /** Build the checker named by `[test.judge]`. */
 export function buildJudge(options: BuildInteractorOptions): Promise<BuiltInteractor> {
-    return buildAuxiliary("judge", options);
+    return buildAuxiliary({
+        ...options,
+        settings: auxiliarySettings("judge", options.config),
+        label: "test.judge",
+        noun: "Judge",
+    });
 }
 
 /**

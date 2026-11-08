@@ -88,6 +88,53 @@
                 "filename": "handmade-{}"
             }
         },
+        "generate": {
+            "type": "object",
+            "properties": {
+                "gen": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Generator source that prints a random test case, relative to the project root. It receives the case number as its first argument."
+                },
+                "naive": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Naive solution source that turns a generated input into the expected output, relative to the project root. Required unless generate is run with --input."
+                },
+                "filename": {
+                    "type": "string",
+                    "description": "Base name for each generated test case. Must contain exactly one {} that is replaced by the case number.",
+                    "pattern": "^[^<>:\"/\\\\|?*{}]*\\{\\}[^<>:\"/\\\\|?*{}]*$",
+                    "default": "random-{}"
+                },
+                "count": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Default number of test cases generated per run. --count overrides it.",
+                    "default": 1
+                },
+                "timeout": {
+                    "type": "number",
+                    "minimum": 0.001,
+                    "description": "Time limit in seconds for each run of the generator and the naive solution.",
+                    "default": 10
+                },
+                "parallel": {
+                    "type": "boolean",
+                    "description": "Generate test cases in parallel.",
+                    "default": true
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "How neoj generate creates random test cases.",
+            "default": {
+                "filename": "random-{}",
+                "count": 1,
+                "timeout": 10,
+                "parallel": true
+            }
+        },
         "test": {
             "type": "object",
             "properties": {

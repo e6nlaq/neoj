@@ -24,6 +24,7 @@ describe("buildCompletionModel", () => {
             "download",
             "open",
             "handmade",
+            "generate",
             "login",
             "logout",
             "status",
@@ -41,6 +42,9 @@ describe("buildCompletionModel", () => {
         expect(model.commands.find((command) => command.name === "open")?.aliases).toEqual(["o"]);
         expect(model.commands.find((command) => command.name === "handmade")?.aliases).toEqual([
             "h",
+        ]);
+        expect(model.commands.find((command) => command.name === "generate")?.aliases).toEqual([
+            "g",
         ]);
         expect(model.commands.find((command) => command.name === "run")?.aliases).toEqual(["r"]);
         expect(model.commands.find((command) => command.name === "languages")?.aliases).toEqual([
@@ -138,7 +142,7 @@ describe("renderCompletion", () => {
         const script = renderCompletion(model, "bash");
 
         expect(script).toContain("complete -F _neoj_completion neoj");
-        expect(script).toContain("d|open|o|handmade|h|login");
+        expect(script).toContain("d|open|o|handmade|h|generate|g|login");
         expect(script).toContain('"login atcoder"');
         expect(script).toContain('"login yukicoder"');
         expect(script).toContain("token api-key");

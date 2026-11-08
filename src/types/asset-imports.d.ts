@@ -10,3 +10,8 @@ declare module "*.gitignore" {
     const path: string;
     export = path;
 }
+
+declare module "*.py" {
+    const path: string;
+    export = path;
+}

@@ -65,6 +65,14 @@ function createConfig(options: {
         },
         testcase: { folder: "test", filename: "sample-{}", ...options.testcase },
         handmade: { filename: "handmade-{}" },
+        generate: {
+            gen: undefined,
+            naive: undefined,
+            filename: "random-{}",
+            count: 1,
+            timeout: 10,
+            parallel: true,
+        },
         run: { silent: false, ...options.run },
         test: {
             source: options.source,
