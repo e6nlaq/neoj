@@ -55,6 +55,7 @@ The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messag
 - Write credential files atomically (temporary file in the same directory, then rename) so an interrupted run cannot truncate saved data. Create the directory with `0700` and the file with `0600`, ignoring permission failures on platforms that do not support them.
 - Normalize and validate credential input in one place at the boundary: strip the cookie name, reject unexpected characters and malformed percent-encoding, and report which check failed.
 - Do not construct HTTP headers by interpolating unvalidated user input.
+- Do not commit by yourself.
 
 ## Repository Hygiene
 
