@@ -34,7 +34,7 @@ Releases are created manually with the `Release` GitHub Actions workflow
 1. Bump the `version` field in `package.json` on `main` and merge it.
 2. Open the **Release** workflow in the Actions tab and run it (optionally as a
    dry run). The version is read from `package.json`.
-3. The workflow verifies the version, publishes `neo-oj` to npm using trusted
+3. The workflow verifies the version, publishes `@neoj/cli` to npm using trusted
    publishing (OIDC, no stored token), compiles standalone binaries for Linux,
    macOS, and Windows, and creates a GitHub Release tagged `v<version>` with the
    binaries and their checksums attached.

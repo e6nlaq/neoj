@@ -7,7 +7,7 @@
 <p align="center"><sub>Built with Bun and TypeScript · Open Source</sub></p>
 
 <p align="center">
-  <a href="https://npmx.dev/package/neo-oj"><img src="https://img.shields.io/npm/v/neo-oj?style=flat-square&amp;label=npm&amp;labelColor=24292f&amp;color=24292f" alt="npm version"></a>
+  <a href="https://npmx.dev/package/@neoj/cli"><img src="https://img.shields.io/npm/v/@neoj/cli?style=flat-square&amp;label=npm&amp;labelColor=24292f&amp;color=24292f" alt="npm version"></a>
   <a href="https://bun.com"><img src="https://img.shields.io/badge/Bun-1.4%2B-24292f?style=flat-square&amp;labelColor=24292f&amp;logo=bun&amp;logoColor=fff" alt="Bun 1.4+"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&amp;labelColor=24292f&amp;logo=typescript&amp;logoColor=fff" alt="TypeScript strict"></a>
   <a href="https://github.com/e6nlaq/neoj/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-24292f?style=flat-square&amp;labelColor=24292f" alt="MIT license"></a>

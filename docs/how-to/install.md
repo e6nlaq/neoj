@@ -1,17 +1,17 @@
 # Install neoj
 
-`neoj` is published on npm as `neo-oj`. Install it globally with Bun or npm.
+`neoj` is published on npm as `@neoj/cli`. Install it globally with Bun or npm.
 
 ## With Bun (recommended)
 
 ```bash
-bun install -g neo-oj
+bun install -g @neoj/cli
 ```
 
 ## With npm
 
 ```bash
-npm install -g neo-oj
+npm install -g @neoj/cli
 ```
 
 ## Prebuilt binaries

@@ -6,7 +6,7 @@ name: Release
 #   3. compile standalone binaries for the supported platforms
 #   4. create a GitHub Release tagged `v<version>` with the binaries attached
 #
-# Prerequisite: on npmjs.com, add a trusted publisher for `neo-oj` pointing at
+# Prerequisite: on npmjs.com, add a trusted publisher for `@neoj/cli` pointing at
 # this repository, the workflow file `release.yml`, and no environment.
 # Bump `version` in package.json on `main` before dispatching this workflow.
 
@@ -54,12 +54,12 @@ jobs:
                       echo "::error::Tag v$package_version already exists."
                       exit 1
                   fi
-                  if npm view "neo-oj@$package_version" version >/dev/null 2>&1; then
-                      echo "::error::neo-oj@$package_version is already published on npm."
+                  if npm view "@neoj/cli@$package_version" version >/dev/null 2>&1; then
+                      echo "::error::@neoj/cli@$package_version is already published on npm."
                       exit 1
                   fi
                   echo "version=$package_version" >> "$GITHUB_OUTPUT"
-                  echo "Releasing neo-oj@$package_version."
+                  echo "Releasing @neoj/cli@$package_version."
 
     npm:
         name: Publish to npm
