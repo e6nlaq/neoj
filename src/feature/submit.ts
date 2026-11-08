@@ -113,7 +113,7 @@ function numberLines(
     const width = String(totalLines).length;
     return lines.map(
         (line, index) =>
-            `${styles.dim(String(firstLineNumber + index).padStart(width))} ${styles.dim("|")} ${line}`,
+            `${styles.dim(String(firstLineNumber + index).padStart(width))} ${styles.dim("│")} ${line}`,
     );
 }
 
