@@ -198,22 +198,22 @@ describe("splitSourceLines and preview", () => {
 
     it("shows the whole text when it fits in two blocks", () => {
         const text = ["1", "2", "3", "4"].join("\n");
-        expect(formatSubmitPreview(text, 2)).toEqual(["1 | 1", "2 | 2", "3 | 3", "4 | 4"]);
+        expect(formatSubmitPreview(text, 2)).toEqual(["1 │ 1", "2 │ 2", "3 │ 3", "4 │ 4"]);
     });
 
     it("shows the head and tail with real line numbers and an ellipsis", () => {
         const lines = Array.from({ length: 11 }, (_, index) => `L${index + 1}`);
         const preview = formatSubmitPreview(lines.join("\n"), 2);
 
-        expect(preview).toEqual([" 1 | L1", " 2 | L2", "...", "10 | L10", "11 | L11"]);
+        expect(preview).toEqual([" 1 │ L1", " 2 │ L2", "...", "10 │ L10", "11 │ L11"]);
     });
 
     it("dims line numbers only when styles are enabled", () => {
         expect(formatSubmitPreview("a\nb", 5, createAnsiStyles(true))).toEqual([
-            "\u001B[2m1\u001B[0m \u001B[2m|\u001B[0m a",
-            "\u001B[2m2\u001B[0m \u001B[2m|\u001B[0m b",
+            "\u001B[2m1\u001B[0m \u001B[2m│\u001B[0m a",
+            "\u001B[2m2\u001B[0m \u001B[2m│\u001B[0m b",
         ]);
-        expect(formatSubmitPreview("a\nb", 5, createAnsiStyles(false))).toEqual(["1 | a", "2 | b"]);
+        expect(formatSubmitPreview("a\nb", 5, createAnsiStyles(false))).toEqual(["1 │ a", "2 │ b"]);
     });
 
     it("describes the line count and byte size", () => {
@@ -507,7 +507,7 @@ describe("runSubmit", () => {
         expect(targetCreated).toBe(false);
         expect(stderr.text()).toBe("");
         expect(stdout.text()).toContain("Submitting src/main.cpp (languages.cpp, AtCoder)");
-        expect(stdout.text()).toContain("1 | int main() { return 0; }");
+        expect(stdout.text()).toContain("1 │ int main() { return 0; }");
     });
 
     it("rejects --platform-language together with --dry-run", async () => {
