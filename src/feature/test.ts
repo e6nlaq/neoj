@@ -6,7 +6,7 @@ import { errorExponentBounds } from "@/lib/util/judge";
 import { requireInitializedProject } from "@/lib/util/project";
 import { runTests } from "@/lib/util/test-runner";
 
-function parsePositiveInteger(value: string): number {
+export function parsePositiveInteger(value: string): number {
     const parsed = Number(value);
     if (!Number.isInteger(parsed) || parsed < 1) {
         throw new InvalidArgumentError(`Expected a positive integer, got "${value}".`);

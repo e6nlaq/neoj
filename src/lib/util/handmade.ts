@@ -27,7 +27,8 @@ export class HandmadeAbortError extends Error {
     }
 }
 
-async function collectExistingCaseNames(directory: string): Promise<Set<string>> {
+/** Base names of every `.in` or `.out` entry in the test-case directory. */
+export async function collectExistingCaseNames(directory: string): Promise<Set<string>> {
     let entries;
     try {
         entries = await readdir(directory, { withFileTypes: true });

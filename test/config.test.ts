@@ -89,6 +89,14 @@ describe("loadConfig", () => {
             },
             testcase: { folder: "test", filename: "sample-{}" },
             handmade: { filename: "handmade-{}" },
+            generate: {
+                gen: undefined,
+                naive: undefined,
+                filename: "random-{}",
+                count: 1,
+                timeout: 10,
+                parallel: true,
+            },
             test: {
                 source: undefined,
                 timeout: 10,
@@ -205,6 +213,14 @@ describe("loadConfig", () => {
             },
             testcase: { folder: "tests", filename: "case-{}" },
             handmade: { filename: "handmade-{}" },
+            generate: {
+                gen: undefined,
+                naive: undefined,
+                filename: "random-{}",
+                count: 1,
+                timeout: 10,
+                parallel: true,
+            },
             test: {
                 source: undefined,
                 timeout: 10,
@@ -277,6 +293,41 @@ describe("loadConfig", () => {
 
         await expect(loadConfig()).rejects.toThrow(
             `handmade.filename: Must contain exactly one {} and be a file name. (actual type: string)`,
+        );
+    });
+
+    it("merges generate settings from the global and project files", async () => {
+        const { home, project } = await setTemporaryPaths();
+        await Bun.write(join(home, ".neoj.toml"), '[generate]\ngen = "judge/gen.cpp"\ncount = 5');
+        await Bun.write(join(project, "neoj.toml"), '[generate]\nnaive = "judge/naive.cpp"');
+
+        await expect(loadConfig()).resolves.toMatchObject({
+            generate: {
+                gen: "judge/gen.cpp",
+                naive: "judge/naive.cpp",
+                filename: "random-{}",
+                count: 5,
+                timeout: 10,
+                parallel: true,
+            },
+        });
+    });
+
+    it("rejects invalid generate filename patterns", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), '[generate]\nfilename = "../random-{}"');
+
+        await expect(loadConfig()).rejects.toThrow(
+            `generate.filename: Must contain exactly one {} and be a file name. (actual type: string)`,
+        );
+    });
+
+    it("rejects non-positive and fractional generate counts", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), "[generate]\ncount = 0");
+
+        await expect(loadConfig()).rejects.toThrow(
+            `generate.count: Does not satisfy the field validation rule. (actual type: number)`,
         );
     });
 });
