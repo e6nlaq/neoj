@@ -261,7 +261,7 @@ describe("parseAojProblem", () => {
 
 describe("AojClient", () => {
     describe("getProblem", () => {
-        it("parses the captured v1 problem page", async () => {
+        it("parses the v1 problem page fixture", async () => {
             const html = await Bun.file("test/fixtures/aoj-problem.html").text();
             let requestedUrl: URL | undefined;
             setFetch((input) => {
@@ -277,10 +277,10 @@ describe("AojClient", () => {
                 "https://judge.u-aizu.ac.jp/onlinejudge/description.jsp?id=ALDS1_1_A&lang=en",
             );
             expect(requestedUrl?.origin).toBe("https://judge.u-aizu.ac.jp");
-            expect(problem.title).toBe("X Cubic");
+            expect(problem.title).toBe("Example Problem");
             expect(problem.samples).toEqual([
-                { input: "2", output: "8" },
-                { input: "3", output: "27" },
+                { input: "1", output: "2" },
+                { input: "3", output: "6" },
             ]);
             expect(problem.url).toBe(
                 "https://onlinejudge.u-aizu.ac.jp/courses/lesson/1/ALDS1/1/ALDS1_1_A",

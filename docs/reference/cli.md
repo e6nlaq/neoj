@@ -31,9 +31,9 @@ directory when none is found. The search stops at the repository root.
 
 ### `download`
 
-| Argument | Description                                              |
-| -------- | -------------------------------------------------------- |
-| `<url>`  | An AtCoder, yukicoder, or Aizu Online Judge problem URL. |
+| Argument | Description                                                          |
+| -------- | -------------------------------------------------------------------- |
+| `<url>`  | An AtCoder, yukicoder, Aizu Online Judge, or Codeforces problem URL. |
 
 Requires an initialized project. See
 [Download sample tests](../how-to/download-samples.md).

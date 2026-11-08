@@ -3,6 +3,7 @@ import { consola } from "consola";
 
 import { findProblemSource } from "@/feature/problem-sources";
 import { buildAtCoderContestUrl, buildAtCoderSubmissionsUrl } from "@/lib/service/atcoder";
+import { buildCodeforcesContestUrl, extractCodeforcesProblemRoute } from "@/lib/service/codeforces";
 import { buildYukicoderSubmissionsUrl, fetchYukicoderContestUrl } from "@/lib/service/yukicoder";
 import { openInBrowser } from "@/lib/util/browser";
 import { copyToClipboard } from "@/lib/util/clipboard";
@@ -52,9 +53,14 @@ export async function resolveOpenUrl(
             throw new TypeError(
                 'AOJ does not support "neoj open --contest" or "neoj open --submissions" yet.',
             );
+        case "codeforces":
+            if (target === "submissions") {
+                throw new TypeError('Codeforces does not support "neoj open --submissions" yet.');
+            }
+            return buildCodeforcesContestUrl(extractCodeforcesProblemRoute(problemUrl)).href;
         default:
             throw new TypeError(
-                "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge).",
+                "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
             );
     }
 }

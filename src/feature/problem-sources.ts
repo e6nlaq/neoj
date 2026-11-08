@@ -5,6 +5,11 @@ import {
     AtCoderProblemRequestError,
     parseAtCoderProblemUrl,
 } from "@/lib/service/atcoder";
+import {
+    CodeforcesClient,
+    extractCodeforcesProblemRoute,
+    parseCodeforcesProblemUrl,
+} from "@/lib/service/codeforces";
 import type { Problem } from "@/lib/service/problem";
 import {
     parseYukicoderProblemRoute,
@@ -56,6 +61,10 @@ async function fetchAojProblem(url: string): Promise<Problem> {
     return new AojClient().getProblem(url);
 }
 
+async function fetchCodeforcesProblem(url: string): Promise<Problem> {
+    return new CodeforcesClient().getProblem(url);
+}
+
 function matchesAtCoderProblem(url: string): boolean {
     try {
         parseAtCoderProblemUrl(url);
@@ -83,6 +92,15 @@ function matchesAojProblem(url: string): boolean {
     }
 }
 
+function matchesCodeforcesProblem(url: string): boolean {
+    try {
+        parseCodeforcesProblemUrl(url);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 export const problemSources: ProblemSource[] = [
     {
         name: "atcoder",
@@ -102,13 +120,19 @@ export const problemSources: ProblemSource[] = [
         matches: matchesAojProblem,
         fetchProblem: fetchAojProblem,
     },
+    {
+        name: "codeforces",
+        displayName: "Codeforces",
+        matches: matchesCodeforcesProblem,
+        fetchProblem: fetchCodeforcesProblem,
+    },
 ];
 
 export function findProblemSource(url: string): ProblemSource {
     const source = problemSources.find((candidate) => candidate.matches(url));
     if (source === undefined) {
         throw new TypeError(
-            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge).",
+            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
         );
     }
 
@@ -147,7 +171,13 @@ export function deriveProblemKey(url: string): ProblemKey {
         return { platform: "aoj", slug: extractAojProblemId(url) };
     }
 
+    if (matchesCodeforcesProblem(url)) {
+        // /contest and /problemset URLs of the same problem share one slug.
+        const { contestId, index } = extractCodeforcesProblemRoute(url);
+        return { platform: "codeforces", slug: `${contestId}${index}` };
+    }
+
     throw new TypeError(
-        "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge).",
+        "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
     );
 }

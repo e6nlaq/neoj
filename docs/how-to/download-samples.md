@@ -5,13 +5,15 @@ neoj download <url>
 neoj d <url>          # alias
 ```
 
-The command accepts an AtCoder, yukicoder, or Aizu Online Judge problem URL and
-replaces the configured test-case directory with the problem's samples.
+The command accepts an AtCoder, yukicoder, Aizu Online Judge, or Codeforces
+problem URL and replaces the configured test-case directory with the problem's
+samples.
 
 ```bash
 neoj d https://atcoder.jp/contests/abc300/tasks/abc300_a
 neoj d https://yukicoder.me/problems/no/480
 neoj d https://onlinejudge.u-aizu.ac.jp/courses/lesson/1/ALDS1/1/ALDS1_1_A
+neoj d https://codeforces.com/contest/1900/problem/B
 ```
 
 For yukicoder, `neoj` accepts both `/problems/no/<number>` and
@@ -29,6 +31,11 @@ your stash and working files. Samples are always read from the v1 page, because
 v2 pages render the statement client-side. A `lang=ja` parameter on the v1 URL
 is honored and changes the recorded title's language; otherwise the English
 page is used.
+
+For Codeforces, `neoj` accepts `/contest/<contest-id>/problem/<index>` and
+`/problemset/problem/<contest-id>/<index>` URLs; both identify the same problem
+and share one stash key. Gym and group problems require a login, which `neoj`
+does not support for Codeforces yet, so they are rejected.
 
 ## Before you run it
 

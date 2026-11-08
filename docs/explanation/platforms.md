@@ -33,10 +33,10 @@ differently:
 
 Every credential is verified before `neoj` saves it.
 
-Aizu Online Judge (AOJ) is a download-only problem source. Its URLs are accepted
-by `download` and the other URL-driven commands, but AOJ is not part of the
-login registry above: there is no session to check and submissions are not
-automated yet.
+Aizu Online Judge (AOJ) and Codeforces are download-only problem sources. Their
+URLs are accepted by `download` and the other URL-driven commands, but neither
+is part of the login registry above: there is no session to check, and
+submissions are not automated yet.
 
 ## Terminology
 
