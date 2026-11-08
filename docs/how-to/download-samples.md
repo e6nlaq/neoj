@@ -14,9 +14,10 @@ neoj d https://yukicoder.me/problems/no/480
 ```
 
 For yukicoder, `neoj` accepts both `/problems/no/<number>` and
-`/problems/<problem-id>` URLs. Only public problems can be downloaded: the
-yukicoder CLI token and API key cannot authenticate the HTML problem page, so
-private problems are not supported yet.
+`/problems/<problem-id>` URLs. These are different identifiers: the same
+numeric value can refer to different problems in each form. Only public problems
+can be downloaded: the yukicoder CLI token and API key cannot authenticate the
+HTML problem page, so private problems are not supported yet.
 
 ## Before you run it
 

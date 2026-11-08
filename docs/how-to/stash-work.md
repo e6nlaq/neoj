@@ -61,7 +61,8 @@ directories are stored with fixed names inside the stash:
 
 `meta.json` records the problem URL, the platform and slug, the save time, and
 the configured folder names at save time. The slug comes from the problem URL
-(`abc300_a` for AtCoder, `no480` for yukicoder), so the directory is readable.
+(`abc300_a` for AtCoder, `no480` for yukicoder's `/problems/no/480` and
+`id1480` for `/problems/1480`), so the directory is readable.
 
 ## Restoring
 

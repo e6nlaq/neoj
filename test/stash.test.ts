@@ -106,7 +106,7 @@ describe("deriveProblemKey", () => {
         });
         expect(deriveProblemKey("https://yukicoder.me/problems/1480")).toEqual({
             platform: "yukicoder",
-            slug: "no1480",
+            slug: "id1480",
         });
     });
 

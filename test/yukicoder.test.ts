@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
 import {
+    fetchYukicoderContestUrl,
     normalizeYukicoderCredential,
     parseYukicoderProblemUrl,
     YukicoderClient,
@@ -430,6 +431,27 @@ describe("YukicoderClient", () => {
     });
 });
 
+describe("fetchYukicoderContestUrl", () => {
+    it("uses the URL form to request the matching problem", async () => {
+        const requests: string[] = [];
+        setFetch(async (input) => {
+            requests.push(String(input));
+            return jsonResponse({ No: 12, ContestId: 12 });
+        });
+
+        await expect(
+            fetchYukicoderContestUrl("https://yukicoder.me/problems/no/12"),
+        ).resolves.toHaveProperty("href", "https://yukicoder.me/contests/12");
+        await expect(
+            fetchYukicoderContestUrl("https://yukicoder.me/problems/12"),
+        ).resolves.toHaveProperty("href", "https://yukicoder.me/contests/12");
+        expect(requests).toEqual([
+            "https://yukicoder.me/api/v1/problems/no/12",
+            "https://yukicoder.me/api/v1/problems/12",
+        ]);
+    });
+});
+
 describe("YukicoderClient language and submission requests", () => {
     const problemUrl = "https://yukicoder.me/problems/no/480";
 
@@ -510,6 +532,45 @@ describe("YukicoderClient language and submission requests", () => {
         expect(requests[0]?.userAgent).toBe("neoj (+https://github.com/e6nlaq/neoj)");
         expect(requests[0]?.body?.get("lang")).toBe("5001");
         expect(requests[0]?.body?.get("source")).toBe("int main() {}");
+    });
+
+    it("resolves a /problems/<ProblemId> URL to its problem No before submitting", async () => {
+        const requests: Array<{ url: string; method: string | undefined }> = [];
+        setFetch(async (input, init) => {
+            const url = String(input);
+            requests.push({ url, method: init?.method });
+            if (url === "https://yukicoder.me/api/v1/problems/12") {
+                return jsonResponse({ No: 9000, ProblemId: 12, ContestId: null });
+            }
+            return jsonResponse({ SubmissionId: 266299 }, 201);
+        });
+
+        await new YukicoderClient().submit(
+            "https://yukicoder.me/problems/12",
+            "ysb_token",
+            "5001",
+            "source",
+        );
+
+        expect(requests).toEqual([
+            { url: "https://yukicoder.me/api/v1/problems/12", method: undefined },
+            {
+                url: "https://yukicoder.me/api/v1/problems/no/9000/submit",
+                method: "POST",
+            },
+        ]);
+    });
+
+    it("reports a failure to resolve a /problems/<ProblemId> URL", async () => {
+        setFetch(async () => new Response("error", { status: 404 }));
+        await expect(
+            new YukicoderClient().submit(
+                "https://yukicoder.me/problems/12",
+                "ysb_token",
+                "5001",
+                "source",
+            ),
+        ).rejects.toThrow("yukicoder problem request failed (404).");
     });
 
     it("rejects an invalid credential with an actionable message", async () => {

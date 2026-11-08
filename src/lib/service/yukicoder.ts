@@ -155,22 +155,60 @@ function parseJsonWithSchema<TSchema extends v.GenericSchema>(
 }
 
 const problemSummarySchema = v.object({
+    No: v.pipe(v.number(), v.integer()),
     ContestId: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),
 });
 
-function parseProblemNumber(value: string): number {
+export interface YukicoderProblemRoute {
+    /** `no` for /problems/no/<No>, `id` for /problems/<ProblemId>. */
+    kind: "no" | "id";
+    number: number;
+}
+
+/** Distinguish the problem number (`no`) URL from the internal ID URL. */
+export function parseYukicoderProblemRoute(value: string): YukicoderProblemRoute {
     const problemUrl = parseYukicoderProblemUrl(value);
-    const number = /(\d+)\/?$/u.exec(problemUrl.pathname)?.[1];
-    if (number === undefined) {
+    const match = /^\/problems\/(no\/)?(\d+)\/?$/u.exec(problemUrl.pathname);
+    if (match === null) {
         throw new TypeError(`Expected a yukicoder problem URL with a problem number: "${value}".`);
     }
 
-    return Number(number);
+    return { kind: match[1] === undefined ? "id" : "no", number: Number(match[2]) };
+}
+
+async function fetchProblemSummary(route: YukicoderProblemRoute) {
+    const path = route.kind === "no" ? `no/${route.number}` : String(route.number);
+    const response = await request(`${API_ORIGIN}/v1/problems/${path}`, {
+        headers: { "User-Agent": USER_AGENT },
+    });
+    if (!response.ok) {
+        throw new Error(`yukicoder problem request failed (${response.status}).`);
+    }
+
+    return parseJsonWithSchema(
+        await readJson(response, "problem"),
+        problemSummarySchema,
+        "problem",
+    );
+}
+
+/** Resolve either URL form to the problem No. used by the submission API. */
+async function resolveProblemNumber(value: string): Promise<number> {
+    const route = parseYukicoderProblemRoute(value);
+    if (route.kind === "no") {
+        return route.number;
+    }
+
+    return (await fetchProblemSummary(route)).No;
 }
 
 export function buildYukicoderSubmissionsUrl(value: string): URL {
-    const number = parseProblemNumber(value);
-    const submissionsUrl = new URL(`/problems/no/${number}/submissions`, YUKICODER_ORIGIN);
+    const route = parseYukicoderProblemRoute(value);
+    const path =
+        route.kind === "no"
+            ? `/problems/no/${route.number}/submissions`
+            : `/problems/${route.number}/submissions`;
+    const submissionsUrl = new URL(path, YUKICODER_ORIGIN);
     submissionsUrl.searchParams.set("my_submission", "enabled");
     return submissionsUrl;
 }
@@ -182,19 +220,7 @@ export function buildYukicoderSubmissionsUrl(value: string): URL {
  * yukicoder API. Problems that are not part of a contest cannot be resolved.
  */
 export async function fetchYukicoderContestUrl(value: string): Promise<URL> {
-    const number = parseProblemNumber(value);
-    const response = await request(`${API_ORIGIN}/v1/problems/no/${number}`, {
-        headers: { "User-Agent": USER_AGENT },
-    });
-    if (!response.ok) {
-        throw new Error(`yukicoder problem request failed (${response.status}).`);
-    }
-
-    const problem = parseJsonWithSchema(
-        await readJson(response, "problem"),
-        problemSummarySchema,
-        "problem",
-    );
+    const problem = await fetchProblemSummary(parseYukicoderProblemRoute(value));
     if (problem.ContestId === null || problem.ContestId === undefined) {
         throw new Error("This yukicoder problem does not belong to a contest.");
     }
@@ -428,7 +454,7 @@ export class YukicoderClient {
         source: string,
     ): Promise<YukicoderSubmissionResult> {
         const normalized = normalizeYukicoderCredential(credential);
-        const number = parseProblemNumber(problemUrl);
+        const number = await resolveProblemNumber(problemUrl);
         const body = new FormData();
         body.set("lang", languageId);
         body.set("source", source);
