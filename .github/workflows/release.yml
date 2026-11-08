@@ -164,7 +164,7 @@ jobs:
                   VERSION: ${{ needs.verify.outputs.version }}
               run: |
                   mkdir -p dist-bin
-                  bun build ./src/index.ts --compile --target="${{ matrix.target }}" \
+                  bun build ./src/index.ts --compile --production --format=esm --bytecode --target="${{ matrix.target }}" \
                       --outfile "dist-bin/neoj-$VERSION-${{ matrix.platform }}${{ matrix.extension }}"
 
             - name: Smoke test the binary
