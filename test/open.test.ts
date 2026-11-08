@@ -92,11 +92,11 @@ describe("resolveOpenUrl", () => {
         );
         await expect(
             resolveOpenUrl("submissions", "https://yukicoder.me/problems/1"),
-        ).resolves.toBe("https://yukicoder.me/problems/no/1/submissions?my_submission=enabled");
+        ).resolves.toBe("https://yukicoder.me/problems/1/submissions?my_submission=enabled");
     });
 
     it("resolves the yukicoder contest through the API", async () => {
-        await withMockFetch({ ContestId: 253 }, async () => {
+        await withMockFetch({ No: 1, ContestId: 253 }, async () => {
             await expect(resolveOpenUrl("contest", yukicoderProblemUrl)).resolves.toBe(
                 "https://yukicoder.me/contests/253",
             );
@@ -104,7 +104,7 @@ describe("resolveOpenUrl", () => {
     });
 
     it("rejects a yukicoder problem that is not part of a contest", async () => {
-        await withMockFetch({ ContestId: null }, async () => {
+        await withMockFetch({ No: 1, ContestId: null }, async () => {
             await expect(resolveOpenUrl("contest", yukicoderProblemUrl)).rejects.toThrow(
                 "This yukicoder problem does not belong to a contest.",
             );

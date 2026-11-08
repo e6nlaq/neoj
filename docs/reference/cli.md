@@ -52,11 +52,11 @@ Opens the page for the problem recorded by the last successful download, so run
 `--contest` and `--submissions` cannot be combined, and neither can `--clip` and
 `--url`.
 
-| Target          | AtCoder                                                                  | yukicoder                                                                |
-| --------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
-| (default)       | The problem page.                                                        | The problem page.                                                        |
-| `--contest`     | `https://atcoder.jp/contests/<contestId>`                                | The contest that published the problem, resolved through the public API. |
-| `--submissions` | `https://atcoder.jp/contests/<contestId>/submissions/me?f.Task=<taskId>` | `https://yukicoder.me/problems/no/<n>/submissions?my_submission=enabled` |
+| Target          | AtCoder                                                                  | yukicoder                                                                                                                        |
+| --------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| (default)       | The problem page.                                                        | The problem page.                                                                                                                |
+| `--contest`     | `https://atcoder.jp/contests/<contestId>`                                | The contest that published the problem, resolved through the public API.                                                         |
+| `--submissions` | `https://atcoder.jp/contests/<contestId>/submissions/me?f.Task=<taskId>` | The problem's own submissions page (`/problems/no/<n>/submissions` or `/problems/<id>/submissions`) with `my_submission=enabled` |
 
 AtCoder URLs are derived from the problem URL. yukicoder does not record the
 contest in the problem URL, so `--contest` asks the public API; it needs network

@@ -5,7 +5,11 @@ import {
     parseAtCoderProblemUrl,
 } from "@/lib/service/atcoder";
 import type { Problem } from "@/lib/service/problem";
-import { parseYukicoderProblemUrl, YukicoderClient } from "@/lib/service/yukicoder";
+import {
+    parseYukicoderProblemRoute,
+    parseYukicoderProblemUrl,
+    YukicoderClient,
+} from "@/lib/service/yukicoder";
 import { readAuth } from "@/lib/util/auth";
 import type { ProblemKey } from "@/lib/util/stash";
 
@@ -110,12 +114,11 @@ export function deriveProblemKey(url: string): ProblemKey {
     }
 
     if (matchesYukicoderProblem(url)) {
-        const problemUrl = parseYukicoderProblemUrl(url);
-        const number = /(\d+)\/?$/u.exec(problemUrl.pathname)?.[1];
-        if (number === undefined) {
-            throw new TypeError(`Could not derive a stash name from "${url}".`);
-        }
-        return { platform: "yukicoder", slug: `no${number}` };
+        const route = parseYukicoderProblemRoute(url);
+        return {
+            platform: "yukicoder",
+            slug: `${route.kind === "no" ? "no" : "id"}${route.number}`,
+        };
     }
 
     throw new TypeError("Expected a problem URL from a supported platform (AtCoder, yukicoder).");
