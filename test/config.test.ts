@@ -105,7 +105,7 @@ describe("loadConfig", () => {
             languages: {},
             download: { show_sample: false },
             stash: { auto_stash: false, auto_apply: false, force: true },
-            template: { enable: false, mode: "overlay" },
+            template: { enable: false, exclude: [], mode: "overlay" },
         });
     });
 
@@ -221,7 +221,7 @@ describe("loadConfig", () => {
             languages: {},
             download: { show_sample: false },
             stash: { auto_stash: false, auto_apply: false, force: true },
-            template: { enable: false, mode: "overlay" },
+            template: { enable: false, exclude: [], mode: "overlay" },
         });
     });
 

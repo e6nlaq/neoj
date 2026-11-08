@@ -468,6 +468,15 @@
                     "minLength": 1,
                     "description": "Directory holding the template files, relative to the project root."
                 },
+                "exclude": {
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "minLength": 1
+                    },
+                    "description": "Globs for files in template.folder that must not be copied. Patterns match the path relative to template.folder and the entry name, so they also exclude matches inside subdirectories.",
+                    "default": []
+                },
                 "mode": {
                     "enum": ["overlay", "replace"],
                     "type": "string",
@@ -488,6 +497,7 @@
             "description": "Template files applied to src after a download.",
             "default": {
                 "enable": false,
+                "exclude": [],
                 "mode": "overlay"
             }
         }

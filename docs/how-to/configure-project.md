@@ -77,11 +77,17 @@ src = "src"
 [template]
 enable = true
 folder = "template"
+exclude = ["*.md", ".gitkeep"]
 mode = "overlay"
 ```
 
 With `enable = true`, both `src` and `template.folder` are required. After a
 download that changes the problem, `neoj` copies the template into `src`:
+
+- `template.exclude` lists globs for files that must not be copied. Patterns
+  match the path relative to `template.folder` and the entry name, so `*.md`
+  also excludes Markdown files inside subdirectories. A matching directory is
+  skipped with its contents.
 
 - `mode = "overlay"` (default) replaces files that exist in both places and keeps
   the rest.

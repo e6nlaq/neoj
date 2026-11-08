@@ -592,6 +592,18 @@ must stay inside the project, must not target `.git` or `.neoj`, must not
 overlap `src`, and the tree must not contain symbolic links. Hidden files are
 copied like any other file.
 
+### `template.exclude`
+
+| Type          | Default | Scope   |
+| ------------- | ------- | ------- |
+| array of glob | `[]`    | project |
+
+Globs for files in `template.folder` that must not be copied into `src`. A
+pattern is matched against the path relative to `template.folder` and against the
+entry name, so `*.md` also excludes Markdown files inside subdirectories. A
+matching directory is skipped with its contents. Use `**/` explicitly when a
+pattern should only match a nested path.
+
 ### `template.mode`
 
 | Type                   | Default   | Scope   |
@@ -666,6 +678,7 @@ force = true
 [template]
 enable = false
 folder = "template"
+exclude = ["*.md", "generated/**"]
 mode = "overlay"
 ```
 

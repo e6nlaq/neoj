@@ -22,9 +22,20 @@ async function assertSafeTree(directory: string, name: string): Promise<void> {
     }
 }
 
-async function applyTemplateTree(source: string, destination: string): Promise<void> {
+async function applyTemplateTree(
+    source: string,
+    destination: string,
+    isExcluded: (relativePath: string, name: string) => boolean,
+    relativeDirectory = "",
+): Promise<void> {
     await mkdir(destination, { recursive: true });
     for (const entry of await readdir(source, { withFileTypes: true })) {
+        const relativePath =
+            relativeDirectory === "" ? entry.name : `${relativeDirectory}/${entry.name}`;
+        if (isExcluded(relativePath, entry.name)) {
+            continue;
+        }
+
         const sourcePath = join(source, entry.name);
         const destinationPath = join(destination, entry.name);
         let destinationStats;
@@ -43,7 +54,7 @@ async function applyTemplateTree(source: string, destination: string): Promise<v
             ) {
                 await rm(destinationPath, { recursive: true });
             }
-            await applyTemplateTree(sourcePath, destinationPath);
+            await applyTemplateTree(sourcePath, destinationPath, isExcluded, relativePath);
         } else {
             if (destinationStats?.isDirectory() || destinationStats?.isSymbolicLink()) {
                 await rm(destinationPath, { recursive: true });
@@ -58,7 +69,12 @@ export async function applyProjectTemplate(
     templatePath: string,
     sourcePath: string,
     mode: TemplateMode,
+    exclude: readonly string[] = [],
 ): Promise<void> {
+    const excludeGlobs = exclude.map((pattern) => new Bun.Glob(pattern));
+    const isExcluded = (relativePath: string, name: string): boolean =>
+        excludeGlobs.some((glob) => glob.match(relativePath) || glob.match(name));
+
     const templateDirectory = await resolveProjectDirectory(
         projectRoot,
         templatePath,
@@ -101,7 +117,7 @@ export async function applyProjectTemplate(
     }
 
     if (mode === "overlay") {
-        await applyTemplateTree(templateDirectory, sourceDirectory);
+        await applyTemplateTree(templateDirectory, sourceDirectory, isExcluded);
         return;
     }
 
@@ -111,7 +127,7 @@ export async function applyProjectTemplate(
         join(parentDirectory, `.${basename(sourceDirectory)}-template-`),
     );
     try {
-        await applyTemplateTree(templateDirectory, stagingDirectory);
+        await applyTemplateTree(templateDirectory, stagingDirectory, isExcluded);
 
         await commitStagedDirectory(stagingDirectory, sourceDirectory, sourceExists);
     } finally {
