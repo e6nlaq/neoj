@@ -102,6 +102,15 @@ describe("buildCompletionModel", () => {
         ]);
     });
 
+    it("lists the valueless --submit flag on test", () => {
+        const entries = flattenCommands(createModel());
+        const test = entries.find((entry) => commandPathKey(entry.path) === "test");
+        const submit = test?.command.options.find((option) => option.flags.includes("--submit"));
+
+        expect(submit?.flags).toEqual(["-s", "--submit"]);
+        expect(submit?.takesValue).toBe(false);
+    });
+
     it("attaches supported shell names to the completions argument", () => {
         const completions = createModel().commands.find(
             (command) => command.name === "completions",

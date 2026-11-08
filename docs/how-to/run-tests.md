@@ -419,7 +419,9 @@ and `--no-cache` removes that run's build directory when it finishes.
 ## Exit status
 
 `0` when every case passed, `2` when at least one case failed, and `1` when
-`neoj` could not compile or read the configuration.
+`neoj` could not compile or read the configuration. With `--submit`, a passing
+run also submits the solution (`neoj submit` applies; see
+[Submit a solution](submit-solution.md)), while a failed run submits nothing.
 
 ## Related
 

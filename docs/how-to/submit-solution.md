@@ -39,7 +39,18 @@ neoj submit --platform-language <id>
 ```
 
 `neoj submit` does not compile the file. Run `neoj test` first when you want to
-check the samples.
+check the samples, or combine both steps with `neoj test --submit`:
+
+```bash
+neoj test --submit
+neoj test -s
+```
+
+`neoj test -s` builds, runs the samples, and submits the same source and
+language only when every executed case passed. The submission follows the
+normal `neoj submit` behavior described below: the preview, the confirmation
+prompt, the presubmit command, and the `[submit]` settings all still apply.
+When any case fails, nothing is submitted and the message reports it.
 
 ## Review, wait, and submit
 
