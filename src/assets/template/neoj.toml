@@ -42,6 +42,11 @@ submit = { atcoder = "6017", yukicoder = "cpp23_gcc16" }
 # Convert the source into the submitted text before submitting.
 # presubmit = ["python", "tools/expand.py", "{source}", "{outfile}"]
 
+[languages.python]
+source = "**/*.py"
+run = ["uv", "run", "{source}"]
+submit = { atcoder = "6082", yukicoder = "python3" }
+
 [submit]
 confirm = true
 wait = 3
