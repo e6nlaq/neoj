@@ -1,0 +1,24 @@
+{
+    "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+    "extends": ["config:recommended"],
+    "timezone": "Asia/Tokyo",
+    "schedule": ["* 0-4 * * *"],
+    "minimumReleaseAge": "1 day",
+    "minimumReleaseAgeBehaviour": "timestamp-required",
+    "internalChecksFilter": "strict",
+    "rangeStrategy": "bump",
+    "packageRules": [
+        {
+            "description": "Group non-major devDependency updates",
+            "matchDepTypes": ["devDependencies"],
+            "matchUpdateTypes": ["patch", "minor"],
+            "groupName": "devDependencies"
+        },
+        {
+            "description": "Automerge patch devDependency updates",
+            "matchDepTypes": ["devDependencies"],
+            "matchUpdateTypes": ["patch"],
+            "automerge": true
+        }
+    ]
+}
