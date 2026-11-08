@@ -1,6 +1,60 @@
 import { describe, expect, it } from "bun:test";
 
-import { parseErrorExponent, warnIfErrorIgnored } from "@/feature/test";
+import {
+    maybeSubmitAfterTests,
+    parseErrorExponent,
+    warnIfErrorIgnored,
+    type SubmitAfterTestInvocation,
+} from "@/feature/test";
+import type { Config } from "@/lib/util/config";
+
+describe("maybeSubmitAfterTests", () => {
+    const invocation = {
+        projectRoot: "/project",
+        config: {} as Config,
+        cwd: "/project",
+        source: "src/main.cpp",
+    };
+    const submit = async (options: SubmitAfterTestInvocation) => {
+        calls.push(options);
+        return { status: "submitted" as const };
+    };
+    let calls: SubmitAfterTestInvocation[] = [];
+    let infos: string[] = [];
+    const info = (message: string) => infos.push(message);
+
+    it("does nothing without --submit", async () => {
+        calls = [];
+        infos = [];
+
+        await maybeSubmitAfterTests({ exitCode: 0 }, undefined, invocation, submit, info);
+        await maybeSubmitAfterTests({ exitCode: 2 }, false, invocation, submit, info);
+
+        expect(calls).toEqual([]);
+        expect(infos).toEqual([]);
+    });
+
+    it("reports and skips the submission when tests failed", async () => {
+        calls = [];
+        infos = [];
+
+        await maybeSubmitAfterTests({ exitCode: 2 }, true, invocation, submit, info);
+
+        expect(calls).toEqual([]);
+        expect(infos).toEqual(["Tests failed; not submitting."]);
+    });
+
+    it("submits the same source when every test passed", async () => {
+        calls = [];
+        infos = [];
+
+        const result = await maybeSubmitAfterTests({ exitCode: 0 }, true, invocation, submit, info);
+
+        expect(calls).toEqual([invocation]);
+        expect(infos).toEqual([]);
+        expect(result).toEqual({ status: "submitted" });
+    });
+});
 
 describe("parseErrorExponent", () => {
     it("accepts the supported range", () => {

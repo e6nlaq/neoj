@@ -202,6 +202,13 @@ Runs every `*.in` file in the test-case directory against the built program. Wit
 instead of comparing the output with `*.out`. With `--judge`, the checker named
 by `[test.judge]` receives the solution's output and decides the verdict.
 
+With `-s`/`--submit`, a run in which every executed case passed continues into
+`neoj submit` with the same source and language. The submission follows the
+normal `neoj submit` behavior: the preview, the confirmation prompt, the
+presubmit command, and the `submit.*` settings all apply unchanged. When any
+case fails, nothing is submitted and `neoj test` still exits with the usual
+status. A failed submission is reported as an error, so the exit status is `1`.
+
 | Option                                           | Description                                                  |
 | ------------------------------------------------ | ------------------------------------------------------------ |
 | `-l`, `--language <key>`                         | Use this `[languages.<key>]` entry instead of detecting one. |
@@ -220,6 +227,7 @@ by `[test.judge]` receives the solution's output and decides the verdict.
 | `--progress` / `--no-progress`                   | Draw or hide the progress bar.                               |
 | `--show-line-numbers` / `--no-show-line-numbers` | Number the rows of the input and output tables.              |
 | `-v`, `--verbose`                                | Print input and output for passing cases too.                |
+| `-s`, `--submit`                                 | Submit the solution when every test case passes.             |
 
 See [Build and run the sample tests](../how-to/run-tests.md).
 

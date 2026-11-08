@@ -1,7 +1,8 @@
 import { Command, InvalidArgumentError } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
-import { loadConfig, showStderrModes, type ShowStderrMode } from "@/lib/util/config";
+import { runSubmit, type SubmitResult } from "@/feature/submit";
+import { loadConfig, showStderrModes, type Config, type ShowStderrMode } from "@/lib/util/config";
 import { errorExponentBounds } from "@/lib/util/judge";
 import { requireInitializedProject } from "@/lib/util/project";
 import { runTests } from "@/lib/util/test-runner";
@@ -72,6 +73,50 @@ export function warnIfErrorIgnored(
     return false;
 }
 
+export interface SubmitAfterTestInvocation {
+    projectRoot: string;
+    config: Config;
+    /** Base directory for the `source` argument. */
+    cwd: string;
+    source?: string;
+    language?: string;
+}
+
+export type SubmitAfterTestFunction = (
+    invocation: SubmitAfterTestInvocation,
+) => Promise<SubmitResult>;
+
+/**
+ * Submit the tested source when `--submit` is requested.
+ *
+ * A failed run skips the submission and reports it through `info`. A passing run
+ * submits with the default `neoj submit` behavior, so the confirmation prompt,
+ * the presubmit command, and `submit.*` settings all still apply. Submission
+ * errors propagate to the caller.
+ */
+export async function maybeSubmitAfterTests(
+    result: { exitCode: number },
+    submitRequested: boolean | undefined,
+    invocation: SubmitAfterTestInvocation,
+    submit: SubmitAfterTestFunction = (options) =>
+        runSubmit({
+            ...options,
+            stdout: process.stdout,
+            stderr: process.stderr,
+        }),
+    info: (message: string) => void = (message) => consola.info(message),
+): Promise<SubmitResult | undefined> {
+    if (submitRequested !== true) {
+        return undefined;
+    }
+    if (result.exitCode !== 0) {
+        info("Tests failed; not submitting.");
+        return undefined;
+    }
+
+    return await submit(invocation);
+}
+
 export function createTestCommand(): Command<[string | undefined]> {
     return new Command("test")
         .alias("t")
@@ -106,6 +151,7 @@ export function createTestCommand(): Command<[string | undefined]> {
         .option("--show-line-numbers", "Number the lines of the input and output tables")
         .option("--no-show-line-numbers", "Do not number the lines")
         .option("-v, --verbose", "Print input and output for passing cases too")
+        .option("-s, --submit", "Submit the solution when every test case passes")
         .action(async (source, options) => {
             try {
                 const projectRoot = await requireInitializedProject(process.cwd());
@@ -136,6 +182,13 @@ export function createTestCommand(): Command<[string | undefined]> {
                     stderr: process.stderr,
                 });
                 process.exitCode = result.exitCode;
+                await maybeSubmitAfterTests(result, options.submit, {
+                    projectRoot,
+                    config,
+                    cwd: process.cwd(),
+                    source,
+                    language: options.language,
+                });
             } catch (error) {
                 consola.error(error instanceof Error ? error.message : String(error));
                 process.exitCode = 1;
