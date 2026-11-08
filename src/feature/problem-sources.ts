@@ -1,9 +1,15 @@
 import { getAtCoderSession } from "@/feature/login/atcoder";
+import { extractAojProblemId, parseAojProblemUrl, AojClient } from "@/lib/service/aoj";
 import {
     AtCoderClient,
     AtCoderProblemRequestError,
     parseAtCoderProblemUrl,
 } from "@/lib/service/atcoder";
+import {
+    CodeforcesClient,
+    extractCodeforcesProblemRoute,
+    parseCodeforcesProblemUrl,
+} from "@/lib/service/codeforces";
 import type { Problem } from "@/lib/service/problem";
 import {
     parseYukicoderProblemRoute,
@@ -51,6 +57,14 @@ async function fetchYukicoderProblem(url: string): Promise<Problem> {
     return new YukicoderClient().getProblem(url);
 }
 
+async function fetchAojProblem(url: string): Promise<Problem> {
+    return new AojClient().getProblem(url);
+}
+
+async function fetchCodeforcesProblem(url: string): Promise<Problem> {
+    return new CodeforcesClient().getProblem(url);
+}
+
 function matchesAtCoderProblem(url: string): boolean {
     try {
         parseAtCoderProblemUrl(url);
@@ -63,6 +77,24 @@ function matchesAtCoderProblem(url: string): boolean {
 function matchesYukicoderProblem(url: string): boolean {
     try {
         parseYukicoderProblemUrl(url);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function matchesAojProblem(url: string): boolean {
+    try {
+        parseAojProblemUrl(url);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function matchesCodeforcesProblem(url: string): boolean {
+    try {
+        parseCodeforcesProblemUrl(url);
         return true;
     } catch {
         return false;
@@ -82,13 +114,25 @@ export const problemSources: ProblemSource[] = [
         matches: matchesYukicoderProblem,
         fetchProblem: fetchYukicoderProblem,
     },
+    {
+        name: "aoj",
+        displayName: "Aizu Online Judge",
+        matches: matchesAojProblem,
+        fetchProblem: fetchAojProblem,
+    },
+    {
+        name: "codeforces",
+        displayName: "Codeforces",
+        matches: matchesCodeforcesProblem,
+        fetchProblem: fetchCodeforcesProblem,
+    },
 ];
 
 export function findProblemSource(url: string): ProblemSource {
     const source = problemSources.find((candidate) => candidate.matches(url));
     if (source === undefined) {
         throw new TypeError(
-            "Expected a problem URL from a supported platform (AtCoder, yukicoder).",
+            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
         );
     }
 
@@ -121,5 +165,19 @@ export function deriveProblemKey(url: string): ProblemKey {
         };
     }
 
-    throw new TypeError("Expected a problem URL from a supported platform (AtCoder, yukicoder).");
+    if (matchesAojProblem(url)) {
+        // v1 and v2 URLs of the same problem share one slug, so re-downloading
+        // through either form preserves the working files.
+        return { platform: "aoj", slug: extractAojProblemId(url) };
+    }
+
+    if (matchesCodeforcesProblem(url)) {
+        // /contest and /problemset URLs of the same problem share one slug.
+        const { contestId, index } = extractCodeforcesProblemRoute(url);
+        return { platform: "codeforces", slug: `${contestId}${index}` };
+    }
+
+    throw new TypeError(
+        "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
+    );
 }

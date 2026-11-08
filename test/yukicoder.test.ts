@@ -145,7 +145,7 @@ describe("YukicoderClient", () => {
             ]);
         });
 
-        it("parses the captured yukicoder problem page", async () => {
+        it("parses the problem page fixture", async () => {
             const html = await Bun.file("test/fixtures/yukicoder-problem.html").text();
             setFetch(async () => new Response(html, { status: 200 }));
 

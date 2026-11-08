@@ -513,7 +513,7 @@ describe("downloadProblem", () => {
 
     it("rejects unsupported problem URLs", async () => {
         await expect(downloadProblem("https://example.com/problems/no/480")).rejects.toThrow(
-            "Expected a problem URL from a supported platform (AtCoder, yukicoder).",
+            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
         );
     });
 });

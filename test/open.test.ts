@@ -7,6 +7,8 @@ import { openProblem, resolveOpenUrl } from "@/feature/open";
 
 const atCoderProblemUrl = "https://atcoder.jp/contests/abc300/tasks/abc300_a";
 const yukicoderProblemUrl = "https://yukicoder.me/problems/no/1";
+const aojProblemUrl = "https://onlinejudge.u-aizu.ac.jp/courses/lesson/1/ALDS1/1/ALDS1_1_A";
+const codeforcesProblemUrl = "https://codeforces.com/problemset/problem/1900/B";
 
 let testRoot: string | undefined;
 const originalCwd = process.cwd();
@@ -129,6 +131,25 @@ describe("resolveOpenUrl", () => {
         );
         await expect(resolveOpenUrl("contest", "file:///tmp/problem")).rejects.toThrow(
             "Expected a problem URL from a supported platform",
+        );
+    });
+
+    it("opens AOJ problem URLs but rejects contest and submissions targets", async () => {
+        await expect(resolveOpenUrl("problem", aojProblemUrl)).resolves.toBe(aojProblemUrl);
+        await expect(resolveOpenUrl("contest", aojProblemUrl)).rejects.toThrow(
+            'AOJ does not support "neoj open --contest" or "neoj open --submissions" yet.',
+        );
+        await expect(resolveOpenUrl("submissions", aojProblemUrl)).rejects.toThrow(
+            'AOJ does not support "neoj open --contest" or "neoj open --submissions" yet.',
+        );
+    });
+
+    it("opens the Codeforces contest page but rejects submissions", async () => {
+        await expect(resolveOpenUrl("contest", codeforcesProblemUrl)).resolves.toBe(
+            "https://codeforces.com/contest/1900",
+        );
+        await expect(resolveOpenUrl("submissions", codeforcesProblemUrl)).rejects.toThrow(
+            'Codeforces does not support "neoj open --submissions" yet.',
         );
     });
 });

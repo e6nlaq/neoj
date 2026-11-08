@@ -1,615 +1,73 @@
-<!doctype html>
+<!DOCTYPE html>
+<html lang="ja">
+<head><title>No.1234 Example Problem - yukicoder</title></head>
+<body>
+<!-- Synthetic fixture: mirrors the structure of yukicoder problem pages
+     without copying site content. -->
+<div id="content" data-problem-id="1234" data-problem-level="1">
+    <div class="block">
+        <h4 class="shadow">問題</h4>
+        <p>整数が与えられるので、そのまま出力してください。</p>
+    </div>
+    <div class="block">
+        <h4 class="shadow">入力</h4>
+        <p>
+            入力は整数で与えられる。<br>
 
-<html lang="ja" data-bs-theme="light">
-    <head>
-        <script>
-            (function () {
-                var root = document.documentElement;
-                var mq = window.matchMedia("(prefers-color-scheme: dark)");
-                var current = "auto";
-                var render = function () {
-                    root.setAttribute(
-                        "data-bs-theme",
-                        current === "auto" ? (mq.matches ? "dark" : "light") : current,
-                    );
-
-                    document.dispatchEvent(new Event("yk:colortheme"));
-                };
-                mq.addEventListener("change", function () {
-                    if (current === "auto") render();
-                });
-
-                window.applyColorTheme = function (theme) {
-                    current = theme === "light" || theme === "dark" ? theme : "auto";
-                    render();
-                };
-                var saved = null;
-                try {
-                    saved = localStorage.getItem("colorTheme");
-                } catch (e) {}
-                window.applyColorTheme(saved);
-            })();
-        </script>
-        <title>No.480 合計 - yukicoder</title>
-        <link rel="stylesheet" href="//use.fontawesome.com/releases/v5.11.1/css/all.css" />
-        <link rel="stylesheet" href="//use.fontawesome.com/releases/v5.11.1/css/v4-shims.css" />
-        <link href="/public/css/icon.css?v=ver3.2-11417-g36c643980" rel="stylesheet" />
-        <link
-            rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
-            integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
-            crossorigin="anonymous"
-        />
-        <link
-            href="https://cdnjs.cloudflare.com/ajax/libs/noty/3.1.4/noty.min.css"
-            rel="stylesheet"
-        />
-
-        <meta name="twitter:card" content="summary" />
-        <meta name="twitter:site" content="@yukicoder" />
-
-        <meta property="og:url" content="https://yukicoder.me/problems/no/480" />
-        <meta property="og:title" content=" No.480 合計 - yukicoder" />
-        <meta property="og:description" content="競技プログラミングの練習サイト" />
-        <meta property="og:image" content="https://yukicoder.me/public/img/icon.png" />
-
-        <meta name="format-detection" content="email=no,telephone=no,address=no" />
-
-        <link href="/public/css/base.css?v=ver3.2-11417-g36c643980" rel="stylesheet" />
-
-        <link href="/public/css/problems.show.css?v=ver3.2-11417-g36c643980" rel="stylesheet" />
-
-        <link href="/public/css/bootstrap-social.css?v=ver3.2-11417-g36c643980" rel="stylesheet" />
-
-        <script src="/public/js/mathjax_config.js?v=ver3.2-11417-g36c643980"></script>
-
-        <link
-            rel="stylesheet"
-            href="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.css"
-            integrity="sha384-vlBdW0r3AcZO/HboRPznQNowvexd3fY8qHOWkBi5q7KGgqJ+F48+DceybYmrVbmB"
-            crossorigin="anonymous"
-        />
-
-        <script
-            defer
-            src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/katex.min.js"
-            integrity="sha384-AtrdNsnxl/75rvBneBVH7DtOvCxSVahR2zWqle1coBKd8DEmLoviqNeJSx64gNAs"
-            crossorigin="anonymous"
-        ></script>
-
-        <script
-            defer
-            src="https://cdn.jsdelivr.net/npm/katex@0.17.0/dist/contrib/auto-render.min.js"
-            integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz"
-            crossorigin="anonymous"
-        ></script>
-
-        <script async src="https://securepubads.g.doubleclick.net/tag/js/gpt.js"></script>
-        <script>
-            window.googletag = window.googletag || { cmd: [] };
-        </script>
-
-        <script
-            src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-            crossorigin="anonymous"
-            defer="defer"
-        ></script>
-
-        <script
-            type="text/javascript"
-            src="https://cdnjs.cloudflare.com/ajax/libs/noty/3.1.4/noty.min.js"
-            defer="defer"
-        ></script>
-        <script
-            src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"
-            defer="defer"
-        ></script>
-        <meta
-            name="csrf-token"
-            content="0000000000000000000000000000000000000000000000000000000000000000"
-        />
-        <script
-            src="/public/js/csrf_utils.js?v=ver3.2-11417-g36c643980"
-            type="text/javascript"
-            charset="UTF-8"
-            defer="defer"
-        ></script>
-
-        <script
-            src="/public/js/runtime.js?v=ver3.2-11417-g36c643980"
-            type="text/javascript"
-            charset="UTF-8"
-            defer="defer"
-        ></script>
-
-        <script
-            src="/public/js/event-timer.js?v=ver3.2-11417-g36c643980"
-            type="text/javascript"
-            charset="UTF-8"
-            defer="defer"
-        ></script>
-
-        <script
-            src="/public/js/ace.js?v=ver3.2-11417-g36c643980"
-            type="text/javascript"
-            charset="UTF-8"
-            defer="defer"
-        ></script>
-
-        <script
-            src="/public/js/problems.show.js?v=ver3.2-11417-g36c643980"
-            type="text/javascript"
-            charset="UTF-8"
-            defer="defer"
-        ></script>
-
-        <script
-            src="/public/js/base.js?v=ver3.2-11417-g36c643980"
-            type="text/javascript"
-            charset="UTF-8"
-            defer="defer"
-        ></script>
-
-        <script
-            src="/public/js/top.js?v=ver3.2-11417-g36c643980"
-            type="text/javascript"
-            charset="UTF-8"
-            defer="defer"
-        ></script>
-
-        <script
-            type="text/javascript"
-            defer="defer"
-            src="/public/js/analytics.js?v=ver3.2-11417-g36c643980"
-        ></script>
-    </head>
-
-    <body data-is-supporter="false">
-        <div id="sidebar">
-            <div id="home">
-                <a href="/">
-                    <i class="icon-box2"></i>
-                    <h3>yukicoder</h3></a
-                >
-            </div>
-
-            <div id="sidelinks">
-                <a href="/">トップページ</a>
-                <a href="/problems" class="active">問題一覧</a>
-                <a href="/submissions">提出一覧</a>
-                <a href="/contests">コンテスト一覧</a>
-                <a href="/clarifications">質問一覧</a>
-                <a href="/ranking">ランキング</a>
-                <a href="/wiki">Wiki</a>
-                <a href="/statistics">統計/タグ一覧</a>
-                <a href="/supporter">サポーター👑</a>
-                <a href="/offer">ワンデーサポーター</a>
-                <a href="/problemsets">問題集</a>
-                <a href="/wiki/guide">初めての方へ</a>
-                <a href="/run">オンライン実行</a>
-                <a href="/help">ヘルプ</a>
-                <a href="/tester_problems">テスター募集問題 <small>(12人/63問)</small></a>
-
-                <div style="margin-left: 10px; margin-top: 10px">
-                    <small>同時接続数:97</small>
-                </div>
-            </div>
-            <br />
-
-            <div id="side_ads">
-                <script
-                    async
-                    src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9047536254015903"
-                    crossorigin="anonymous"
-                ></script>
-
-                <ins
-                    class="adsbygoogle"
-                    style="display: block"
-                    data-ad-client="ca-pub-9047536254015903"
-                    data-ad-slot="6913696108"
-                    data-ad-format="auto"
-                ></ins>
-                <script>
-                    (adsbygoogle = window.adsbygoogle || []).push({});
-                </script>
-            </div>
-        </div>
-        <div id="main">
-            <div id="header">
-                <div id="login">
-                    <a class="anony-popup" href="#" data-placement="left"
-                        ><i class="fa fa-cloud"></i
-                    ></a>
-                    <a class="login-btn" href="/auth/github"><i class="fa fa-github"></i></a>
-                    <a class="login-btn" href="/auth/twitter"><i class="fa fa-twitter"></i></a>
-                    <a class="login-btn" href="/auth/google"><i class="fa fa-google"></i></a>
-                    <img alt="load_animation" src="/public/img/load.gif" class="d-none" />
-                </div>
-            </div>
-
-            <div id="body">
-                <div id="toplinks">
-                    <div class="left">
-                        <a href="/problems/no/480" class="active">問題</a>
-                        <a href="/problems/no/480/submit">提出</a>
-                        <a href="/problems/no/480/submissions">提出一覧</a>
-
-                        <a href="/problems/no/480/clarifications">質問</a>
-                        <a href="/problems/no/480/statistics">統計</a>
-                        <a href="/problems/no/480/editorial">解説</a>
-                    </div>
-                    <div class="right">
-                        <a href="/problems/no/480" class="active">問題文</a>
-                        <a href="/problems/no/480/test">テスト</a>
-
-                        <a href="/problems/no/480/code">ジャッジコード</a>
-                        <a href="/problems/no/480/gen">ジェネレータ</a>
-                    </div>
-                </div>
-
-                <div id="content" data-problem-id="1480" data-problem-level="1">
-                    問題一覧 > <a href="/problems">通常問題</a>
-                    <h3>No.480 合計</h3>
-
-                    <div class="problem-header-cols">
-                        <div class="problem-header-main">
-                            <div>
-                                レベル : <i class="fas fa-star"></i> / 実行時間制限 : 1ケース
-                                2.000秒 / メモリ制限 : 512 MB / 標準ジャッジ問題
-                                <br />
-
-                                タグ :
-                                <span id="tag_hidden" class="tag-hidden">
-                                    （AC するまで非表示）
-
-                                    <span
-                                        class="tag-hidden-hint"
-                                        data-bs-toggle="tooltip"
-                                        data-bs-placement="bottom"
-                                        title="ログインして練習モードを「ゆるふわ（最初から色々公開）」にすると、AC 前でもタグが表示されます。"
-                                        ><i class="fas fa-info-circle"></i
-                                    ></span>
-                                </span>
-
-                                /
-                                <span>解いたユーザー数 <b>2005</b></span
-                                ><br />
-
-                                作問者 :
-                                <a href="/users/188"
-                                    ><img
-                                        alt=""
-                                        class="icon"
-                                        src="https://avatars.githubusercontent.com/u/381300?v=3"
-                                    />Tsuneo Yoshioka</a
-                                >
-
-                                / テスター :
-
-                                <a href="/users/439"
-                                    ><img
-                                        alt=""
-                                        class="icon"
-                                        src="https://pbs.twimg.com/profile_images/899979642819420160/n7xtBT0J.jpg"
-                                    />tatuyan_edson</a
-                                >
-                            </div>
-                            <div style="margin-top: 10px">
-                                <problem-favorite-button
-                                    problem-id="1480"
-                                    csrf-token="0000000000000000000000000000000000000000000000000000000000000000"
-                                >
-                                </problem-favorite-button>
-
-                                <a
-                                    href="/problems/1480/favorite_users"
-                                    style="margin-left: 8px; font-size: 0.9em"
-                                    >お気に入りにしたユーザー</a
-                                >
-
-                                <a
-                                    href="https://twitter.com/share"
-                                    class="twitter-share-button"
-                                    data-hashtags="yukicoder"
-                                    >Tweet</a
-                                >
-                                <script>
-                                    !(function (d, s, id) {
-                                        var js,
-                                            fjs = d.getElementsByTagName(s)[0],
-                                            p = /^http:/.test(d.location) ? "http" : "https";
-                                        if (!d.getElementById(id)) {
-                                            js = d.createElement(s);
-                                            js.id = id;
-                                            js.src = p + "://platform.twitter.com/widgets.js";
-                                            fjs.parentNode.insertBefore(js, fjs);
-                                        }
-                                    })(document, "script", "twitter-wjs");
-                                </script>
-                                ProblemId : 1480 /
-                                <a href="/problems/no/480/submissions?my_submission=enabled"
-                                    >自分の提出</a
-                                >
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="margin-top: 10px">
-                        問題文最終更新日: 2026-06-25 22:18:11
-                        <button
-                            type="button"
-                            class="btn btn-sm btn-outline-secondary ms-2"
-                            id="copy-problem-html-btn"
-                        >
-                            <i class="fa fa-code"></i> 問題文のHTMLを表示
-                        </button>
-                    </div>
-
-                    <div style="margin-top: 10px">
-                        <a href="/contests/157">yukicoder contest 156</a>
-                        (<a href="/contests/157/table">順位表</a>) の他の問題:
-                        <span
-                            id="contest-problem-selector-wrapper"
-                            data-contest-id="157"
-                            data-current-problem-no="480"
-                            data-problem-id="1480"
-                        ></span>
-                    </div>
-
-                    <div class="block">
-                        <h4 class="shadow">問題文</h4>
-                        <p>1からNまでの合計を求めてください。</p>
-                    </div>
-                    <div class="block">
-                        <h4 class="shadow">入力</h4>
-                        <pre>
-N
-</pre>
-                        <p>
-                            入力は整数で与えられる。<br />
-
-                            $1 \le N \le 100 $
-                        </p>
-                    </div>
-                    <div class="block">
-                        <h4 class="shadow">出力</h4>
-                        <p>1からNまでの合計を求めます。</p>
-                    </div>
-                    <div class="block">
-                        <h4 class="shadow">サンプル</h4>
-                        <div class="sample">
-                            <h5 class="underline">サンプル1</h5>
-                            <div class="paragraph">
-                                <h6>入力</h6>
-                                <pre>
+            $1 \le N \le 100 $
+        </p>
+    </div>
+    <div class="block">
+        <h4 class="shadow">出力</h4>
+        <p>答えを出力してください。</p>
+    </div>
+    <div class="block">
+        <h4 class="shadow">サンプル</h4>
+        <div class="sample">
+            <h5 class="underline">サンプル1</h5>
+            <div class="paragraph">
+                <h6>入力</h6>
+                <pre>
 3
 </pre>
-                                <h6>出力</h6>
-                                <pre>
+                <h6>出力</h6>
+                <pre>
 6
 </pre>
-                                <p>1+2+3=6です。</p>
-                            </div>
-                        </div>
+                <p></p>
+            </div>
+        </div>
 
-                        <div class="sample">
-                            <h5 class="underline">サンプル2</h5>
-                            <div class="paragraph">
-                                <h6>入力</h6>
-                                <pre>
+        <div class="sample">
+            <h5 class="underline">サンプル2</h5>
+            <div class="paragraph">
+                <h6>入力</h6>
+                <pre>
 1
 </pre>
-                                <h6>出力</h6>
-                                <pre>
+                <h6>出力</h6>
+                <pre>
 1
 </pre>
-                                <p></p>
-                            </div>
-                        </div>
+                <p></p>
+            </div>
+        </div>
 
-                        <div class="sample">
-                            <h5 class="underline">サンプル3</h5>
-                            <div class="paragraph">
-                                <h6>入力</h6>
-                                <pre>
+        <div class="sample">
+            <h5 class="underline">サンプル3</h5>
+            <div class="paragraph">
+                <h6>入力</h6>
+                <pre>
 10
 </pre>
-                                <h6>出力</h6>
-                                <pre>
+                <h6>出力</h6>
+                <pre>
 55
 </pre>
-                                <p></p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <form action="/problems/1480/submit" method="POST">
-                        <input
-                            type="hidden"
-                            name="csrftoken"
-                            value="0000000000000000000000000000000000000000000000000000000000000000"
-                        />
-                        <input type="hidden" name="lang" id="lang-form" />
-                        <input type="hidden" value="on" id="default_language-form" />
-                        <textarea name="source" id="source-form"></textarea>
-                        <input type="submit" id="submit-form" class="d-none" />
-                    </form>
-
-                    <p>
-                        提出するには、Twitter 、GitHub、
-                        Googleもしくは右上の雲マークをクリックしてアカウントを作成してください。
-                    </p>
-
-                    <div class="social_btn_wrapper">
-                        <a class="btn btn-block btn-social btn-lg btn-github" href="/auth/github">
-                            <i class="fa fa-github"></i>
-                            Sign in with GitHub
-                        </a>
-                    </div>
-
-                    <div class="social_btn_wrapper">
-                        <a class="btn btn-block btn-social btn-lg btn-twitter" href="/auth/twitter">
-                            <i class="fa fa-twitter"></i>
-                            Sign in with Twitter
-                        </a>
-                    </div>
-                    <div class="social_btn_wrapper">
-                        <a
-                            class="btn btn-block btn-social btn-lg btn-google-plus"
-                            href="/auth/google"
-                        >
-                            <i class="fa fa-google"></i>
-                            Sign in with Google
-                        </a>
-                    </div>
-                </div>
+                <p></p>
             </div>
-
-            <div
-                id="subtask-edit-modal"
-                class="modal"
-                tabindex="-1"
-                role="dialog"
-                style="display: none"
-            >
-                <div class="modal-dialog" role="document">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">部分点の編集</h5>
-                            <button
-                                type="button"
-                                class="btn-close"
-                                id="close-subtask-modal"
-                                aria-label="Close"
-                            ></button>
-                        </div>
-                        <div class="modal-body">
-                            <div id="subtask-edit-rows"></div>
-                            <div
-                                style="
-                                    display: flex;
-                                    align-items: center;
-                                    gap: 10px;
-                                    margin-top: 5px;
-                                "
-                            >
-                                <button
-                                    type="button"
-                                    id="subtask-edit-add-btn"
-                                    class="btn btn-sm btn-default"
-                                >
-                                    + サブタスク追加
-                                </button>
-                                <span id="subtask-edit-total" style="font-weight: bold"></span>
-                            </div>
-                            <hr style="margin: 10px 0" />
-                            <details>
-                                <summary
-                                    style="
-                                        cursor: pointer;
-                                        color: var(--yk-text-muted);
-                                        font-size: 0.9em;
-                                    "
-                                >
-                                    JSON直接編集
-                                </summary>
-                                <textarea
-                                    id="subtask-edit-json"
-                                    class="form-control"
-                                    rows="6"
-                                    style="
-                                        margin-top: 5px;
-                                        font-family: monospace;
-                                        font-size: 0.85em;
-                                    "
-                                    placeholder='{"subtasks":[{"name":"サブタスク1","prefixes":["01"],"score":50},...]}'
-                                ></textarea>
-                            </details>
-                        </div>
-                        <div class="modal-footer">
-                            <button
-                                type="button"
-                                class="btn btn-secondary"
-                                id="close-subtask-modal-footer"
-                            >
-                                閉じる
-                            </button>
-                            <button type="button" class="btn btn-primary" id="save-subtask-btn">
-                                保存
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div
-                id="problem-html-modal"
-                class="modal"
-                tabindex="-1"
-                role="dialog"
-                style="display: none"
-            >
-                <div
-                    class="modal-dialog modal-lg"
-                    role="document"
-                    style="max-width: 90%; width: 1200px"
-                >
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">問題文のHTML</h5>
-                            <button
-                                type="button"
-                                class="btn-close"
-                                data-bs-dismiss="modal"
-                                aria-label="Close"
-                                id="close-problem-html-modal"
-                            ></button>
-                        </div>
-                        <div class="modal-body">
-                            <div style="margin-bottom: 15px">
-                                <button
-                                    type="button"
-                                    class="btn btn-primary"
-                                    id="copy-html-from-modal"
-                                >
-                                    <i class="fa fa-copy"></i> HTMLをコピー
-                                </button>
-                            </div>
-                            <div
-                                id="problem-html-editor"
-                                style="
-                                    width: 100%;
-                                    height: 500px;
-                                    border: 1px solid var(--yk-border);
-                                "
-                            ></div>
-                        </div>
-                        <div class="modal-footer">
-                            <button
-                                type="button"
-                                class="btn btn-secondary"
-                                data-bs-dismiss="modal"
-                                id="close-problem-html-modal-footer"
-                            >
-                                閉じる
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <event-timer
-                start-time="2017-02-10T22:20:00&#43;09:00"
-                end-time="2017-02-11T00:20:00&#43;09:00"
-            ></event-timer>
-
-            <div id="footer"></div>
         </div>
-        <script
-            type="module"
-            src="/public/js/components/problem-favorite-button.js?v=ver3.2-11417-g36c643980"
-        ></script>
-    </body>
+    </div>
+</div>
+</body>
 </html>
