@@ -28,9 +28,9 @@ contest platforms.
 
 | Service                 | Sample download (`download`) | Submit (`submit`) | Login / sessions (`login`, `status`) |
 | ----------------------- | ---------------------------- | ----------------- | ------------------------------------ |
+| Aizu Online Judge (AOJ) | ✅                           | —                 | —                                    |
 | AtCoder                 | ✅                           | ✅                | ✅                                   |
 | yukicoder               | ✅                           | ✅                | ✅                                   |
-| Aizu Online Judge (AOJ) | ✅                           | —                 | —                                    |
 
 AOJ support is download-only for now: samples can be fetched, but submissions
 and sessions are not implemented yet.
