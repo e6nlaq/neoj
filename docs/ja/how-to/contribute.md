@@ -4,41 +4,15 @@
 
 # neoj に貢献する
 
-## リポジトリを整える
+## Issueを開く
 
-```bash
-bun install
-```
+バグ報告や機能の要望がある場合は、Issueを開いてください。
+どんな小さなバグや機能であれ、歓迎されます。
 
-`prepare` スクリプトが Lefthook の pre-commit フックを入れます。
+## Pull Request
 
-## 検査を実行する
-
-```bash
-bun test           # unit tests
-bun run format     # format the code
-bun run lint       # lint with Oxlint
-bun run typecheck  # type-check with TypeScript
-bun run build      # bundle the CLI into dist/
-```
-
-pre-commit フックは、整形、リント、型検査を実行します。プルリクエストを出す前に、`bun test` を通してください。
-
-## コミットメッセージ
-
-コミットは[Conventional Commits](https://www.conventionalcommits.org/)に従います。`docs: restructure the guides` や `feat: add problem metadata` のような形です。
-
-## リリースの手順
-
-リリースは、GitHub Actions の `Release` ワークフロー(`.github/workflows/release.yml`)で手動に作ります。
-
-1. `main` の `package.json` の `version` を上げてマージします。
-2. Actionsタブで **Release** ワークフローを開き、実行します(ドライランもできます)。バージョンは `package.json` から読みます。
-3. ワークフローはバージョンを検証し、信頼できる公開(trusted publishing、OIDC、保存トークンなし)で `@neoj/cli` をnpmに公開し、Linux、macOS、Windows向けのスタンドアロンバイナリをコンパイルし、バイナリとチェックサムを添えて `v<version>` のタグ付きGitHub Releaseを作ります。
-
-npm の trusted publishing は、npmjs.com でこのリポジトリと `release.yml` ワークフローファイルを対象に設定する必要があり、environment は使いません。ワークフローは明示的な `bun run build` のあとに `npm publish --ignore-scripts` で公開するため、パッケージの `prepare` スクリプト(Lefthook)がCIで動くことはありません。
-
-バイナリは `bun build --compile` で作られ、プロジェクトのテンプレートを埋め込むため、スタンドアロン実行ファイルからでも `neoj init` が動きます。
+現在、PRは受け付けていません。
+代わりにIssueでの報告をお願いします。
 
 ## 関連文書
 

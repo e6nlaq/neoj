@@ -21,16 +21,16 @@
 
 [English](README.md) | 日本語
 
-`neoj` は、競技プログラミングの作業の流れを支えるコマンドラインツールです。[Bun](https://bun.com) とTypeScriptで作りました。`oj` の現代的な代替を目指しています。分かりやすいCLI、信頼できる問題の作業の流れ、競技プラットフォームに共通する一貫したインターフェースを備えます。
+`neoj` は、競技プログラミングの作業の流れを支えるコマンドラインツールです。[Bun](https://bun.com) とTypeScriptで作りました。分かりやすいCLI、信頼できる問題の作業の流れ、競技プラットフォームに共通する一貫したインターフェースを備えます。
 
 ## ドキュメント
 
-### 学ぶ
+### チュートリアル
 
 - [最初の問題](https://github.com/e6nlaq/neoj/blob/main/docs/ja/tutorial.md) —
   空のディレクトリから、サンプルテストのダウンロードまでを進めます。
 
-### 実行する
+### ガイド
 
 - [neoj をインストールする](https://github.com/e6nlaq/neoj/blob/main/docs/ja/how-to/install.md)
 - [シェル補完を設定する](https://github.com/e6nlaq/neoj/blob/main/docs/ja/how-to/setup-completions.md)
@@ -46,7 +46,7 @@
 - [プロジェクトを設定する](https://github.com/e6nlaq/neoj/blob/main/docs/ja/how-to/configure-project.md)
 - [貢献する](https://github.com/e6nlaq/neoj/blob/main/docs/ja/how-to/contribute.md)
 
-### 調べる
+### リファレンス
 
 - [CLIリファレンス](https://github.com/e6nlaq/neoj/blob/main/docs/ja/reference/cli.md)
 - [設定リファレンス](https://github.com/e6nlaq/neoj/blob/main/docs/ja/reference/configuration.md)
@@ -59,10 +59,10 @@
 
 ## 謝辞
 
-`neoj` は、次のプロジェクトから影響を受け、学びました。
+`neoj` は、以下のプロジェクトを参考にしています。
 
 - [online-judge-tools/oj](https://github.com/online-judge-tools/oj) — `neoj` が現代化を目指す、元になった `oj` CLI。
-- [sevenc-nanashi/competitive-programming-cli(cpg)](https://github.com/sevenc-nanashi/competitive-programming-cli) — 同じ分野を扱う競技プログラミングCLI。いくつかの発想の源になりました。
+- [sevenc-nanashi/competitive-programming-cli(cpg)](https://github.com/sevenc-nanashi/competitive-programming-cli) — 同じような競技プログラミングCLI。いくつかのアイデアの元になりました。
 
 ## ライセンス
 
