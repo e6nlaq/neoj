@@ -159,17 +159,19 @@ directories match the stash exactly. See
 
 Runs every `*.in` file in the test-case directory against the built program. With
 `--interactive`, the interactor named by `[test.interactor]` judges each case
-instead of comparing the output with `*.out`.
+instead of comparing the output with `*.out`. With `--judge`, the checker named
+by `[test.judge]` receives the solution's output and decides the verdict.
 
 | Option                                           | Description                                                  |
 | ------------------------------------------------ | ------------------------------------------------------------ |
 | `-l`, `--language <key>`                         | Use this `[languages.<key>]` entry instead of detecting one. |
-| `-j`, `--jobs <count>`                           | Number of test cases to run at once.                         |
+| `-J`, `--jobs <count>`                           | Number of test cases to run at once.                         |
 | `--no-parallel`                                  | Run one test case at a time.                                 |
 | `-t`, `--timeout <seconds>`                      | Time limit per test case.                                    |
 | `-m`, `--memory <MiB>`                           | Memory limit per test case.                                  |
 | `-f`, `--filter <name...>`                       | Run only the named cases (`sample-1` for `sample-1.in`).     |
 | `-i`, `--interactive`                            | Judge with the interactor in `[test.interactor]`.            |
+| `-j`, `--judge`                                  | Judge with the checker in `[test.judge]`.                    |
 | `-e`, `--error [exponent]`                       | Accept floating-point errors up to `10^-exponent`.           |
 | `--cache` / `--no-cache`                         | Keep or delete the compiled program under `.neoj/build/`.    |
 | `-S`, `--ignore-trailing-space`                  | Ignore trailing whitespace on each line.                     |

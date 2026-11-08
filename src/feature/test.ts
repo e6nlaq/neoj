@@ -52,15 +52,24 @@ function parseShowStderr(value: string): ShowStderrMode {
  * testable without capturing the console.
  */
 export function warnIfErrorIgnored(
-    options: { interactive?: boolean; error?: number | true },
+    options: { interactive?: boolean; judge?: boolean; error?: number | true },
     warn: (message: string) => void = (message) => consola.warn(message),
 ): boolean {
-    if (options.interactive !== true || options.error === undefined) {
+    if (options.error === undefined) {
         return false;
     }
+    if (options.interactive === true) {
+        warn(
+            "The --error option is ignored in interactive mode; the interactor decides the verdict.",
+        );
+        return true;
+    }
+    if (options.judge === true) {
+        warn("The --error option is ignored in judge mode; the judge decides the verdict.");
+        return true;
+    }
 
-    warn("The --error option is ignored in interactive mode; the interactor decides the verdict.");
-    return true;
+    return false;
 }
 
 export function createTestCommand(): Command<[string | undefined]> {
@@ -69,12 +78,13 @@ export function createTestCommand(): Command<[string | undefined]> {
         .description("Build the solution and run it against the sample tests")
         .argument("[source]", "Source file to test (defaults to test.source)")
         .option("-l, --language <key>", "Language definition to use")
-        .option("-j, --jobs <count>", "Number of test cases to run at once", parsePositiveInteger)
+        .option("-J, --jobs <count>", "Number of test cases to run at once", parsePositiveInteger)
         .option("--no-parallel", "Run the test cases one at a time")
         .option("-t, --timeout <seconds>", "Time limit per test case", parsePositiveSeconds)
         .option("-m, --memory <MiB>", "Memory limit per test case", parsePositiveInteger)
         .option("-f, --filter <name...>", "Only run the named test cases")
         .option("-i, --interactive", "Judge with the interactor in [test.interactor]")
+        .option("-j, --judge", "Judge with the checker in [test.judge]")
         .option(
             "-e, --error [exponent]",
             "Accept floating-point errors up to 10^-exponent (default: test.error)",
@@ -115,6 +125,7 @@ export function createTestCommand(): Command<[string | undefined]> {
                     cache: options.cache,
                     errorExponent: options.error === true ? config.test.error : options.error,
                     interactive: options.interactive,
+                    judge: options.judge,
                     ignoreTrailingSpace: options.ignoreTrailingSpace,
                     ignoreTrailingNewline: options.ignoreTrailingNewline,
                     showStderr: options.showStderr,

@@ -36,12 +36,26 @@ describe("warnIfErrorIgnored", () => {
         ]);
     });
 
-    it("stays quiet without --interactive or without --error", () => {
+    it("warns once when --error is combined with --judge", () => {
+        const messages: string[] = [];
+
+        const warned = warnIfErrorIgnored({ judge: true, error: 9 }, (message) =>
+            messages.push(message),
+        );
+
+        expect(warned).toBe(true);
+        expect(messages).toEqual([
+            "The --error option is ignored in judge mode; the judge decides the verdict.",
+        ]);
+    });
+
+    it("stays quiet without --interactive, --judge, or without --error", () => {
         const messages: string[] = [];
         const collect = (message: string) => messages.push(message);
 
         expect(warnIfErrorIgnored({ error: 9 }, collect)).toBe(false);
         expect(warnIfErrorIgnored({ interactive: true }, collect)).toBe(false);
+        expect(warnIfErrorIgnored({ judge: true }, collect)).toBe(false);
         expect(messages).toEqual([]);
     });
 });

@@ -9,8 +9,10 @@ import {
     computeBuildKey,
     detectLanguage,
     discoverInteractiveTestCases,
+    discoverJudgeTestCases,
     discoverTestCases,
     expandTokens,
+    judgeCheckerResult,
     judgeCommandResult,
     judgeInteractiveResult,
     naturalCompare,
@@ -1471,5 +1473,324 @@ describe("interactive judging", () => {
                 stderr: createCapture().stream,
             }),
         ).rejects.toThrow("test.interactor.run uses {infile}");
+    });
+});
+
+const judgeSolutionScript = `const parts = (await Bun.stdin.text()).trim().split(/\\s+/);
+if (parts[0] === "4") {
+    console.log("4 4");
+} else if (parts[0] === "re") {
+    process.exit(3);
+} else {
+    console.log(parts.slice().reverse().join(" "));
+}
+console.error("solution-note");
+`;
+
+const judgeCheckerScript = `import { readFileSync } from "node:fs";
+const expected = readFileSync(process.argv[2], "utf8")
+    .trim()
+    .split(/\\s+/)
+    .map(Number)
+    .sort((left, right) => left - right);
+const actual = (await Bun.stdin.text())
+    .trim()
+    .split(/\\s+/)
+    .filter((token) => token !== "")
+    .map(Number)
+    .sort((left, right) => left - right);
+if (actual.length !== expected.length) {
+    console.error("wrong count");
+    process.exit(1);
+}
+if (actual.some((value, index) => value !== expected[index])) {
+    console.error("wrong values");
+    process.exit(1);
+}
+process.exit(0);
+`;
+
+const judgeOutputOnlyCheckerScript = `const text = await Bun.stdin.text();
+if (text.trim() === "") {
+    console.error("empty output");
+    process.exit(1);
+}
+process.exit(0);
+`;
+
+describe("checker judging", () => {
+    async function createJudgeProject(): Promise<string> {
+        const projectRoot = await createProject();
+        await mkdir(join(projectRoot, "src"), { recursive: true });
+        await writeFile(join(projectRoot, "src", "main.ts"), judgeSolutionScript);
+        await writeFile(join(projectRoot, "src", "checker.ts"), judgeCheckerScript);
+        await writeFile(
+            join(projectRoot, "src", "output-checker.ts"),
+            judgeOutputOnlyCheckerScript,
+        );
+        await writeCase(join(projectRoot, "test"), "sample-1", "1 2 3\n", "9 9 9\n");
+        await writeCase(join(projectRoot, "test"), "sample-2", "4 5\n", "4 4\n");
+        await writeCase(join(projectRoot, "test"), "sample-3", "re\n");
+        return projectRoot;
+    }
+
+    function judgeConfig(
+        options: {
+            timeout?: number;
+            judge?: Partial<NonNullable<Config["test"]["judge"]>>;
+        } = {},
+    ): Config {
+        return createConfig({
+            source: "src/main.ts",
+            languages: {
+                ts: { source: "src/*.ts", run: [process.execPath, "run", "{source}"] },
+            },
+            test: {
+                timeout: 2,
+                judge: {
+                    source: "src/checker.ts",
+                    run: [process.execPath, "run", "{source}", "{infile}"],
+                    timeout: options.timeout ?? 2,
+                    ...options.judge,
+                },
+            },
+        });
+    }
+
+    it("discovers *.in files, ignores *.out, and requires an input", async () => {
+        const projectRoot = await createProject();
+        await writeCase(join(projectRoot, "test"), "sample-1", "1 2\n", "wrong\n");
+
+        const cases = await discoverJudgeTestCases(join(projectRoot, "test"), []);
+        expect(cases).toEqual([
+            {
+                name: "sample-1",
+                inputPath: join(projectRoot, "test", "sample-1.in"),
+                expectedOutputPath: undefined,
+            },
+        ]);
+
+        await rm(join(projectRoot, "test"), { recursive: true, force: true });
+        await mkdir(join(projectRoot, "test"), { recursive: true });
+        await expect(discoverJudgeTestCases(join(projectRoot, "test"), [])).rejects.toThrow(
+            "--judge needs at least one input file",
+        );
+    });
+
+    it("prefers the solution's failures over the checker's verdict", () => {
+        const base = {
+            solution: {
+                exitCode: 0,
+                signal: null,
+                timedOut: false,
+                outputLimitExceeded: false,
+                maxRssBytes: 1024,
+            },
+            judge: {
+                exitCode: 0,
+                signal: null,
+                timedOut: false,
+                outputLimitExceeded: false,
+            },
+            memoryMiB: 1024,
+            judgeStderr: "",
+        };
+
+        expect(judgeCheckerResult(base).verdict).toBe("AC");
+        expect(judgeCheckerResult({ ...base, judge: { ...base.judge, exitCode: 1 } })).toEqual({
+            verdict: "WA",
+            detail: "judge exited with code 1",
+            comparison: undefined,
+        });
+        expect(
+            judgeCheckerResult({
+                ...base,
+                judge: { ...base.judge, exitCode: 1 },
+                judgeStderr: "\nwrong values\n",
+            }).detail,
+        ).toBe("wrong values");
+        expect(
+            judgeCheckerResult({
+                ...base,
+                solution: { ...base.solution, exitCode: 3 },
+            }).verdict,
+        ).toBe("RE");
+        expect(
+            judgeCheckerResult({
+                ...base,
+                solution: { ...base.solution, timedOut: true },
+            }).verdict,
+        ).toBe("TLE");
+        expect(
+            judgeCheckerResult({
+                ...base,
+                solution: { ...base.solution, maxRssBytes: 2 * 1024 * 1024 },
+                memoryMiB: 1,
+            }).verdict,
+        ).toBe("MLE");
+        expect(
+            judgeCheckerResult({ ...base, judge: { ...base.judge, timedOut: true } }).verdict,
+        ).toBe("TLE");
+        expect(
+            judgeCheckerResult({ ...base, judge: { ...base.judge, signal: "SIGSEGV" } }),
+        ).toEqual({
+            verdict: "RE",
+            detail: "judge killed by SIGSEGV",
+            comparison: undefined,
+        });
+        expect(
+            judgeCheckerResult({
+                ...base,
+                judge: { ...base.judge, outputLimitExceeded: true },
+            }),
+        ).toEqual({
+            verdict: "RE",
+            detail: "judge output limit exceeded",
+            comparison: undefined,
+        });
+    });
+
+    it("accepts any valid answer and ignores *.out", async () => {
+        const projectRoot = await createJudgeProject();
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: judgeConfig(),
+            judge: true,
+            filters: ["sample-1", "sample-2"],
+            showStderr: "never",
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        expect(result.results.map((item) => [item.name, item.verdict])).toEqual([
+            ["sample-1", "AC"],
+            ["sample-2", "WA"],
+        ]);
+        expect(result.exitCode).toBe(2);
+        const text = out.text();
+        expect(text).toContain("WA (wrong values)");
+        expect(text).toContain("judge stderr:");
+        expect(text).toContain("wrong values");
+        expect(text).toContain("Line │ Input");
+        expect(text).toContain("Line │ Output");
+        expect(text).not.toContain("Expected");
+        expect(text).not.toContain("solution-note");
+    });
+
+    it("shows the output and checker stderr for a passing case when verbose", async () => {
+        const projectRoot = await createJudgeProject();
+        const out = createCapture();
+
+        await runTests({
+            projectRoot,
+            config: judgeConfig(),
+            judge: true,
+            filters: ["sample-1"],
+            verbose: true,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(text).toContain("Line │ Output");
+        expect(text).toContain("3 2 1");
+        expect(text).not.toContain("judge stderr:");
+        expect(text).toContain("solution-note");
+    });
+
+    it("lets the checker run without {infile}", async () => {
+        const projectRoot = await createJudgeProject();
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: judgeConfig({
+                judge: {
+                    source: "src/output-checker.ts",
+                    run: [process.execPath, "run", "{source}"],
+                },
+            }),
+            judge: true,
+            filters: ["sample-1"],
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        expect(result.results[0]?.verdict).toBe("AC");
+        expect(result.exitCode).toBe(0);
+    });
+
+    it("stops a checker that exceeds test.judge.timeout", async () => {
+        const projectRoot = await createJudgeProject();
+        await writeFile(
+            join(projectRoot, "src", "checker.ts"),
+            "await Bun.stdin.text();\nawait new Promise(() => {});\n",
+        );
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: judgeConfig({ timeout: 0.4 }),
+            judge: true,
+            filters: ["sample-1"],
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        expect(result.results[0]?.verdict).toBe("TLE");
+        expect(out.text()).toContain("TLE (judge timeout > 0.4 s)");
+    });
+
+    it("does not run the checker when the solution fails", async () => {
+        const projectRoot = await createJudgeProject();
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: judgeConfig(),
+            judge: true,
+            filters: ["sample-3"],
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        expect(result.results[0]?.verdict).toBe("RE");
+        expect(out.text()).not.toContain("judge stderr:");
+    });
+
+    it("requires [test.judge] when --judge is passed", async () => {
+        const projectRoot = await createJudgeProject();
+
+        await expect(
+            runTests({
+                projectRoot,
+                config: createConfig({
+                    source: "src/main.ts",
+                    languages: {
+                        ts: { source: "src/*.ts", run: [process.execPath, "run", "{source}"] },
+                    },
+                }),
+                judge: true,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+            }),
+        ).rejects.toThrow("Judge mode needs [test.judge]");
+    });
+
+    it("rejects --judge together with --interactive", async () => {
+        const projectRoot = await createJudgeProject();
+
+        await expect(
+            runTests({
+                projectRoot,
+                config: judgeConfig(),
+                interactive: true,
+                judge: true,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+            }),
+        ).rejects.toThrow("--interactive and --judge cannot be used together.");
     });
 });
