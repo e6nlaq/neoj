@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+    - name: Questions & Usage Help
+      url: https://github.com/e6nlaq/neoj/discussions
+      about: For questions that are not bug reports or feature requests, please use Discussions.

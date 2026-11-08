@@ -1,0 +1,38 @@
+name: Feature Request
+description: Suggest a new feature or an improvement to an existing one
+labels: [enhancement]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for the suggestion! If possible, start with the **problem** you want to solve rather than the solution itself.
+
+    - type: textarea
+      id: problem
+      attributes:
+          label: Problem / Motivation
+          description: In what situation is this inconvenient or missing? Describe the use case.
+          placeholder: e.g. I want to reproduce AtCoder's VM judge verdicts locally
+      validations:
+          required: true
+
+    - type: textarea
+      id: proposal
+      attributes:
+          label: Proposed Solution
+          description: Describe the desired behavior, ideally with a concrete command example.
+          placeholder: e.g. Add a `--diff` option to `neoj test` that shows output differences
+      validations:
+          required: true
+
+    - type: textarea
+      id: alternatives
+      attributes:
+          label: Alternatives
+          description: Other possible solutions, or how existing tools (e.g. oj) handle this.
+
+    - type: textarea
+      id: additional
+      attributes:
+          label: Additional Context
+          description: Reference links, screenshots, judge specifications, etc.

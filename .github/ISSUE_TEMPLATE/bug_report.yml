@@ -1,0 +1,85 @@
+name: Bug Report
+description: Report broken behavior, crashes, or incorrect output in neoj
+labels: [bug]
+body:
+    - type: markdown
+      attributes:
+          value: |
+              Thanks for taking the time to report a bug. Please fill in the fields below as specifically as possible.
+              For feature ideas, please use the "Feature Request" template instead.
+
+    - type: textarea
+      id: summary
+      attributes:
+          label: Summary
+          description: Describe the problem in 1–2 sentences.
+      validations:
+          required: true
+
+    - type: textarea
+      id: steps
+      attributes:
+          label: Steps to Reproduce
+          placeholder: |
+              1. Run `neoj download`
+              2. Enter `...`
+              3. See the error
+      validations:
+          required: true
+
+    - type: textarea
+      id: expected
+      attributes:
+          label: Expected Behavior
+      validations:
+          required: true
+
+    - type: textarea
+      id: actual
+      attributes:
+          label: Actual Behavior
+          description: Include error messages or stack traces if available. **Never include credentials such as session cookies.**
+      validations:
+          required: true
+
+    - type: dropdown
+      id: service
+      attributes:
+          label: Service
+          options:
+              - AtCoder
+              - yukicoder
+              - Other
+              - Not applicable / Unknown
+      validations:
+          required: true
+
+    - type: input
+      id: version
+      attributes:
+          label: neoj Version
+          description: Paste the output of `neoj --version`.
+          placeholder: e.g. neoj/0.4.0
+      validations:
+          required: true
+
+    - type: textarea
+      id: environment
+      attributes:
+          label: Environment
+          description: |
+              - OS and version (e.g. Windows 11, macOS 15.2, Ubuntu 24.04)
+              - Bun version (output of `bun --version`)
+              - Terminal
+          placeholder: |
+              - OS: Windows 11 23H2
+              - Bun: 1.4.0
+              - Terminal: Windows Terminal
+      validations:
+          required: true
+
+    - type: textarea
+      id: additional
+      attributes:
+          label: Additional Context
+          description: Screenshots, the contents of `.neoj/problem.json`, logs, etc. (no credentials).
