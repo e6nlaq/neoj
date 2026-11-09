@@ -44,8 +44,9 @@ export async function downloadProblem(url: string): Promise<void> {
         config.src,
     );
 
-    const currentKey = deriveProblemKey(fetched.problem.url);
-    const previousKey = previous === undefined ? undefined : deriveProblemKey(previous.url);
+    const currentKey = fetched.problem.key ?? deriveProblemKey(fetched.problem.url);
+    const previousKey =
+        previous === undefined ? undefined : (previous.key ?? deriveProblemKey(previous.url));
     const problemChanged =
         previousKey === undefined ||
         previousKey.platform !== currentKey.platform ||

@@ -13,6 +13,7 @@ import {
 import type { Problem } from "@/lib/service/problem";
 import {
     extractShareOjShortId,
+    parseShareOjContestProblemUrl,
     parseShareOjProblemUrl,
     ShareOjClient,
 } from "@/lib/service/shareoj";
@@ -110,9 +111,24 @@ function matchesCodeforcesProblem(url: string): boolean {
     }
 }
 
-function matchesShareOjProblem(url: string): boolean {
+function isDirectShareOjProblemUrl(url: string): boolean {
     try {
         parseShareOjProblemUrl(url);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function matchesShareOjProblem(url: string): boolean {
+    return (
+        matchesUrl(parseShareOjProblemUrl, url) || matchesUrl(parseShareOjContestProblemUrl, url)
+    );
+}
+
+function matchesUrl(parse: (value: string) => unknown, url: string): boolean {
+    try {
+        parse(url);
         return true;
     } catch {
         return false;
@@ -202,7 +218,15 @@ export function deriveProblemKey(url: string): ProblemKey {
     }
 
     if (matchesShareOjProblem(url)) {
-        return { platform: "shareoj", slug: extractShareOjShortId(url) };
+        if (isDirectShareOjProblemUrl(url)) {
+            return { platform: "shareoj", slug: extractShareOjShortId(url) };
+        }
+        // A contest problem URL resolves its problem ID through the API, so it
+        // cannot be derived offline. `neoj download` stores the resolved key
+        // in `.neoj/problem.json` instead.
+        throw new TypeError(
+            `Could not derive a stash name from "${url}" offline. Run "neoj download ${url}" again to record the problem key.`,
+        );
     }
 
     throw new TypeError(

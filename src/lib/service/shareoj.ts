@@ -94,6 +94,18 @@ export function parseShareOjProblemId(value: string): string {
 
 /** Parse and validate a ShareOJ problem page URL. */
 export function parseShareOjProblemUrl(value: string): URL {
+    const problemUrl = parseShareOjSiteUrl(value);
+
+    const segments = problemUrl.pathname.split("/").filter((segment) => segment.length > 0);
+    if (segments.length !== 2 || segments[0] !== "problems") {
+        throw new TypeError(`Expected a ShareOJ problem URL: "${value}".`);
+    }
+    decodeShareOjShortId(segments[1] ?? "");
+
+    return problemUrl;
+}
+
+function parseShareOjSiteUrl(value: string): URL {
     let problemUrl: URL;
     try {
         problemUrl = new URL(value);
@@ -104,13 +116,55 @@ export function parseShareOjProblemUrl(value: string): URL {
         throw new TypeError(`Expected a ShareOJ problem URL: "${value}".`);
     }
 
-    const segments = problemUrl.pathname.split("/").filter((segment) => segment.length > 0);
-    if (segments.length !== 2 || segments[0] !== "problems") {
-        throw new TypeError(`Expected a ShareOJ problem URL: "${value}".`);
+    return problemUrl;
+}
+
+// A, B, ..., Z, AA, AB, ... in contest order, mirroring the site's own labeling.
+const CONTEST_PROBLEM_LABEL_PATTERN = /^[A-Z]{1,3}$/u;
+
+/** The zero-based contest order of a problem label; the inverse of `encodeShareOjProblemLabel`. */
+export function parseShareOjProblemLabel(label: string): number {
+    if (!CONTEST_PROBLEM_LABEL_PATTERN.test(label)) {
+        throw new TypeError(`Expected a ShareOJ contest problem label: "${label}".`);
+    }
+
+    let index = 0;
+    for (const character of label) {
+        index = index * 26 + (character.charCodeAt(0) - 64);
+    }
+
+    return index - 1;
+}
+
+/** The contest problem label of a zero-based contest order, `A, B, ..., Z, AA, AB, ...`. */
+export function encodeShareOjProblemLabel(index: number): string {
+    if (!Number.isInteger(index) || index < 0) {
+        throw new TypeError(`Expected a non-negative contest problem index: "${index}".`);
+    }
+
+    return index < 26
+        ? String.fromCharCode(65 + index)
+        : encodeShareOjProblemLabel(Math.floor(index / 26) - 1) +
+              encodeShareOjProblemLabel(index % 26);
+}
+
+export interface ShareOjContestProblemRoute {
+    /** The validated 22-character site short ID of the contest. */
+    contestShortId: string;
+    label: string;
+}
+
+/** Parse and validate a ShareOJ contest problem URL (`/contests/<id>/<label>`). */
+export function parseShareOjContestProblemUrl(value: string): ShareOjContestProblemRoute {
+    const contestUrl = parseShareOjSiteUrl(value);
+    const segments = contestUrl.pathname.split("/").filter((segment) => segment.length > 0);
+    if (segments.length !== 3 || segments[0] !== "contests") {
+        throw new TypeError(`Expected a ShareOJ contest problem URL: "${value}".`);
     }
     decodeShareOjShortId(segments[1] ?? "");
+    parseShareOjProblemLabel(segments[2] ?? "");
 
-    return problemUrl;
+    return { contestShortId: segments[1] ?? "", label: segments[2] ?? "" };
 }
 
 /** The validated 22-character site short ID of a ShareOJ problem URL. */
@@ -243,18 +297,61 @@ function normalizeSampleText(value: string): string {
     return value.replaceAll("\r\n", "\n").replace(/\n$/u, "");
 }
 
+interface ShareOjContestProblems {
+    problems?: Array<{ id?: string } | undefined> | null;
+}
+
+interface ResolvedProblem {
+    /** The API UUID of the problem itself. */
+    problemId: string;
+    title: string;
+}
+
 export class ShareOjClient {
     /**
-     * Fetch the problem detail and its public samples from the official API.
-     *
-     * The input URL is preserved in the result so that `.neoj/problem.json`
-     * records the URL the user downloaded.
+     * Resolve a direct problem identifier or a contest problem URL into the
+     * API UUID and title of the underlying problem.
      */
-    async getProblem(url: string): Promise<ShareOjProblem> {
-        const uuid = parseShareOjProblemId(url);
+    private async resolveProblem(url: string): Promise<ResolvedProblem> {
+        let contestRoute: ShareOjContestProblemRoute;
+        try {
+            contestRoute = parseShareOjContestProblemUrl(url);
+        } catch {
+            // Not a contest problem URL; fall back to a direct problem.
+            const uuid = parseShareOjProblemId(url);
+            return {
+                problemId: uuid,
+                title: await this.fetchProblemTitle(uuid, `/problems/${uuid}`),
+            };
+        }
 
+        const contestId = decodeShareOjShortId(contestRoute.contestShortId);
+        const index = parseShareOjProblemLabel(contestRoute.label);
+        const contest = await requestJson<ShareOjContestProblems>(
+            new URL(`/contests/${contestId}`, API_ORIGIN),
+            "ShareOJ contest response was malformed.",
+        );
+        const contestProblems = Array.isArray(contest.problems) ? contest.problems : [];
+        const contestProblem = contestProblems[index];
+        const problemId = typeof contestProblem?.id === "string" ? contestProblem.id : undefined;
+        if (problemId === undefined) {
+            throw new Error(
+                `ShareOJ contest problem "${contestRoute.label}" could not be resolved. The contest may not have started yet, or the problem is not visible without logging in.`,
+            );
+        }
+
+        return {
+            problemId,
+            title: await this.fetchProblemTitle(
+                problemId,
+                `/contests/${contestId}/problems/${problemId}`,
+            ),
+        };
+    }
+
+    private async fetchProblemTitle(problemId: string, apiPath: string): Promise<string> {
         const detail = await requestJson<ShareOjProblemDetail>(
-            new URL(`/problems/${uuid}`, API_ORIGIN),
+            new URL(apiPath, API_ORIGIN),
             "ShareOJ problem response was malformed.",
         );
         const title = typeof detail.title === "string" ? detail.title : undefined;
@@ -262,8 +359,22 @@ export class ShareOjClient {
             throw new Error("ShareOJ problem title was not found in the response.");
         }
 
+        return title;
+    }
+
+    /**
+     * Fetch the problem detail and its public samples from the official API.
+     *
+     * The input URL is preserved in the result so that `.neoj/problem.json`
+     * records the URL the user downloaded. The `key` field carries the stable
+     * problem key, because a contest problem URL cannot be mapped to one
+     * synchronously.
+     */
+    async getProblem(url: string): Promise<ShareOjProblem> {
+        const { problemId, title } = await this.resolveProblem(url);
+
         const samplesResponse = await requestJson<{ items?: RawShareOjSample[] }>(
-            new URL(`/problems/${uuid}/samples`, API_ORIGIN),
+            new URL(`/problems/${problemId}/samples`, API_ORIGIN),
             "ShareOJ samples response was malformed.",
         );
         const rawSamples = Array.isArray(samplesResponse.items) ? samplesResponse.items : [];
@@ -286,6 +397,7 @@ export class ShareOjClient {
             url,
             title,
             samples,
+            key: { platform: "shareoj", slug: encodeShareOjShortId(problemId) },
         };
     }
 }

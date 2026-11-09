@@ -15,6 +15,7 @@ neoj d https://yukicoder.me/problems/no/480
 neoj d https://onlinejudge.u-aizu.ac.jp/courses/lesson/1/ALDS1/1/ALDS1_1_A
 neoj d https://codeforces.com/contest/1900/problem/B
 neoj d https://www.share-oj.net/problems/04N9rxR9eGNCjAvBNfjU8Z
+neoj d https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A
 ```
 
 For yukicoder, `neoj` accepts both `/problems/no/<number>` and
@@ -39,9 +40,15 @@ and share one stash key. Gym and group problems require a login, which `neoj`
 does not support for Codeforces yet, so they are rejected.
 
 For ShareOJ, `neoj` accepts the `https://www.share-oj.net/problems/<id>` URL,
-where `<id>` is the 22-character ID shown in the address bar. The samples are
+where `<id>` is the 22-character ID shown in the address bar, and the contest
+problem URL `https://www.share-oj.net/contests/<contest-id>/<label>` (for
+example `.../6hxOlRWKFEHO8PdlMXxVPN/A`), where `<label>` names the problem in
+contest order (`A`, `B`, ..., `Z`, `AA`, ...). Both forms share one stash key
+because they resolve to the same problem. The samples are
 fetched from the official public API, so only published problems can be
-downloaded and no login is needed. Large samples that are published as files
+downloaded and no login is needed. A contest problem cannot be resolved before
+the contest starts, or when the API hides the problem from anonymous viewers.
+Large samples that are published as files
 instead of inline text are downloaded and verified against their SHA-256 hash.
 
 ## Before you run it

@@ -34,7 +34,8 @@ differently:
 Every credential is verified before `neoj` saves it.
 
 Aizu Online Judge (AOJ), Codeforces, and ShareOJ are download-only problem
-sources. Their URLs are accepted by `download` and the other URL-driven
+sources. Their URLs (for ShareOJ, also its contest problem URLs) are accepted
+by `download` and the other URL-driven
 commands, but none of them are part of the login registry above: there is no
 session to check, and submissions are not automated yet. ShareOJ downloads use
 its public API, so no credentials exist for it at all.

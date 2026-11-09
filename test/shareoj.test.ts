@@ -5,8 +5,11 @@ import {
     ShareOjClient,
     ShareOjProblemRequestError,
     decodeShareOjShortId,
+    encodeShareOjProblemLabel,
     encodeShareOjShortId,
     extractShareOjShortId,
+    parseShareOjContestProblemUrl,
+    parseShareOjProblemLabel,
     parseShareOjProblemUrl,
 } from "@/lib/service/shareoj";
 
@@ -66,6 +69,63 @@ describe("ShareOJ problem URL parsing", () => {
         expect(
             deriveProblemKey("https://www.share-oj.net/problems/04N9rxR9eGNCjAvBNfjU8Z"),
         ).toEqual({ platform: "shareoj", slug: "04N9rxR9eGNCjAvBNfjU8Z" });
+    });
+});
+
+describe("ShareOJ contest problem labels", () => {
+    it("maps indices to labels like the site (A, B, ..., Z, AA, AB, ...)", () => {
+        expect(encodeShareOjProblemLabel(0)).toBe("A");
+        expect(encodeShareOjProblemLabel(25)).toBe("Z");
+        expect(encodeShareOjProblemLabel(26)).toBe("AA");
+        expect(encodeShareOjProblemLabel(27)).toBe("AB");
+        expect(encodeShareOjProblemLabel(51)).toBe("AZ");
+        expect(encodeShareOjProblemLabel(52)).toBe("BA");
+        for (let index = 0; index < 60; index++) {
+            expect(parseShareOjProblemLabel(encodeShareOjProblemLabel(index))).toBe(index);
+        }
+    });
+
+    it("rejects invalid labels", () => {
+        expect(() => parseShareOjProblemLabel("a")).toThrow(TypeError);
+        expect(() => parseShareOjProblemLabel("ABCD")).toThrow(TypeError);
+        expect(() => parseShareOjProblemLabel("1")).toThrow(TypeError);
+    });
+});
+
+describe("ShareOJ contest problem URL parsing", () => {
+    it("accepts the contest problem URL", () => {
+        expect(
+            parseShareOjContestProblemUrl(
+                "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A",
+            ),
+        ).toEqual({ contestShortId: "6hxOlRWKFEHO8PdlMXxVPN", label: "A" });
+    });
+
+    it("rejects other hosts and paths", () => {
+        expect(() =>
+            parseShareOjContestProblemUrl(
+                "https://evil.example.com/contests/6hxOlRWKFEHO8PdlMXxVPN/A",
+            ),
+        ).toThrow(TypeError);
+        expect(() =>
+            parseShareOjContestProblemUrl(
+                "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN",
+            ),
+        ).toThrow(TypeError);
+        expect(() =>
+            parseShareOjContestProblemUrl(
+                "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/a",
+            ),
+        ).toThrow(TypeError);
+    });
+
+    it("matches contest problem URLs as a ShareOJ problem source", () => {
+        expect(
+            deriveProblemKey("https://www.share-oj.net/problems/04N9rxR9eGNCjAvBNfjU8Z"),
+        ).toEqual({ platform: "shareoj", slug: "04N9rxR9eGNCjAvBNfjU8Z" });
+        expect(() =>
+            deriveProblemKey("https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A"),
+        ).toThrow(/Could not derive a stash name .* offline/u);
     });
 });
 
@@ -173,5 +233,61 @@ describe("ShareOjClient", () => {
         await expect(new ShareOjClient().getProblem(problemUrl)).rejects.toBeInstanceOf(
             ShareOjProblemRequestError,
         );
+    });
+});
+
+describe("ShareOjClient contest problems", () => {
+    const contestUrl = "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A";
+    const contestId = "dc6fc9dd-4019-463a-a486-12c3fc10af59";
+    const problemId = "7f4a5126-a79a-47a0-a523-4f476156ba7e";
+
+    function mockContestFetch(options?: { problems?: unknown }): FetchHandler {
+        return async (input) => {
+            const url = String(input);
+            if (url === `https://api.share-oj.net/contests/${contestId}`) {
+                return jsonResponse({
+                    id: contestId,
+                    title: "ShareOJ Programming Contest vol.1",
+                    problems: options?.problems ?? [{ id: problemId }],
+                });
+            }
+            if (url === `https://api.share-oj.net/contests/${contestId}/problems/${problemId}`) {
+                return jsonResponse({ id: problemId, title: "Welcome to ShareOJ!" });
+            }
+            if (url === `https://api.share-oj.net/problems/${problemId}/samples`) {
+                return jsonResponse({
+                    items: [{ name: "case_001.txt", input: "5\n", output: "\n" }],
+                });
+            }
+            throw new Error(`Unexpected fetch: ${url}`);
+        };
+    }
+
+    it("resolves the contest problem through the contest API and records the problem key", async () => {
+        setFetch(mockContestFetch());
+
+        const problem = await new ShareOjClient().getProblem(contestUrl);
+        expect(problem.title).toBe("Welcome to ShareOJ!");
+        expect(problem.url).toBe(contestUrl);
+        expect(problem.key).toEqual({ platform: "shareoj", slug: encodeShareOjShortId(problemId) });
+        expect(problem.samples).toEqual([{ input: "5", output: "" }]);
+    });
+
+    it("reports an unresolvable problem when the contest hides the problem ID", async () => {
+        setFetch(mockContestFetch({ problems: [{}] }));
+
+        await expect(new ShareOjClient().getProblem(contestUrl)).rejects.toThrow(
+            /could not be resolved/u,
+        );
+    });
+
+    it("reports a label beyond the contest's problem list", async () => {
+        setFetch(mockContestFetch({ problems: [{ id: problemId }] }));
+
+        await expect(
+            new ShareOjClient().getProblem(
+                "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/Z",
+            ),
+        ).rejects.toThrow(/could not be resolved/u);
     });
 });
