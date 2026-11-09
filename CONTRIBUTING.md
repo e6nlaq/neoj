@@ -1,6 +1,28 @@
 # Contribute to neoj
 
-## Set up the repository
+## Issues only
+
+Contributions are accepted as **GitHub Issues only**. Pull requests are not
+accepted — please do not open one. Any pull request that is opened will be
+closed without review.
+
+- Report a bug with the **Bug report** issue template.
+- Suggest a feature with the **Feature request** issue template.
+- Ask a usage question in
+  [Discussions](https://github.com/e6nlaq/neoj/discussions).
+
+A good report includes what you ran, what you expected, and what happened
+instead. Include the `neoj --version` output and any relevant configuration or
+error messages (never include session cookies or other credentials).
+
+## Working on the code
+
+The rest of this page describes how to build the project and run its checks.
+It is useful when you want to investigate an issue locally or verify a fix
+before describing it in an issue. You do not need to submit code to report a
+problem.
+
+### Set up the repository
 
 ```bash
 bun install
@@ -8,7 +30,7 @@ bun install
 
 The `prepare` script installs the Lefthook pre-commit hook.
 
-## Run the checks
+### Run the checks
 
 ```bash
 bun test           # unit tests
@@ -18,10 +40,9 @@ bun run typecheck  # type-check with TypeScript
 bun run build      # bundle the CLI into dist/
 ```
 
-The pre-commit hook runs formatting, linting, and type checking. Ensure
-`bun test` passes before opening a pull request.
+The pre-commit hook runs formatting, linting, and type checking.
 
-## Commit messages
+### Commit messages
 
 Commits follow [Conventional Commits](https://www.conventionalcommits.org/),
 for example `docs: restructure the guides` or `feat: add problem metadata`.
@@ -49,5 +70,5 @@ templates, so `neoj init` works from a standalone executable.
 
 ## Related
 
-- [Platforms](../explanation/platforms.md) explains how integrations are
+- [Platforms](docs/explanation/platforms.md) explains how integrations are
   structured.
