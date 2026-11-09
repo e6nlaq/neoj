@@ -8,6 +8,7 @@ import {
     YukicoderProblemRequestError,
     type YukicoderDeviceCode,
 } from "@/lib/service/yukicoder";
+import { USER_AGENT } from "@/lib/util/user-agent";
 
 const originalFetch = globalThis.fetch;
 type FetchHandler = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>;
@@ -140,7 +141,7 @@ describe("YukicoderClient", () => {
             expect(requests).toEqual([
                 {
                     url: "https://yukicoder.me/problems/no/480",
-                    userAgent: "neoj (+https://github.com/e6nlaq/neoj)",
+                    userAgent: USER_AGENT,
                 },
             ]);
         });
@@ -529,7 +530,7 @@ describe("YukicoderClient language and submission requests", () => {
         expect(requests[0]?.url).toBe("https://yukicoder.me/api/v1/problems/no/480/submit");
         expect(requests[0]?.method).toBe("POST");
         expect(requests[0]?.authorization).toBe("Bearer ysb_token");
-        expect(requests[0]?.userAgent).toBe("neoj (+https://github.com/e6nlaq/neoj)");
+        expect(requests[0]?.userAgent).toBe(USER_AGENT);
         expect(requests[0]?.body?.get("lang")).toBe("5001");
         expect(requests[0]?.body?.get("source")).toBe("int main() {}");
     });

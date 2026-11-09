@@ -8,6 +8,7 @@ import {
     parseAtCoderLatestSubmission,
     parseAtCoderSubmitPage,
 } from "@/lib/service/atcoder";
+import { USER_AGENT } from "@/lib/util/user-agent";
 
 const problemUrl = "https://atcoder.jp/contests/abc001/tasks/abc001_1";
 const formatContestTime = (date: Date) =>
@@ -197,9 +198,7 @@ describe("AtCoderClient", () => {
 
             await new AtCoderClient().login("test-session");
 
-            expect(new Headers(requestInit?.headers).get("User-Agent")).toBe(
-                "neoj (+https://github.com/e6nlaq/neoj)",
-            );
+            expect(new Headers(requestInit?.headers).get("User-Agent")).toBe(USER_AGENT);
             expect(requestInit?.signal).toBeInstanceOf(AbortSignal);
         });
 

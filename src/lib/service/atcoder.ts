@@ -2,12 +2,12 @@ import { parse } from "node-html-parser";
 
 import type { Problem, ProblemSample } from "@/lib/service/problem";
 import { isTimeoutError } from "@/lib/util/errors";
+import { USER_AGENT } from "@/lib/util/user-agent";
 
 const ATCODER_ORIGIN = "https://atcoder.jp";
 // /settings redirects to /login while unauthenticated, so it is a stable login check.
 const LOGIN_CHECK_URL = `${ATCODER_ORIGIN}/settings`;
 const REQUEST_TIMEOUT_MS = 15_000;
-const USER_AGENT = "neoj (+https://github.com/e6nlaq/neoj)";
 // Cookie-header-safe value: printable text without separators that would split
 // the header or inject another cookie. Control characters are checked separately
 // so the pattern stays free of literal control escapes.

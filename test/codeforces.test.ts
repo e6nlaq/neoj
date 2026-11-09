@@ -11,6 +11,7 @@ import {
     parseCodeforcesProblemUrl,
     stripCodeforcesTitleIndex,
 } from "@/lib/service/codeforces";
+import { USER_AGENT } from "@/lib/util/user-agent";
 
 const originalFetch = globalThis.fetch;
 type FetchHandler = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>;
@@ -224,7 +225,7 @@ describe("CodeforcesClient", () => {
             );
 
             expect(requestedUrl).toBe("https://codeforces.com/problemset/problem/1900/B");
-            expect(userAgent).toContain("neoj");
+            expect(userAgent).toBe(USER_AGENT);
             expect(problem.title).toBe("Example Problem");
             expect(problem.samples[0]?.input).toBe("3\n1 2 3\n4 5 6");
             expect(problem.samples[0]?.output).toBe("1 2 3");

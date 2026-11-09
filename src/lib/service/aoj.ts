@@ -2,13 +2,13 @@ import { parse, type HTMLElement } from "node-html-parser";
 
 import type { Problem, ProblemSample } from "@/lib/service/problem";
 import { isTimeoutError } from "@/lib/util/errors";
+import { USER_AGENT } from "@/lib/util/user-agent";
 
 /** The legacy (v1) site, which serves the problem statement HTML with samples. */
 const AOJ_V1_ORIGIN = "https://judge.u-aizu.ac.jp";
 /** The current (v2) site. Its problem pages are rendered client-side. */
 const AOJ_V2_ORIGIN = "https://onlinejudge.u-aizu.ac.jp";
 const REQUEST_TIMEOUT_MS = 15_000;
-const USER_AGENT = "neoj (+https://github.com/e6nlaq/neoj)";
 
 // Volume IDs such as "0001", course IDs such as "ALDS1_1_A", and contest IDs
 // such as "JOI2010ho" all share this shape.

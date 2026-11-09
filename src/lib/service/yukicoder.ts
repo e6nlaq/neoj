@@ -3,11 +3,11 @@ import * as v from "valibot";
 
 import type { Problem, ProblemSample } from "@/lib/service/problem";
 import { isTimeoutError } from "@/lib/util/errors";
+import { USER_AGENT } from "@/lib/util/user-agent";
 
 const YUKICODER_ORIGIN = "https://yukicoder.me";
 const API_ORIGIN = `${YUKICODER_ORIGIN}/api`;
 const REQUEST_TIMEOUT_MS = 15_000;
-const USER_AGENT = "neoj (+https://github.com/e6nlaq/neoj)";
 const PROBLEM_PATH_PATTERN = /^\/problems\/(?:no\/\d+|\d+)\/?$/;
 const INVALID_CREDENTIAL_PATTERN = /[\s\p{Cc}]/u;
 const BEARER_PREFIX_PATTERN = /^Bearer\s+/i;

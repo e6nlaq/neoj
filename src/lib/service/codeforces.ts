@@ -2,10 +2,10 @@ import { parse, type HTMLElement } from "node-html-parser";
 
 import type { Problem, ProblemSample } from "@/lib/service/problem";
 import { isTimeoutError } from "@/lib/util/errors";
+import { USER_AGENT } from "@/lib/util/user-agent";
 
 const CODEFORCES_ORIGIN = "https://codeforces.com";
 const REQUEST_TIMEOUT_MS = 15_000;
-const USER_AGENT = "neoj (+https://github.com/e6nlaq/neoj)";
 
 // Contest IDs are numeric. Problem indices are a letter optionally followed by
 // a sub-index, such as "A", "F1", or "B2".
