@@ -196,6 +196,78 @@ describe("ShareOjClient", () => {
         expect(problem.samples).toEqual([{ input: "hello", output: "3" }]);
     });
 
+    it("prefers a file-backed side over its empty inline placeholder", async () => {
+        // The site stores a sample side in a file as an empty inline string plus
+        // the file reference ("Yes\nNo\nYes\nNo\nNo\n" in 17 bytes).
+        const expected = "Yes\nNo\nYes\nNo\nNo\n";
+        const sha256 = new Bun.CryptoHasher("sha256").update(expected).digest("hex");
+        setFetch(async (input) => {
+            const url = String(input);
+            if (url.endsWith("/problems/02515831-bafa-45f1-8ab7-ff8ffd7b5c13")) {
+                return jsonResponse({ id: "x", title: "Placeholder Samples" });
+            }
+            if (url.endsWith("/samples")) {
+                return jsonResponse({
+                    items: [
+                        {
+                            name: "case_001.txt",
+                            input: "5\n",
+                            output: "",
+                            outputFile: {
+                                url: "https://api.share-oj.net/files/output.bin",
+                                size: 17,
+                                sha256,
+                            },
+                        },
+                    ],
+                });
+            }
+            if (url === "https://api.share-oj.net/files/output.bin") {
+                return new Response(expected, { status: 200 });
+            }
+            throw new Error(`Unexpected fetch: ${url}`);
+        });
+
+        const problem = await new ShareOjClient().getProblem(problemUrl);
+        expect(problem.samples).toEqual([{ input: "5", output: "Yes\nNo\nYes\nNo\nNo" }]);
+    });
+
+    it("measures a file-backed side in bytes, not UTF-16 units", async () => {
+        // "出力\n" is three characters but six bytes in UTF-8.
+        const expected = "出力\n";
+        const bytes = new TextEncoder().encode(expected);
+        const sha256 = new Bun.CryptoHasher("sha256").update(bytes).digest("hex");
+        setFetch(async (input) => {
+            const url = String(input);
+            if (url.endsWith("/problems/02515831-bafa-45f1-8ab7-ff8ffd7b5c13")) {
+                return jsonResponse({ id: "x", title: "Unicode Samples" });
+            }
+            if (url.endsWith("/samples")) {
+                return jsonResponse({
+                    items: [
+                        {
+                            name: "case_001.txt",
+                            input: "1\n",
+                            output: "",
+                            outputFile: {
+                                url: "https://api.share-oj.net/files/output.bin",
+                                size: bytes.byteLength,
+                                sha256,
+                            },
+                        },
+                    ],
+                });
+            }
+            if (url === "https://api.share-oj.net/files/output.bin") {
+                return new Response(bytes, { status: 200 });
+            }
+            throw new Error(`Unexpected fetch: ${url}`);
+        });
+
+        const problem = await new ShareOjClient().getProblem(problemUrl);
+        expect(problem.samples).toEqual([{ input: "1", output: "出力" }]);
+    });
+
     it("rejects tampered file-backed samples", async () => {
         setFetch(async (input) => {
             const url = String(input);

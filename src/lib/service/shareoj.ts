@@ -266,9 +266,10 @@ async function requestJson<T>(url: URL, errorMessage: string): Promise<T> {
 /**
  * Resolve the text of one side (input or output) of a sample.
  *
- * Samples normally carry the text inline, but large cases reference a file
- * instead. The file is downloaded through its URL and validated against the
- * reported size and SHA-256 hash.
+ * A sample side is either inline text or a file reference. When a file is
+ * referenced, the inline text is an empty placeholder (the site's own editor
+ * and generator write `""` there), so the file is authoritative. The download
+ * is validated against the reported size and SHA-256 hash before it is used.
  */
 async function resolveSampleText(
     inline: string | undefined,
@@ -276,10 +277,10 @@ async function resolveSampleText(
     label: string,
     sampleName: string,
 ): Promise<string> {
-    if (typeof inline === "string") {
-        return inline;
-    }
     if (file?.url === undefined) {
+        if (typeof inline === "string") {
+            return inline;
+        }
         throw new Error(`ShareOJ sample "${sampleName}" is missing its ${label}.`);
     }
 
@@ -292,24 +293,28 @@ async function resolveSampleText(
         );
     }
 
-    const text = await response.text();
-    if (text.length !== file.size) {
+    // Compare the raw bytes: a text length counts UTF-16 units, and decoding
+    // and re-encoding would not reproduce the original file byte for byte.
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    if (file.size !== undefined && bytes.byteLength !== file.size) {
         throw new ShareOjSampleDownloadError(
-            `The downloaded ${label} of ShareOJ sample "${sampleName}" has an unexpected size (${text.length}, expected ${file.size}).`,
+            `The downloaded ${label} of ShareOJ sample "${sampleName}" has an unexpected size (${bytes.byteLength}, expected ${file.size}).`,
         );
     }
 
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
-    const hash = [...new Uint8Array(digest)]
-        .map((byte) => byte.toString(16).padStart(2, "0"))
-        .join("");
-    if (hash !== file.sha256) {
-        throw new ShareOjSampleDownloadError(
-            `The downloaded ${label} of ShareOJ sample "${sampleName}" does not match its SHA-256 hash.`,
-        );
+    if (file.sha256 !== undefined) {
+        const digest = await crypto.subtle.digest("SHA-256", bytes);
+        const hash = [...new Uint8Array(digest)]
+            .map((byte) => byte.toString(16).padStart(2, "0"))
+            .join("");
+        if (hash !== file.sha256) {
+            throw new ShareOjSampleDownloadError(
+                `The downloaded ${label} of ShareOJ sample "${sampleName}" does not match its SHA-256 hash.`,
+            );
+        }
     }
 
-    return text;
+    return new TextDecoder().decode(bytes);
 }
 
 function normalizeSampleText(value: string): string {
