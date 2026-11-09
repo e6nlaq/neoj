@@ -31,9 +31,11 @@ contest platforms.
 | Aizu Online Judge (AOJ) | ✅                           | —                 | —                                    |
 | AtCoder                 | ✅                           | ✅                | ✅                                   |
 | Codeforces              | ✅                           | —                 | —                                    |
+| ShareOJ                 | ✅                           | —                 | —                                    |
 | yukicoder               | ✅                           | ✅                | ✅                                   |
 
-AOJ and Codeforces support is download-only for now: samples can be fetched,
+AOJ, Codeforces, and ShareOJ support is download-only for now: samples can be
+fetched,
 but submissions and sessions are not implemented yet.
 
 ## Documentation

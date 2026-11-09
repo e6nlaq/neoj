@@ -5,15 +5,16 @@ neoj download <url>
 neoj d <url>          # alias
 ```
 
-The command accepts an AtCoder, yukicoder, Aizu Online Judge, or Codeforces
-problem URL and replaces the configured test-case directory with the problem's
-samples.
+The command accepts an AtCoder, yukicoder, Aizu Online Judge, Codeforces, or
+ShareOJ problem URL and replaces the configured test-case directory with the
+problem's samples.
 
 ```bash
 neoj d https://atcoder.jp/contests/abc300/tasks/abc300_a
 neoj d https://yukicoder.me/problems/no/480
 neoj d https://onlinejudge.u-aizu.ac.jp/courses/lesson/1/ALDS1/1/ALDS1_1_A
 neoj d https://codeforces.com/contest/1900/problem/B
+neoj d https://www.share-oj.net/problems/04N9rxR9eGNCjAvBNfjU8Z
 ```
 
 For yukicoder, `neoj` accepts both `/problems/no/<number>` and
@@ -36,6 +37,12 @@ For Codeforces, `neoj` accepts `/contest/<contest-id>/problem/<index>` and
 `/problemset/problem/<contest-id>/<index>` URLs; both identify the same problem
 and share one stash key. Gym and group problems require a login, which `neoj`
 does not support for Codeforces yet, so they are rejected.
+
+For ShareOJ, `neoj` accepts the `https://www.share-oj.net/problems/<id>` URL,
+where `<id>` is the 22-character ID shown in the address bar. The samples are
+fetched from the official public API, so only published problems can be
+downloaded and no login is needed. Large samples that are published as files
+instead of inline text are downloaded and verified against their SHA-256 hash.
 
 ## Before you run it
 

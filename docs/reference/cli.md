@@ -31,9 +31,9 @@ directory when none is found. The search stops at the repository root.
 
 ### `download`
 
-| Argument | Description                                                          |
-| -------- | -------------------------------------------------------------------- |
-| `<url>`  | An AtCoder, yukicoder, Aizu Online Judge, or Codeforces problem URL. |
+| Argument | Description                                                                   |
+| -------- | ----------------------------------------------------------------------------- |
+| `<url>`  | An AtCoder, yukicoder, Aizu Online Judge, Codeforces, or ShareOJ problem URL. |
 
 Requires an initialized project. See
 [Download sample tests](../how-to/download-samples.md).
@@ -64,8 +64,9 @@ contest in the problem URL, so `--contest` asks the public API; it needs network
 access, and a problem that belongs to no contest cannot be opened this way. When
 a problem appears in several contests, the API reports only one of them.
 
-AOJ problems support only the default target: `--contest` and `--submissions`
-report that they are not supported for AOJ yet.
+AOJ and ShareOJ problems support only the default target: `--contest` and
+`--submissions` report that they are not supported for them yet. For
+Codeforces, only `--submissions` is unsupported.
 
 If the browser cannot be started, the URL is printed so it can be opened by
 hand and the command exits with `1`.

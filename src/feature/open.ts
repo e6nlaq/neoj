@@ -53,6 +53,10 @@ export async function resolveOpenUrl(
             throw new TypeError(
                 'AOJ does not support "neoj open --contest" or "neoj open --submissions" yet.',
             );
+        case "shareoj":
+            throw new TypeError(
+                'ShareOJ does not support "neoj open --contest" or "neoj open --submissions" yet.',
+            );
         case "codeforces":
             if (target === "submissions") {
                 throw new TypeError('Codeforces does not support "neoj open --submissions" yet.');
@@ -60,7 +64,7 @@ export async function resolveOpenUrl(
             return buildCodeforcesContestUrl(extractCodeforcesProblemRoute(problemUrl)).href;
         default:
             throw new TypeError(
-                "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
+                "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces, ShareOJ).",
             );
     }
 }
