@@ -12,11 +12,13 @@ import { getYukicoderAuth, isYukicoderLoggedIn, loginToYukicoder } from "@/featu
 import { findProblemSource } from "@/feature/problem-sources";
 import { AtCoderClient, parseAtCoderTask, type AtCoderSubmitPage } from "@/lib/service/atcoder";
 import {
+    buildShareOjSubmissionUrl,
     decodeShareOjShortId,
     parseShareOjContestProblemUrl,
     parseShareOjProblemId,
     ShareOjApiError,
     ShareOjClient,
+    type ShareOjSubmission,
 } from "@/lib/service/shareoj";
 import { YukicoderClient } from "@/lib/service/yukicoder";
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
@@ -509,6 +511,7 @@ async function createShareOjTarget(
             );
         }
     }
+    const accessToken = token;
 
     // The problem ID is the UUID the API accepted at download time. A direct
     // problem URL can be decoded offline; a contest URL relies on the stored key.
@@ -546,42 +549,35 @@ async function createShareOjTarget(
             }));
         },
         async submit(source, languageId) {
-            // `token` is narrowed outside this closure; capture it explicitly.
-            const initialToken: string = token;
-            let submission: Awaited<ReturnType<ShareOjClient["submit"]>>;
-            try {
-                submission = await client.submit(initialToken, {
+            const post = (credential: string) =>
+                client.submit(credential, {
                     problemId,
                     contestId,
                     runtime: languageId,
                     source,
                 });
+
+            let submission: ShareOjSubmission;
+            try {
+                submission = await post(accessToken);
             } catch (error) {
-                // The access token may have expired since the last refresh.
-                if (error instanceof ShareOjApiError && error.status === 401) {
-                    const renewed = await getShareOjAccessToken((await readAuth()).shareoj, client);
-                    if (renewed !== undefined) {
-                        const freshToken = renewed;
-                        submission = await client.submit(freshToken, {
-                            problemId,
-                            contestId,
-                            runtime: languageId,
-                            source,
-                        });
-                    } else {
-                        throw new Error(
-                            'The ShareOJ session has expired. Run "neoj login shareoj" and try again.',
-                            { cause: error },
-                        );
-                    }
-                } else {
+                // The access token may have expired since it was read.
+                if (!(error instanceof ShareOjApiError) || error.status !== 401) {
                     throw error;
                 }
+                const renewed = await getShareOjAccessToken((await readAuth()).shareoj, client);
+                if (renewed === undefined) {
+                    throw new Error(
+                        'The ShareOJ session has expired. Run "neoj login shareoj" and try again.',
+                        { cause: error },
+                    );
+                }
+                submission = await post(renewed);
             }
 
             return {
                 submissionId: submission.id,
-                submissionUrl: ShareOjClient.submissionUrl(submission.id, contestShortId),
+                submissionUrl: buildShareOjSubmissionUrl(submission.id, contestShortId),
             };
         },
     };

@@ -2,7 +2,8 @@
 
 `neoj` stores credentials per platform. AtCoder uses a browser session cookie;
 yukicoder uses a submit-only CLI token from the browser device flow or an account
-API key. That keeps the CLI simple and avoids storing a password, but it means
+API key; ShareOJ uses the access and refresh tokens issued by its own CLI login
+endpoints. That keeps the CLI simple and avoids storing a password, but it means
 each credential is exactly as powerful as what the platform grants it.
 
 ## Verify before saving
@@ -10,7 +11,9 @@ each credential is exactly as powerful as what the platform grants it.
 A pasted cookie or API key is checked against the platform before it is written
 to disk. A typo or an expired yukicoder token fails immediately instead of
 producing confusing errors later. yukicoder CLI tokens are saved with their
-expiry time and treated as logged out once that time passes.
+expiry time and treated as logged out once that time passes. A ShareOJ login is
+verified against `/auth/me` before the tokens replace the saved session, and an
+expired access token is refreshed automatically while its refresh token lasts.
 
 ## Keep the blast radius small
 
@@ -33,7 +36,9 @@ prints the cookie in logs or error messages.
 - An AtCoder session cookie grants full access to the account until it expires;
   there is no per-command scope. A yukicoder API key has broad access as well.
   The yukicoder CLI token is limited to submitting and checking the current user,
-  and expires after 24 hours, but it is still a secret while valid.
+  and expires after 24 hours, but it is still a secret while valid. A ShareOJ
+  access token grants what a browser session grants, and its refresh token can
+  mint new access tokens for about 30 days.
 - Malware or another process running as your user can read the file.
 - A credential copied into a repository, issue, or chat is compromised even after
   you log out elsewhere.

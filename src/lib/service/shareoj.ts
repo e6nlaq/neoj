@@ -23,7 +23,7 @@ const BASE62_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrs
  */
 export function decodeShareOjShortId(shortId: string): string {
     if (!SHORT_ID_PATTERN.test(shortId)) {
-        throw new TypeError(`Expected a ShareOJ problem ID: "${shortId}".`);
+        throw new TypeError(`Expected a ShareOJ ID: "${shortId}".`);
     }
 
     let value = 0n;
@@ -34,7 +34,7 @@ export function decodeShareOjShortId(shortId: string): string {
     const hex = value.toString(16).padStart(32, "0");
     const uuid = `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
     if (!UUID_PATTERN.test(uuid)) {
-        throw new TypeError(`Expected a ShareOJ problem ID: "${shortId}".`);
+        throw new TypeError(`Expected a ShareOJ ID: "${shortId}".`);
     }
 
     return uuid;
@@ -61,7 +61,7 @@ export function encodeShareOjShortId(uuid: string): string {
 export function parseShareOjUuid(value: string): string {
     const uuid = value.trim();
     if (!UUID_PATTERN.test(uuid)) {
-        throw new TypeError(`Expected a ShareOJ problem UUID: "${value}".`);
+        throw new TypeError(`Expected a ShareOJ UUID: "${value}".`);
     }
 
     return uuid;
@@ -78,18 +78,14 @@ export function parseShareOjUuid(value: string): string {
  */
 export function parseShareOjProblemId(value: string): string {
     const trimmed = value.trim();
-
-    const bare = trimmed.match(UUID_PATTERN) ?? trimmed.match(SHORT_ID_PATTERN);
-    if (bare !== null) {
-        return UUID_PATTERN.test(trimmed)
-            ? parseShareOjUuid(trimmed)
-            : decodeShareOjShortId(trimmed);
+    if (UUID_PATTERN.test(trimmed)) {
+        return parseShareOjUuid(trimmed);
+    }
+    if (SHORT_ID_PATTERN.test(trimmed)) {
+        return decodeShareOjShortId(trimmed);
     }
 
-    const problemUrl = parseShareOjProblemUrl(trimmed);
-    return decodeShareOjShortId(
-        problemUrl.pathname.split("/").filter((segment) => segment.length > 0)[1] ?? "",
-    );
+    return decodeShareOjShortId(extractShareOjShortId(trimmed));
 }
 
 /** Parse and validate a ShareOJ problem page URL. */
@@ -172,15 +168,18 @@ export function buildShareOjContestUrl(contestShortId: string): URL {
     return new URL(`/contests/${contestShortId}`, SITE_ORIGIN);
 }
 
-/** The problem's public submissions page. */
+/** The problem's own submissions view, which needs a login. */
 export function buildShareOjProblemSubmissionsUrl(shortId: string): URL {
-    return new URL(`/problems/${shortId}/submissions`, SITE_ORIGIN);
+    const url = new URL(`/problems/${shortId}`, SITE_ORIGIN);
+    url.searchParams.set("view", "my-submissions");
+
+    return url;
 }
 
-/** The contest's submissions list narrowed to one problem label. */
+/** The contest's submissions list narrowed to one problem label, for the current user. */
 export function buildShareOjContestSubmissionsUrl(contestShortId: string, label: string): URL {
     const url = new URL(`/contests/${contestShortId}`, SITE_ORIGIN);
-    url.searchParams.set("view", "submissions");
+    url.searchParams.set("view", "my-submissions");
     url.searchParams.set("problem", label);
 
     return url;
@@ -189,11 +188,9 @@ export function buildShareOjContestSubmissionsUrl(contestShortId: string, label:
 /** The validated 22-character site short ID of a ShareOJ problem URL. */
 export function extractShareOjShortId(value: string | URL): string {
     const problemUrl = parseShareOjProblemUrl(value.toString());
-    const segments = problemUrl.pathname.split("/").filter((segment) => segment.length > 0);
-    const shortId = segments[1] ?? "";
-    decodeShareOjShortId(shortId);
 
-    return shortId;
+    // `parseShareOjProblemUrl` validated the segment, so it can be reused as is.
+    return problemUrl.pathname.split("/").filter((segment) => segment.length > 0)[1] ?? "";
 }
 
 interface ShareOjProblemDetail {
@@ -218,13 +215,6 @@ interface RawShareOjSample {
 export type ShareOjResolvedSample = ProblemSample;
 
 export type ShareOjProblem = Problem;
-
-export class ShareOjProblemRequestError extends Error {
-    constructor(readonly status: number) {
-        super(`ShareOJ problem request failed (${status}).`);
-        this.name = "ShareOjProblemRequestError";
-    }
-}
 
 export class ShareOjSampleDownloadError extends Error {
     constructor(message: string, options?: { cause?: unknown }) {
@@ -252,7 +242,7 @@ async function requestJson<T>(url: URL, errorMessage: string): Promise<T> {
         headers: { "User-Agent": USER_AGENT, Accept: "application/json" },
     });
     if (!response.ok) {
-        throw new ShareOjProblemRequestError(response.status);
+        throw await parseErrorResponse(response);
     }
 
     const body: unknown = await response.json();
@@ -284,7 +274,22 @@ async function resolveSampleText(
         throw new Error(`ShareOJ sample "${sampleName}" is missing its ${label}.`);
     }
 
-    const response = await request(new URL(file.url), {
+    // The URL comes from the API, but only an HTTPS download is accepted.
+    let fileUrl: URL;
+    try {
+        fileUrl = new URL(file.url);
+    } catch {
+        throw new ShareOjSampleDownloadError(
+            `The ${label} of ShareOJ sample "${sampleName}" has an invalid download URL.`,
+        );
+    }
+    if (fileUrl.protocol !== "https:") {
+        throw new ShareOjSampleDownloadError(
+            `The ${label} of ShareOJ sample "${sampleName}" has a non-HTTPS download URL.`,
+        );
+    }
+
+    const response = await request(fileUrl, {
         headers: { "User-Agent": USER_AGENT },
     });
     if (!response.ok) {
@@ -321,13 +326,10 @@ function normalizeSampleText(value: string): string {
     return value.replaceAll("\r\n", "\n").replace(/\n$/u, "");
 }
 
-/** The platform-side error code carried by `{"error": "<code>"}` responses. */
-export type ShareOjErrorCode = string;
-
 export class ShareOjApiError extends Error {
     constructor(
         readonly status: number,
-        readonly code: ShareOjErrorCode | undefined,
+        readonly code: string | undefined,
     ) {
         super(
             code === undefined
@@ -434,8 +436,8 @@ async function parseAuthResult(
 }
 
 /**
- * Submit a JSON body to an authenticated endpoint. Returns the response so
- * callers can distinguish success bodies; throws `ShareOjApiError` on failure.
+ * Post a JSON body to an authenticated endpoint. Returns the parsed body and
+ * throws `ShareOjApiError` on a non-2xx response.
  */
 async function requestAuthJson(
     url: URL,
@@ -456,6 +458,14 @@ async function requestAuthJson(
     }
 
     return response.json();
+}
+
+/** The submission page displayed after a successful submission. */
+export function buildShareOjSubmissionUrl(submissionUuid: string, contestShortId?: string): string {
+    const id = encodeShareOjShortId(submissionUuid);
+    return contestShortId === undefined
+        ? `${SITE_ORIGIN}/my/submissions/${id}`
+        : `${SITE_ORIGIN}/contests/${contestShortId}/my-submissions/${id}`;
 }
 
 interface ShareOjContestProblems {
@@ -684,16 +694,5 @@ export class ShareOjClient {
         }
 
         return { id };
-    }
-
-    /**
-     * The submission page URL shown after a successful submission. A contest
-     * submission has its own per-problem list.
-     */
-    static submissionUrl(submissionId: string, contestShortId?: string): string {
-        const id = encodeShareOjShortId(submissionId);
-        return contestShortId === undefined
-            ? `${SITE_ORIGIN}/my/submissions/${id}`
-            : `${SITE_ORIGIN}/contests/${contestShortId}/my-submissions/${id}`;
     }
 }

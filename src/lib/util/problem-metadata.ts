@@ -21,6 +21,9 @@ function getMetadataDirectory(projectRoot: string): string {
     return join(resolve(projectRoot), ".neoj");
 }
 
+/** The same shape the stash layout accepts for a platform and slug segment. */
+const KEY_SEGMENT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
+
 async function assertMetadataDirectory(directory: string): Promise<void> {
     const metadataDirectoryStat = await lstat(directory);
     if (metadataDirectoryStat.isSymbolicLink() || !metadataDirectoryStat.isDirectory()) {
@@ -44,11 +47,12 @@ export function parseProblemMetadata(value: unknown, path: string): ProblemMetad
             throw new Error(`Problem metadata "${path}" has an invalid key.`);
         }
         const { platform, slug } = key as Record<string, unknown>;
+        // The key becomes a stash path, so reject what the stash layout rejects.
         if (
             typeof platform !== "string" ||
-            platform.length === 0 ||
             typeof slug !== "string" ||
-            slug.length === 0
+            !KEY_SEGMENT_PATTERN.test(platform) ||
+            !KEY_SEGMENT_PATTERN.test(slug)
         ) {
             throw new Error(`Problem metadata "${path}" has an invalid key.`);
         }

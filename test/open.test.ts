@@ -159,10 +159,10 @@ describe("resolveOpenUrl", () => {
 
         await expect(resolveOpenUrl("problem", problemUrl)).resolves.toBe(problemUrl);
         await expect(resolveOpenUrl("submissions", problemUrl)).resolves.toBe(
-            "https://www.share-oj.net/problems/04N9rxR9eGNCjAvBNfjU8Z/submissions",
+            "https://www.share-oj.net/problems/04N9rxR9eGNCjAvBNfjU8Z?view=my-submissions",
         );
         await expect(resolveOpenUrl("submissions", contestUrl)).resolves.toBe(
-            "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN?view=submissions&problem=A",
+            "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN?view=my-submissions&problem=A",
         );
         await expect(resolveOpenUrl("contest", contestUrl)).resolves.toBe(
             "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN",

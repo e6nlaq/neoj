@@ -4,7 +4,7 @@ import { deriveProblemKey } from "@/feature/problem-sources";
 import {
     ShareOjApiError,
     ShareOjClient,
-    ShareOjProblemRequestError,
+    buildShareOjSubmissionUrl,
     decodeShareOjShortId,
     encodeShareOjProblemLabel,
     encodeShareOjShortId,
@@ -300,12 +300,13 @@ describe("ShareOjClient", () => {
         );
     });
 
-    it("reports API errors through ShareOjProblemRequestError", async () => {
+    it("reports API errors through ShareOjApiError", async () => {
         setFetch(async () => jsonResponse({ error: "problem_not_found" }, 404));
 
-        await expect(new ShareOjClient().getProblem(problemUrl)).rejects.toBeInstanceOf(
-            ShareOjProblemRequestError,
-        );
+        const error = await new ShareOjClient().getProblem(problemUrl).catch((cause) => cause);
+        expect(error).toBeInstanceOf(ShareOjApiError);
+        expect(error.status).toBe(404);
+        expect(error.code).toBe("problem_not_found");
     });
 });
 
@@ -397,10 +398,10 @@ describe("ShareOjClient authentication and submission", () => {
             source: "int main(){}",
         });
         expect(submission.id).toBe("02515831-bafa-45f1-8ab7-ff8ffd7b5c13");
-        expect(ShareOjClient.submissionUrl(submission.id)).toBe(
+        expect(buildShareOjSubmissionUrl(submission.id)).toBe(
             "https://www.share-oj.net/my/submissions/04N9rxR9eGNCjAvBNfjU8Z",
         );
-        expect(ShareOjClient.submissionUrl(submission.id, "6hxOlRWKFEHO8PdlMXxVPN")).toBe(
+        expect(buildShareOjSubmissionUrl(submission.id, "6hxOlRWKFEHO8PdlMXxVPN")).toBe(
             "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/my-submissions/04N9rxR9eGNCjAvBNfjU8Z",
         );
     });

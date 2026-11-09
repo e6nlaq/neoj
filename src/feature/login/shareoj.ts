@@ -151,6 +151,46 @@ function challengePromptLabel(challenge: ShareOjChallenge): string {
 }
 
 /**
+ * The resolved Cognito sign-in name of a challenge, when the challenge asks
+ * for responses against the user ID instead of the address that was typed.
+ */
+function resolvedSignInName(challenge: ShareOjChallenge): string | undefined {
+    const name = challenge.parameters.USER_ID_FOR_SRP;
+    return name === undefined || name === "" ? undefined : name;
+}
+
+function challengeCodeField(challenge: ShareOjChallenge): string | undefined {
+    return {
+        SMS_MFA: "SMS_MFA_CODE",
+        SOFTWARE_TOKEN_MFA: "SOFTWARE_TOKEN_MFA_CODE",
+        EMAIL_OTP: "EMAIL_OTP_CODE",
+    }[challenge.name];
+}
+
+/**
+ * The account attributes a new-password challenge still requires, as
+ * `userAttributes.<name>` response keys. Cognito reports them as a JSON array.
+ */
+function requiredAttributes(challenge: ShareOjChallenge): string[] {
+    const raw = challenge.parameters.requiredAttributes;
+    if (raw === undefined || raw === "") {
+        return [];
+    }
+
+    let parsed: unknown;
+    try {
+        parsed = JSON.parse(raw);
+    } catch {
+        throw new Error("ShareOJ login returned malformed required attributes.");
+    }
+    if (!Array.isArray(parsed) || parsed.some((value) => typeof value !== "string")) {
+        throw new Error("ShareOJ login returned malformed required attributes.");
+    }
+
+    return (parsed as string[]).map((name) => name.replace(/^userAttributes\./u, ""));
+}
+
+/**
  * Continue login challenges until tokens arrive. Only the challenges the
  * official site supports are handled; anything else aborts with a hint.
  */
@@ -166,6 +206,9 @@ async function resolveChallenges(
         "EMAIL_OTP",
     ]);
     let current = challenge;
+    // Cognito wants the resolved user ID rather than the sign-in name from
+    // this point on.
+    let signInName = resolvedSignInName(challenge) ?? username;
     while (true) {
         if (!supported.has(current.name)) {
             throw new Error(
@@ -179,21 +222,28 @@ async function resolveChallenges(
             validate: (candidate) => candidate.trim().length > 0 || "The response cannot be empty.",
         });
 
-        const responses: Record<string, string> =
-            current.name === "NEW_PASSWORD_REQUIRED"
-                ? { NEW_PASSWORD: value }
-                : {
-                      [current.name === "SMS_MFA"
-                          ? "SMS_MFA_CODE"
-                          : current.name === "SOFTWARE_TOKEN_MFA"
-                            ? "SOFTWARE_TOKEN_MFA_CODE"
-                            : "EMAIL_OTP_CODE"]: value,
-                  };
-        const result = await client.continueChallenge(username, current, responses);
+        const responses: Record<string, string> = {};
+        const codeField = challengeCodeField(current);
+        if (codeField === undefined) {
+            responses.NEW_PASSWORD = value;
+            for (const attribute of requiredAttributes(current)) {
+                const attributeValue = await input({
+                    message: `ShareOJ account ${attribute}:`,
+                    validate: (candidate) =>
+                        candidate.trim().length > 0 || `${attribute} cannot be empty.`,
+                });
+                responses[`userAttributes.${attribute}`] = attributeValue.trim();
+            }
+        } else {
+            responses[codeField] = value;
+        }
+
+        const result = await client.continueChallenge(signInName, current, responses);
         if (!("name" in result)) {
             return result;
         }
         current = result;
+        signInName = resolvedSignInName(current) ?? signInName;
     }
 }
 
@@ -226,6 +276,11 @@ export async function loginToShareOj(options: LoginToShareOjOptions = {}): Promi
     if ("name" in result) {
         consola.info(`Additional verification required (${result.name}).`);
         result = await resolveChallenges(client, username, result);
+    }
+
+    // Confirm the tokens work before they replace the saved session.
+    if ((await client.getMe(result.accessToken)) === undefined) {
+        throw new Error("ShareOJ login did not produce a usable session. Try again.");
     }
     await saveShareOjTokens(result);
 

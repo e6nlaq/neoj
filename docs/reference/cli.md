@@ -53,20 +53,21 @@ Opens the page for the problem recorded by the last successful download, so run
 `--contest` and `--submissions` cannot be combined, and neither can `--clip` and
 `--url`.
 
-| Target          | AtCoder                                                                  | yukicoder                                                                                                                        |
-| --------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| (default)       | The problem page.                                                        | The problem page.                                                                                                                |
-| `--contest`     | `https://atcoder.jp/contests/<contestId>`                                | The contest that published the problem, resolved through the public API.                                                         |
-| `--submissions` | `https://atcoder.jp/contests/<contestId>/submissions/me?f.Task=<taskId>` | The problem's own submissions page (`/problems/no/<n>/submissions` or `/problems/<id>/submissions`) with `my_submission=enabled` |
+| Target          | AtCoder                                                                  | yukicoder                                                                                                                        | ShareOJ                                                                                         |
+| --------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| (default)       | The problem page.                                                        | The problem page.                                                                                                                | The problem page.                                                                               |
+| `--contest`     | `https://atcoder.jp/contests/<contestId>`                                | The contest that published the problem, resolved through the public API.                                                         | The contest page of a contest problem; a standalone problem reports that it is unknown.         |
+| `--submissions` | `https://atcoder.jp/contests/<contestId>/submissions/me?f.Task=<taskId>` | The problem's own submissions page (`/problems/no/<n>/submissions` or `/problems/<id>/submissions`) with `my_submission=enabled` | The problem's own submissions view (`?view=my-submissions`), narrowed to the label in a contest |
 
 AtCoder URLs are derived from the problem URL. yukicoder does not record the
 contest in the problem URL, so `--contest` asks the public API; it needs network
 access, and a problem that belongs to no contest cannot be opened this way. When
 a problem appears in several contests, the API reports only one of them.
 
-AOJ and ShareOJ problems support only the default target: `--contest` and
-`--submissions` report that they are not supported for them yet. For
-Codeforces, only `--submissions` is unsupported.
+AOJ problems support only the default target: `--contest` and `--submissions`
+report that they are not supported for AOJ yet. Codeforces supports `--contest`
+but not `--submissions`. ShareOJ needs a recorded contest problem URL for
+`--contest`, and its `--submissions` view requires a browser login.
 
 If the browser cannot be started, the URL is printed so it can be opened by
 hand and the command exits with `1`.
