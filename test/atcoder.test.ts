@@ -502,6 +502,32 @@ describe("AtCoderClient submission requests", () => {
         });
     });
 
+    it("reports an unknown language ID before posting the form", async () => {
+        const page = parseAtCoderSubmitPage(
+            submitHtml,
+            "https://atcoder.jp/contests/abc001/submit",
+            {
+                contestId: "abc001",
+                taskId: "abc001_1",
+            },
+        );
+        const requests: string[] = [];
+        setFetch(async (input) => {
+            requests.push(String(input));
+            return new Response(null, {
+                status: 302,
+                headers: { Location: "/contests/abc001/submissions/me" },
+            });
+        });
+
+        await expect(
+            new AtCoderClient().submit(problemUrl, "9999", "source", page),
+        ).rejects.toThrow(
+            'AtCoder does not recognize the language ID "9999". Set a valid ID with "neoj languages atcoder", --platform-language, or languages.<key>.submit.atcoder.',
+        );
+        expect(requests).toEqual([]);
+    });
+
     it("reports a Turnstile rejection with a browser fallback", async () => {
         const page = parseAtCoderSubmitPage(
             submitHtml,
