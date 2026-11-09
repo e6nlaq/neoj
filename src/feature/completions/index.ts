@@ -5,6 +5,7 @@ import { renderBashCompletion } from "@/feature/completions/bash";
 import { renderFishCompletion } from "@/feature/completions/fish";
 import { renderPowerShellCompletion } from "@/feature/completions/powershell";
 import { renderZshCompletion } from "@/feature/completions/zsh";
+import { shareOjLoginMethods } from "@/feature/login/shareoj";
 import { yukicoderLoginMethods } from "@/feature/login/yukicoder";
 import { platforms } from "@/feature/platforms";
 import {
@@ -29,6 +30,7 @@ const shellDescriptions: Record<CompletionShell, string> = {
 const methodDescriptions: Record<string, string> = {
     token: "Authenticate with a browser device flow token",
     "api-key": "Authenticate with a profile API key",
+    password: "Authenticate with an email and password",
 };
 
 const showStderrDescriptions: Record<string, string> = {
@@ -48,7 +50,7 @@ export function getCompletionHints(): CompletionHints {
     return {
         optionValues: {
             "--service": platformCandidates(),
-            "--method": yukicoderLoginMethods.map((method) => ({
+            "--method": [...yukicoderLoginMethods, ...shareOjLoginMethods].map((method) => ({
                 value: method,
                 description: methodDescriptions[method] ?? method,
             })),

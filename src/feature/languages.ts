@@ -6,6 +6,7 @@ import { consola } from "consola";
 import { getAtCoderSession, loginToAtCoder } from "@/feature/login/atcoder";
 import { findProblemSource } from "@/feature/problem-sources";
 import { AtCoderClient, parseAtCoderTask } from "@/lib/service/atcoder";
+import { ShareOjClient } from "@/lib/service/shareoj";
 import { YukicoderClient } from "@/lib/service/yukicoder";
 import { readAuth } from "@/lib/util/auth";
 import { loadConfig, type Config } from "@/lib/util/config";
@@ -16,7 +17,7 @@ import { findProjectConfig } from "@/lib/util/project";
 
 export const fallbackAtCoderContestId = "abc100";
 
-export type LanguagePlatform = "atcoder" | "yukicoder";
+export type LanguagePlatform = "atcoder" | "yukicoder" | "shareoj";
 
 /** One selectable language on a platform. */
 export interface PlatformLanguage {
@@ -74,11 +75,13 @@ export interface LanguageListing {
 
 export function parseLanguagePlatform(value: string): LanguagePlatform {
     const name = value.trim();
-    if (name === "atcoder" || name === "yukicoder") {
+    if (name === "atcoder" || name === "yukicoder" || name === "shareoj") {
         return name;
     }
 
-    throw new Error(`Unsupported platform "${value}". Supported platforms: atcoder, yukicoder.`);
+    throw new Error(
+        `Unsupported platform "${value}". Supported platforms: atcoder, yukicoder, shareoj.`,
+    );
 }
 
 export function resolveLanguagesPlatform(
@@ -90,7 +93,7 @@ export function resolveLanguagesPlatform(
     }
     if (metadata === undefined) {
         throw new Error(
-            'No problem is recorded. Pass a platform: "neoj languages atcoder" or "neoj languages yukicoder".',
+            'No problem is recorded. Pass a platform: "neoj languages atcoder", "neoj languages yukicoder", or "neoj languages shareoj".',
         );
     }
 
@@ -261,11 +264,28 @@ async function createYukicoderLanguageTarget(): Promise<LanguageTarget> {
     };
 }
 
+async function createShareOjLanguageTarget(): Promise<LanguageTarget> {
+    const client = new ShareOjClient();
+    return {
+        platform: "shareoj",
+        displayName: "ShareOJ",
+        async list() {
+            return (await client.getRuntimes()).map((runtime) => ({
+                id: runtime.id,
+                name: runtime.label,
+            }));
+        },
+    };
+}
+
 async function createDefaultLanguageTarget(
     input: CreateLanguageTargetInput,
 ): Promise<LanguageTarget | undefined> {
     if (input.platform === "atcoder") {
         return await createAtCoderLanguageTarget(input);
+    }
+    if (input.platform === "shareoj") {
+        return await createShareOjLanguageTarget();
     }
 
     return await createYukicoderLanguageTarget();

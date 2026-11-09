@@ -167,6 +167,25 @@ export function parseShareOjContestProblemUrl(value: string): ShareOjContestProb
     return { contestShortId: segments[1] ?? "", label: segments[2] ?? "" };
 }
 
+/** The contest page of a contest problem's contest. */
+export function buildShareOjContestUrl(contestShortId: string): URL {
+    return new URL(`/contests/${contestShortId}`, SITE_ORIGIN);
+}
+
+/** The problem's public submissions page. */
+export function buildShareOjProblemSubmissionsUrl(shortId: string): URL {
+    return new URL(`/problems/${shortId}/submissions`, SITE_ORIGIN);
+}
+
+/** The contest's submissions list narrowed to one problem label. */
+export function buildShareOjContestSubmissionsUrl(contestShortId: string, label: string): URL {
+    const url = new URL(`/contests/${contestShortId}`, SITE_ORIGIN);
+    url.searchParams.set("view", "submissions");
+    url.searchParams.set("problem", label);
+
+    return url;
+}
+
 /** The validated 22-character site short ID of a ShareOJ problem URL. */
 export function extractShareOjShortId(value: string | URL): string {
     const problemUrl = parseShareOjProblemUrl(value.toString());
@@ -297,6 +316,143 @@ function normalizeSampleText(value: string): string {
     return value.replaceAll("\r\n", "\n").replace(/\n$/u, "");
 }
 
+/** The platform-side error code carried by `{"error": "<code>"}` responses. */
+export type ShareOjErrorCode = string;
+
+export class ShareOjApiError extends Error {
+    constructor(
+        readonly status: number,
+        readonly code: ShareOjErrorCode | undefined,
+    ) {
+        super(
+            code === undefined
+                ? `ShareOJ request failed (${status}).`
+                : `ShareOJ request failed (${status}, "${code}").`,
+        );
+        this.name = "ShareOjApiError";
+    }
+}
+
+/** Tokens returned by `/auth/login`, `/auth/challenge`, and `/auth/refresh`. */
+export interface ShareOjTokens {
+    accessToken: string;
+    /** Long-lived; absent when the server did not return one. */
+    refreshToken?: string;
+    /** Absolute expiry instant of the access token, when reported. */
+    expiresAt?: Temporal.Instant;
+}
+
+interface RawAuthResult {
+    access_token?: string;
+    refresh_token?: string;
+    expires_in?: number;
+    challenge_name?: string;
+    session?: string;
+    challenge_parameters?: Record<string, string>;
+}
+
+/** A Cognito-style login challenge that must be continued with `/auth/challenge`. */
+export interface ShareOjChallenge {
+    name: string;
+    session: string;
+    parameters: Record<string, string>;
+}
+
+export interface ShareOjRuntime {
+    id: string;
+    label: string;
+}
+
+export interface ShareOjSubmissionRequest {
+    problemId: string;
+    /** Set when the problem belongs to a contest and the user participates. */
+    contestId?: string;
+    runtime: string;
+    source: string;
+}
+
+export interface ShareOjSubmission {
+    id: string;
+}
+
+/** Map a non-2xx API response with a JSON error body into `ShareOjApiError`. */
+async function parseErrorResponse(response: Response): Promise<ShareOjApiError> {
+    let code: string | undefined;
+    try {
+        const body: unknown = await response.json();
+        if (
+            typeof body === "object" &&
+            body !== null &&
+            typeof (body as { error?: unknown }).error === "string"
+        ) {
+            code = (body as { error: string }).error;
+        }
+    } catch {
+        // A non-JSON body still yields a status-only error.
+    }
+
+    return new ShareOjApiError(response.status, code);
+}
+
+async function parseAuthResult(
+    response: Response,
+    refreshToken: string | undefined,
+): Promise<ShareOjTokens | ShareOjChallenge> {
+    if (!response.ok) {
+        throw await parseErrorResponse(response);
+    }
+
+    const body: unknown = await response.json();
+    if (typeof body !== "object" || body === null) {
+        throw new Error("ShareOJ login response was malformed.");
+    }
+    const raw = body as RawAuthResult;
+    if (typeof raw.challenge_name === "string" && typeof raw.session === "string") {
+        return {
+            name: raw.challenge_name,
+            session: raw.session,
+            parameters: raw.challenge_parameters ?? {},
+        };
+    }
+    if (typeof raw.access_token !== "string" || raw.access_token === "") {
+        throw new Error("ShareOJ login did not return an access token.");
+    }
+
+    return {
+        accessToken: raw.access_token,
+        refreshToken: typeof raw.refresh_token === "string" ? raw.refresh_token : refreshToken,
+        expiresAt:
+            typeof raw.expires_in === "number"
+                ? Temporal.Now.instant().add({ seconds: raw.expires_in })
+                : undefined,
+    };
+}
+
+/**
+ * Submit a JSON body to an authenticated endpoint. Returns the response so
+ * callers can distinguish success bodies; throws `ShareOjApiError` on failure.
+ */
+async function requestAuthJson(
+    url: URL,
+    token: string,
+    init: RequestInit & { body: string },
+): Promise<unknown> {
+    const response = await request(url, {
+        ...init,
+        headers: {
+            ...init.headers,
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+        },
+    });
+    if (!response.ok) {
+        throw await parseErrorResponse(response);
+    }
+
+    return response.json();
+}
+
 interface ShareOjContestProblems {
     problems?: Array<{ id?: string } | undefined> | null;
 }
@@ -399,5 +555,140 @@ export class ShareOjClient {
             samples,
             key: { platform: "shareoj", slug: encodeShareOjShortId(problemId) },
         };
+    }
+
+    /**
+     * Start an email + password login. Returns tokens, or a challenge that
+     * must be continued with `continueChallenge` (MFA, new password, ...).
+     */
+    async login(username: string, password: string): Promise<ShareOjTokens | ShareOjChallenge> {
+        const response = await request(new URL("/auth/login", API_ORIGIN), {
+            method: "POST",
+            headers: {
+                "User-Agent": USER_AGENT,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+            body: JSON.stringify({ username, password }),
+        });
+
+        return await parseAuthResult(response, undefined);
+    }
+
+    /** Continue a login challenge with the user's responses. */
+    async continueChallenge(
+        username: string,
+        challenge: ShareOjChallenge,
+        responses: Record<string, string>,
+    ): Promise<ShareOjTokens | ShareOjChallenge> {
+        const response = await request(new URL("/auth/challenge", API_ORIGIN), {
+            method: "POST",
+            headers: {
+                "User-Agent": USER_AGENT,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+            body: JSON.stringify({
+                username,
+                challenge_name: challenge.name,
+                session: challenge.session,
+                responses,
+            }),
+        });
+
+        return await parseAuthResult(response, undefined);
+    }
+
+    /** Exchange a refresh token for new tokens. */
+    async refresh(refreshToken: string): Promise<ShareOjTokens> {
+        const response = await request(new URL("/auth/refresh", API_ORIGIN), {
+            method: "POST",
+            headers: {
+                "User-Agent": USER_AGENT,
+                "Content-Type": "application/json",
+                Accept: "application/json",
+            },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+        const result = await parseAuthResult(response, refreshToken);
+        if ("name" in result) {
+            throw new Error("ShareOJ token refresh returned an unexpected challenge.");
+        }
+
+        return result;
+    }
+
+    /** Check an access token against `/auth/me` and return the user ID. */
+    async getMe(token: string): Promise<string | undefined> {
+        const response = await request(new URL("/auth/me", API_ORIGIN), {
+            headers: {
+                "User-Agent": USER_AGENT,
+                Accept: "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        if (!response.ok) {
+            throw await parseErrorResponse(response);
+        }
+
+        const body: unknown = await response.json();
+        if (typeof body !== "object" || body === null) {
+            return undefined;
+        }
+        const user = (body as { user?: unknown }).user;
+        if (typeof user !== "object" || user === null) {
+            return undefined;
+        }
+
+        return typeof (user as { id?: unknown }).id === "string"
+            ? (user as { id: string }).id
+            : undefined;
+    }
+
+    /** The language runtimes available for submissions. */
+    async getRuntimes(): Promise<ShareOjRuntime[]> {
+        const response = await requestJson<{ items?: ShareOjRuntime[] }>(
+            new URL("/runtimes", API_ORIGIN),
+            "ShareOJ runtimes response was malformed.",
+        );
+
+        return Array.isArray(response.items) ? response.items : [];
+    }
+
+    /**
+     * Submit a source file. The server accepts the submission immediately
+     * (HTTP 202) and returns it with an ID for later status checks.
+     */
+    async submit(token: string, request: ShareOjSubmissionRequest): Promise<ShareOjSubmission> {
+        const body: unknown = await requestAuthJson(new URL("/my/submissions", API_ORIGIN), token, {
+            method: "POST",
+            body: JSON.stringify({
+                contestId: request.contestId,
+                problemId: request.problemId,
+                runtime: request.runtime,
+                source: request.source,
+            }),
+        });
+        if (typeof body !== "object" || body === null) {
+            throw new Error("ShareOJ submission response was malformed.");
+        }
+        const id = (body as { id?: unknown }).id;
+        if (typeof id !== "string" || !UUID_PATTERN.test(id)) {
+            throw new Error("ShareOJ submission response has no submission ID.");
+        }
+
+        return { id };
+    }
+
+    /**
+     * The submission page URL shown after a successful submission. A contest
+     * submission has its own per-problem list.
+     */
+    static submissionUrl(submissionId: string, contestShortId?: string): string {
+        const id = encodeShareOjShortId(submissionId);
+        return contestShortId === undefined
+            ? `${SITE_ORIGIN}/my/submissions/${id}`
+            : `${SITE_ORIGIN}/contests/${contestShortId}/my-submissions/${id}`;
     }
 }

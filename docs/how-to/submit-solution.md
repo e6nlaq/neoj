@@ -8,7 +8,7 @@ neoj submits                  # alias
 ```
 
 `neoj submit` sends the solution to the problem recorded by `.neoj/problem.json`,
-so download the problem first. It works with AtCoder and yukicoder.
+so download the problem first. It works with AtCoder, yukicoder, and ShareOJ.
 
 ## Before you submit
 
@@ -174,6 +174,13 @@ there. In that case set `submit.clip = "fail"` to have the text ready to paste.
 
 yukicoder accepts submissions through the same API as its web form, so no contest
 window is recorded or required.
+
+ShareOJ submissions use the official API with the login from
+`neoj login shareoj`. A problem downloaded from a contest URL is submitted
+into that contest, and ShareOJ reports `contest_participation_required` when
+you have not joined it yet; join the contest on the website and submit again.
+The command returns as soon as ShareOJ accepts the submission and prints the
+submission page URL; the URL of a contest submission is contest-specific.
 
 ## Related
 

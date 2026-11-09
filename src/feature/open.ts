@@ -4,6 +4,13 @@ import { consola } from "consola";
 import { findProblemSource } from "@/feature/problem-sources";
 import { buildAtCoderContestUrl, buildAtCoderSubmissionsUrl } from "@/lib/service/atcoder";
 import { buildCodeforcesContestUrl, extractCodeforcesProblemRoute } from "@/lib/service/codeforces";
+import {
+    buildShareOjContestSubmissionsUrl,
+    buildShareOjContestUrl,
+    buildShareOjProblemSubmissionsUrl,
+    extractShareOjShortId,
+    parseShareOjContestProblemUrl,
+} from "@/lib/service/shareoj";
 import { buildYukicoderSubmissionsUrl, fetchYukicoderContestUrl } from "@/lib/service/yukicoder";
 import { openInBrowser } from "@/lib/util/browser";
 import { copyToClipboard } from "@/lib/util/clipboard";
@@ -53,10 +60,22 @@ export async function resolveOpenUrl(
             throw new TypeError(
                 'AOJ does not support "neoj open --contest" or "neoj open --submissions" yet.',
             );
-        case "shareoj":
-            throw new TypeError(
-                'ShareOJ does not support "neoj open --contest" or "neoj open --submissions" yet.',
-            );
+        case "shareoj": {
+            try {
+                const route = parseShareOjContestProblemUrl(problemUrl);
+                if (target === "contest") {
+                    return buildShareOjContestUrl(route.contestShortId).href;
+                }
+                return buildShareOjContestSubmissionsUrl(route.contestShortId, route.label).href;
+            } catch {
+                if (target === "contest") {
+                    throw new TypeError(
+                        'ShareOJ does not support "neoj open --contest" for a standalone problem URL.',
+                    );
+                }
+                return buildShareOjProblemSubmissionsUrl(extractShareOjShortId(problemUrl)).href;
+            }
+        }
         case "codeforces":
             if (target === "submissions") {
                 throw new TypeError('Codeforces does not support "neoj open --submissions" yet.');

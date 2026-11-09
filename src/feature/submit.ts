@@ -7,9 +7,17 @@ import { confirm } from "@inquirer/prompts";
 import { consola } from "consola";
 
 import { getAtCoderSession, loginToAtCoder } from "@/feature/login/atcoder";
+import { getShareOjAccessToken, loginToShareOj } from "@/feature/login/shareoj";
 import { getYukicoderAuth, isYukicoderLoggedIn, loginToYukicoder } from "@/feature/login/yukicoder";
 import { findProblemSource } from "@/feature/problem-sources";
 import { AtCoderClient, parseAtCoderTask, type AtCoderSubmitPage } from "@/lib/service/atcoder";
+import {
+    decodeShareOjShortId,
+    parseShareOjContestProblemUrl,
+    parseShareOjProblemId,
+    ShareOjApiError,
+    ShareOjClient,
+} from "@/lib/service/shareoj";
 import { YukicoderClient } from "@/lib/service/yukicoder";
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
 import { readAuth } from "@/lib/util/auth";
@@ -22,6 +30,7 @@ import type { ProblemMetadata } from "@/lib/util/problem-metadata";
 import { readProblemMetadata } from "@/lib/util/problem-metadata";
 import type { ProgressStream } from "@/lib/util/progress";
 import { requireInitializedProject } from "@/lib/util/project";
+import type { ProblemKey } from "@/lib/util/stash";
 import {
     detectLanguage,
     expandTokens,
@@ -31,7 +40,7 @@ import {
     type TestLanguage,
 } from "@/lib/util/test-runner";
 
-export type SubmitPlatform = "atcoder" | "yukicoder";
+export type SubmitPlatform = "atcoder" | "yukicoder" | "shareoj";
 
 export interface SubmitLanguageCandidate {
     id: string;
@@ -60,6 +69,8 @@ export interface CreateTargetInput {
     problemUrl: string;
     displayName: string;
     config: Config;
+    /** The problem key recorded at download time (ShareOJ contest URLs). */
+    problemKey?: ProblemKey;
 }
 
 export interface SubmitDependencies {
@@ -358,7 +369,7 @@ export async function prepareSubmissionSource(options: PrepareSubmissionOptions)
 }
 
 function toSubmitPlatform(name: string): SubmitPlatform {
-    if (name === "atcoder" || name === "yukicoder") {
+    if (name === "atcoder" || name === "yukicoder" || name === "shareoj") {
         return name;
     }
 
@@ -411,6 +422,9 @@ async function createDefaultTarget(
 ): Promise<SubmissionTarget | undefined> {
     if (input.platform === "atcoder") {
         return await createAtCoderTarget(input);
+    }
+    if (input.platform === "shareoj") {
+        return await createShareOjTarget(input);
     }
 
     return await createYukicoderTarget(input);
@@ -465,6 +479,110 @@ async function createAtCoderTarget(
         },
         async submit(source, languageId) {
             return await client.submit(input.problemUrl, languageId, source, page);
+        },
+    };
+}
+
+async function createShareOjTarget(
+    input: CreateTargetInput,
+): Promise<SubmissionTarget | undefined> {
+    const client = new ShareOjClient();
+    const auth = await readAuth();
+    let token = await getShareOjAccessToken(auth.shareoj, client);
+
+    if (token === undefined) {
+        if (!input.config.login.auto_login) {
+            throw new Error(
+                'Not logged in to ShareOJ. Run "neoj login shareoj" or set login.auto_login = true.',
+            );
+        }
+
+        const accepted = await loginToShareOj();
+        if (!accepted) {
+            return undefined;
+        }
+
+        token = await getShareOjAccessToken((await readAuth()).shareoj, client);
+        if (token === undefined) {
+            throw new Error(
+                'ShareOJ login did not save a credential. Run "neoj login shareoj" and try again.',
+            );
+        }
+    }
+
+    // The problem ID is the UUID the API accepted at download time. A direct
+    // problem URL can be decoded offline; a contest URL relies on the stored key.
+    let problemId: string;
+    try {
+        problemId =
+            input.problemKey !== undefined
+                ? decodeShareOjShortId(input.problemKey.slug)
+                : parseShareOjProblemId(input.problemUrl);
+    } catch {
+        throw new Error(
+            `Could not determine the ShareOJ problem ID from "${input.problemUrl}". Run "neoj download ${input.problemUrl}" again to record it.`,
+        );
+    }
+
+    let contestShortId: string | undefined;
+    try {
+        contestShortId = parseShareOjContestProblemUrl(input.problemUrl).contestShortId;
+    } catch {
+        contestShortId = undefined;
+    }
+    const contestId =
+        contestShortId === undefined ? undefined : decodeShareOjShortId(contestShortId);
+
+    return {
+        platform: "shareoj",
+        displayName: input.displayName,
+        async prepare() {
+            return [];
+        },
+        async getLanguages() {
+            return (await client.getRuntimes()).map((runtime) => ({
+                id: runtime.id,
+                name: runtime.label,
+            }));
+        },
+        async submit(source, languageId) {
+            // `token` is narrowed outside this closure; capture it explicitly.
+            const initialToken: string = token;
+            let submission: Awaited<ReturnType<ShareOjClient["submit"]>>;
+            try {
+                submission = await client.submit(initialToken, {
+                    problemId,
+                    contestId,
+                    runtime: languageId,
+                    source,
+                });
+            } catch (error) {
+                // The access token may have expired since the last refresh.
+                if (error instanceof ShareOjApiError && error.status === 401) {
+                    const renewed = await getShareOjAccessToken((await readAuth()).shareoj, client);
+                    if (renewed !== undefined) {
+                        const freshToken = renewed;
+                        submission = await client.submit(freshToken, {
+                            problemId,
+                            contestId,
+                            runtime: languageId,
+                            source,
+                        });
+                    } else {
+                        throw new Error(
+                            'The ShareOJ session has expired. Run "neoj login shareoj" and try again.',
+                            { cause: error },
+                        );
+                    }
+                } else {
+                    throw error;
+                }
+            }
+
+            return {
+                submissionId: submission.id,
+                submissionUrl: ShareOjClient.submissionUrl(submission.id, contestShortId),
+            };
         },
     };
 }
@@ -660,6 +778,7 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
         problemUrl: metadata.url,
         displayName: problemSource.displayName,
         config: options.config,
+        problemKey: metadata.key,
     });
     if (target === undefined) {
         info("Login cancelled.");

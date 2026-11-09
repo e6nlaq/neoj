@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 
 import { deriveProblemKey } from "@/feature/problem-sources";
 import {
+    ShareOjApiError,
     ShareOjClient,
     ShareOjProblemRequestError,
     decodeShareOjShortId,
@@ -233,6 +234,127 @@ describe("ShareOjClient", () => {
         await expect(new ShareOjClient().getProblem(problemUrl)).rejects.toBeInstanceOf(
             ShareOjProblemRequestError,
         );
+    });
+});
+
+describe("ShareOjClient authentication and submission", () => {
+    function assertBody(init: RequestInit | undefined, expected: unknown): void {
+        expect(JSON.parse(String(init?.body))).toEqual(expected);
+    }
+
+    it("logs in and reports challenges", async () => {
+        let calls: Array<{ url: string; body?: unknown }> = [];
+        setFetch(async (input, init) => {
+            const url = String(input);
+            calls.push({
+                url,
+                body: init?.body === undefined ? undefined : JSON.parse(String(init.body)),
+            });
+            if (url.endsWith("/auth/login")) {
+                return jsonResponse({ challenge_name: "EMAIL_OTP", session: "sess-1" }, 200);
+            }
+            if (url.endsWith("/auth/challenge")) {
+                return jsonResponse(
+                    { access_token: "tok", refresh_token: "ref", expires_in: 3600 },
+                    200,
+                );
+            }
+            throw new Error(`Unexpected fetch: ${url}`);
+        });
+        const client = new ShareOjClient();
+
+        const first = await client.login("user@example.com", "pw");
+        expect(first).toEqual({ name: "EMAIL_OTP", session: "sess-1", parameters: {} });
+
+        const second = await client.continueChallenge("user@example.com", first as never, {
+            EMAIL_OTP_CODE: "123456",
+        });
+        expect(second).toEqual({
+            accessToken: "tok",
+            refreshToken: "ref",
+            expiresAt: expect.anything(),
+        });
+        expect(calls[1]?.body).toEqual({
+            username: "user@example.com",
+            challenge_name: "EMAIL_OTP",
+            session: "sess-1",
+            responses: { EMAIL_OTP_CODE: "123456" },
+        });
+        calls = [];
+    });
+
+    it("refreshes tokens", async () => {
+        setFetch(async (input, init) => {
+            assertBody(init, { refresh_token: "ref" });
+            return jsonResponse({ access_token: "tok2", expires_in: 100 }, 200);
+        });
+
+        const tokens = await new ShareOjClient().refresh("ref");
+        expect(tokens).toEqual({
+            accessToken: "tok2",
+            refreshToken: "ref",
+            expiresAt: expect.anything(),
+        });
+    });
+
+    it("checks /auth/me", async () => {
+        setFetch(async (input, init) => {
+            expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer tok");
+            return jsonResponse({ user: { id: "u1" } }, 200);
+        });
+
+        await expect(new ShareOjClient().getMe("tok")).resolves.toBe("u1");
+    });
+
+    it("submits code and builds the submission URL", async () => {
+        setFetch(async (input, init) => {
+            expect(String(input)).toBe("https://api.share-oj.net/my/submissions");
+            assertBody(init, {
+                contestId: "c1",
+                problemId: "p1",
+                runtime: "cpp23-gcc",
+                source: "int main(){}",
+            });
+            return jsonResponse({ id: "02515831-bafa-45f1-8ab7-ff8ffd7b5c13" }, 202);
+        });
+
+        const submission = await new ShareOjClient().submit("tok", {
+            problemId: "p1",
+            contestId: "c1",
+            runtime: "cpp23-gcc",
+            source: "int main(){}",
+        });
+        expect(submission.id).toBe("02515831-bafa-45f1-8ab7-ff8ffd7b5c13");
+        expect(ShareOjClient.submissionUrl(submission.id)).toBe(
+            "https://www.share-oj.net/my/submissions/04N9rxR9eGNCjAvBNfjU8Z",
+        );
+        expect(ShareOjClient.submissionUrl(submission.id, "6hxOlRWKFEHO8PdlMXxVPN")).toBe(
+            "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/my-submissions/04N9rxR9eGNCjAvBNfjU8Z",
+        );
+    });
+
+    it("lists runtimes", async () => {
+        setFetch(async () =>
+            jsonResponse(
+                { items: [{ id: "cpp23-gcc", label: "C++23 (GCC)" }], maintenance: false },
+                200,
+            ),
+        );
+
+        await expect(new ShareOjClient().getRuntimes()).resolves.toEqual([
+            { id: "cpp23-gcc", label: "C++23 (GCC)" },
+        ]);
+    });
+
+    it("maps API error codes to ShareOjApiError", async () => {
+        setFetch(async () => jsonResponse({ error: "contest_participation_required" }, 400));
+
+        await expect(
+            new ShareOjClient().submit("tok", { problemId: "p", runtime: "r", source: "s" }),
+        ).rejects.toThrow(/contest_participation_required/u);
+        await expect(
+            new ShareOjClient().submit("tok", { problemId: "p", runtime: "r", source: "s" }),
+        ).rejects.toBeInstanceOf(ShareOjApiError);
     });
 });
 

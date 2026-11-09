@@ -17,6 +17,24 @@ neoj login atcoder
    Paste only that cookie, not a full cookie header that contains `;`.
 3. `neoj` checks the session against AtCoder before saving it.
 
+## Log in to ShareOJ
+
+```bash
+neoj login shareoj
+neoj login shareoj --method password
+```
+
+1. Enter your ShareOJ email and password at the prompts.
+2. If the account requires additional verification (an MFA code, an email
+   one-time code, or a new password), `neoj` asks for it and continues the
+   login.
+3. `neoj` checks the session against `/auth/me` before saving the access and
+   refresh tokens.
+
+Accounts created through Google must set a password on the ShareOJ website
+first; there is no Google flow in the CLI. A saved access token is refreshed
+automatically while the refresh token (about 30 days) stays valid.
+
 ## Log in to yukicoder
 
 The default method uses a CLI token that is only allowed to submit and to check

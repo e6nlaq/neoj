@@ -233,13 +233,13 @@ describe("resolveLanguagesPlatform", () => {
             }),
         ).toBe("yukicoder");
         expect(() => resolveLanguagesPlatform("codeforces", undefined)).toThrow(
-            'Unsupported platform "codeforces". Supported platforms: atcoder, yukicoder.',
+            'Unsupported platform "codeforces". Supported platforms: atcoder, yukicoder, shareoj.',
         );
     });
 
     it("asks for a platform when no problem is recorded", () => {
         expect(() => resolveLanguagesPlatform(undefined, undefined)).toThrow(
-            'No problem is recorded. Pass a platform: "neoj languages atcoder" or "neoj languages yukicoder".',
+            'No problem is recorded. Pass a platform: "neoj languages atcoder", "neoj languages yukicoder", or "neoj languages shareoj".',
         );
     });
 });

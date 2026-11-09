@@ -57,7 +57,7 @@ describe("buildCompletionModel", () => {
             model.commands
                 .find((command) => command.name === "login")
                 ?.commands.map((command) => command.name),
-        ).toEqual(["atcoder", "yukicoder"]);
+        ).toEqual(["atcoder", "yukicoder", "shareoj"]);
         expect(
             model.commands
                 .find((command) => command.name === "stash")
@@ -75,15 +75,29 @@ describe("buildCompletionModel", () => {
         expect(service?.valueCandidates.map((candidate) => candidate.value)).toEqual([
             "atcoder",
             "yukicoder",
+            "shareoj",
         ]);
 
         const yukicoder = entries.find((entry) => commandPathKey(entry.path) === "login yukicoder");
         const method = yukicoder?.command.options.find((option) =>
             option.flags.includes("--method"),
         );
+        // The --method hint is shared by every platform, so it lists all
+        // platforms' methods.
         expect(method?.valueCandidates.map((candidate) => candidate.value)).toEqual([
             "token",
             "api-key",
+            "password",
+        ]);
+
+        const shareOj = entries.find((entry) => commandPathKey(entry.path) === "login shareoj");
+        const shareOjMethod = shareOj?.command.options.find((option) =>
+            option.flags.includes("--method"),
+        );
+        expect(shareOjMethod?.valueCandidates.map((candidate) => candidate.value)).toEqual([
+            "token",
+            "api-key",
+            "password",
         ]);
     });
 
@@ -129,6 +143,7 @@ describe("buildCompletionModel", () => {
         expect(languages?.args[0]?.candidates.map((candidate) => candidate.value)).toEqual([
             "atcoder",
             "yukicoder",
+            "shareoj",
         ]);
     });
 
