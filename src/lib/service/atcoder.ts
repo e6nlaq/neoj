@@ -462,6 +462,12 @@ export class AtCoderClient {
     ): Promise<AtCoderSubmissionResult> {
         const task = parseTaskPath(url);
         const submitPage = page ?? (await this.getSubmitPage(url));
+        if (!submitPage.languages.some((language) => language.id === languageId)) {
+            throw new Error(
+                `AtCoder does not recognize the language ID "${languageId}". Set a valid ID with "neoj languages atcoder", --platform-language, or languages.<key>.submit.atcoder.`,
+            );
+        }
+
         const body = new URLSearchParams({
             csrf_token: submitPage.csrfToken,
             "data.TaskScreenName": submitPage.taskScreenName,
