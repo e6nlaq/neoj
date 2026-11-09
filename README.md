@@ -57,7 +57,7 @@ but submissions and sessions are not implemented yet.
 - [Submit a solution](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/submit-solution.md)
 - [Stash and restore work per problem](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/stash-work.md)
 - [Configure a project](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/configure-project.md)
-- [Contribute](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/contribute.md)
+- [Contribute (issues only)](https://github.com/e6nlaq/neoj/blob/main/CONTRIBUTING.md)
 
 ### Look up
 
@@ -69,6 +69,16 @@ but submissions and sessions are not implemented yet.
 
 - [Platforms and integrations](https://github.com/e6nlaq/neoj/blob/main/docs/explanation/platforms.md)
 - [Sessions and credential security](https://github.com/e6nlaq/neoj/blob/main/docs/explanation/sessions.md)
+
+## Contributing
+
+Contributions are accepted as **GitHub Issues only**. Pull requests are not
+accepted and will be closed without review. Please use the issue templates for
+bug reports and feature requests, or
+[Discussions](https://github.com/e6nlaq/neoj/discussions) for questions.
+
+See [CONTRIBUTING.md](https://github.com/e6nlaq/neoj/blob/main/CONTRIBUTING.md)
+for details and local development instructions.
 
 ## Acknowledgements
 
