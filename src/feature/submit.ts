@@ -7,13 +7,24 @@ import { confirm } from "@inquirer/prompts";
 import { consola } from "consola";
 
 import { getAtCoderSession, loginToAtCoder } from "@/feature/login/atcoder";
+import { getShareOjAccessToken, loginToShareOj } from "@/feature/login/shareoj";
 import { getYukicoderAuth, isYukicoderLoggedIn, loginToYukicoder } from "@/feature/login/yukicoder";
 import { findProblemSource } from "@/feature/problem-sources";
 import { AtCoderClient, parseAtCoderTask, type AtCoderSubmitPage } from "@/lib/service/atcoder";
+import {
+    buildShareOjSubmissionUrl,
+    decodeShareOjShortId,
+    parseShareOjContestProblemUrl,
+    parseShareOjProblemId,
+    ShareOjApiError,
+    ShareOjClient,
+    type ShareOjSubmission,
+} from "@/lib/service/shareoj";
 import { YukicoderClient } from "@/lib/service/yukicoder";
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
 import { readAuth } from "@/lib/util/auth";
 import { openInBrowser } from "@/lib/util/browser";
+import { formatBytes } from "@/lib/util/bytes";
 import { copyToClipboard } from "@/lib/util/clipboard";
 import { runCommand } from "@/lib/util/command-runner";
 import { loadConfig, type Config } from "@/lib/util/config";
@@ -22,6 +33,8 @@ import type { ProblemMetadata } from "@/lib/util/problem-metadata";
 import { readProblemMetadata } from "@/lib/util/problem-metadata";
 import type { ProgressStream } from "@/lib/util/progress";
 import { requireInitializedProject } from "@/lib/util/project";
+import { formatSourceLimit, sourceLimitBytes } from "@/lib/util/source-limit";
+import type { ProblemKey } from "@/lib/util/stash";
 import {
     detectLanguage,
     expandTokens,
@@ -31,7 +44,7 @@ import {
     type TestLanguage,
 } from "@/lib/util/test-runner";
 
-export type SubmitPlatform = "atcoder" | "yukicoder";
+export type SubmitPlatform = "atcoder" | "yukicoder" | "shareoj";
 
 export interface SubmitLanguageCandidate {
     id: string;
@@ -60,6 +73,8 @@ export interface CreateTargetInput {
     problemUrl: string;
     displayName: string;
     config: Config;
+    /** The problem key recorded at download time (ShareOJ contest URLs). */
+    problemKey?: ProblemKey;
 }
 
 export interface SubmitDependencies {
@@ -138,17 +153,6 @@ export function formatSubmitPreview(
         "...",
         ...numberLines(lines.slice(-limit), total - limit + 1, total, styles),
     ];
-}
-
-function formatBytes(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-    if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(1)} KiB`;
-    }
-
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
 /** A one-line description of the submitted text's size. */
@@ -358,7 +362,7 @@ export async function prepareSubmissionSource(options: PrepareSubmissionOptions)
 }
 
 function toSubmitPlatform(name: string): SubmitPlatform {
-    if (name === "atcoder" || name === "yukicoder") {
+    if (name === "atcoder" || name === "yukicoder" || name === "shareoj") {
         return name;
     }
 
@@ -411,6 +415,9 @@ async function createDefaultTarget(
 ): Promise<SubmissionTarget | undefined> {
     if (input.platform === "atcoder") {
         return await createAtCoderTarget(input);
+    }
+    if (input.platform === "shareoj") {
+        return await createShareOjTarget(input);
     }
 
     return await createYukicoderTarget(input);
@@ -465,6 +472,104 @@ async function createAtCoderTarget(
         },
         async submit(source, languageId) {
             return await client.submit(input.problemUrl, languageId, source, page);
+        },
+    };
+}
+
+async function createShareOjTarget(
+    input: CreateTargetInput,
+): Promise<SubmissionTarget | undefined> {
+    const client = new ShareOjClient();
+    const auth = await readAuth();
+    let token = await getShareOjAccessToken(auth.shareoj, client);
+
+    if (token === undefined) {
+        if (!input.config.login.auto_login) {
+            throw new Error(
+                'Not logged in to ShareOJ. Run "neoj login shareoj" or set login.auto_login = true.',
+            );
+        }
+
+        const accepted = await loginToShareOj();
+        if (!accepted) {
+            return undefined;
+        }
+
+        token = await getShareOjAccessToken((await readAuth()).shareoj, client);
+        if (token === undefined) {
+            throw new Error(
+                'ShareOJ login did not save a credential. Run "neoj login shareoj" and try again.',
+            );
+        }
+    }
+    const accessToken = token;
+
+    // The problem ID is the UUID the API accepted at download time. A direct
+    // problem URL can be decoded offline; a contest URL relies on the stored key.
+    let problemId: string;
+    try {
+        problemId =
+            input.problemKey !== undefined
+                ? decodeShareOjShortId(input.problemKey.slug)
+                : parseShareOjProblemId(input.problemUrl);
+    } catch {
+        throw new Error(
+            `Could not determine the ShareOJ problem ID from "${input.problemUrl}". Run "neoj download ${input.problemUrl}" again to record it.`,
+        );
+    }
+
+    let contestShortId: string | undefined;
+    try {
+        contestShortId = parseShareOjContestProblemUrl(input.problemUrl).contestShortId;
+    } catch {
+        contestShortId = undefined;
+    }
+    const contestId =
+        contestShortId === undefined ? undefined : decodeShareOjShortId(contestShortId);
+
+    return {
+        platform: "shareoj",
+        displayName: input.displayName,
+        async prepare() {
+            return [];
+        },
+        async getLanguages() {
+            return (await client.getRuntimes()).map((runtime) => ({
+                id: runtime.id,
+                name: runtime.label,
+            }));
+        },
+        async submit(source, languageId) {
+            const post = (credential: string) =>
+                client.submit(credential, {
+                    problemId,
+                    contestId,
+                    runtime: languageId,
+                    source,
+                });
+
+            let submission: ShareOjSubmission;
+            try {
+                submission = await post(accessToken);
+            } catch (error) {
+                // The access token may have expired since it was read.
+                if (!(error instanceof ShareOjApiError) || error.status !== 401) {
+                    throw error;
+                }
+                const renewed = await getShareOjAccessToken((await readAuth()).shareoj, client);
+                if (renewed === undefined) {
+                    throw new Error(
+                        'The ShareOJ session has expired. Run "neoj login shareoj" and try again.',
+                        { cause: error },
+                    );
+                }
+                submission = await post(renewed);
+            }
+
+            return {
+                submissionId: submission.id,
+                submissionUrl: buildShareOjSubmissionUrl(submission.id, contestShortId),
+            };
         },
     };
 }
@@ -540,6 +645,8 @@ export interface RunSubmitOptions {
     /** `false` skips the presubmit command. */
     presubmit?: boolean;
     dryRun?: boolean;
+    /** Submit even when the source is over the platform's documented limit. */
+    ignoreLimit?: boolean;
     /** undefined uses `submit.open`. */
     open?: boolean;
     stdout?: ProgressStream;
@@ -610,6 +717,26 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
         throw new Error(`"${resolved.relativePath}" is empty, so there is nothing to submit.`);
     }
 
+    // The limit applies to the text that is sent, after the presubmit command.
+    const sourceBytes = Buffer.byteLength(content, "utf8");
+    const sourceLimit = sourceLimitBytes[platform];
+    if (sourceBytes > sourceLimit) {
+        const limitLabel = formatSourceLimit(platform);
+        if (options.ignoreLimit === true) {
+            info(
+                `Skipped the source size check (--ignore-limit): ${formatBytes(sourceBytes)} for a ${limitLabel} limit.`,
+            );
+        } else if (options.config.submit.check_limit === false) {
+            info(
+                `Skipped the source size check (submit.check_limit = false): ${formatBytes(sourceBytes)} for a ${limitLabel} limit.`,
+            );
+        } else {
+            throw new Error(
+                `The source is ${formatBytes(sourceBytes)} (${sourceBytes.toLocaleString("en-US")} bytes), over the ${problemSource.displayName} limit of ${limitLabel} (${sourceLimit.toLocaleString("en-US")} bytes). Shorten it by at least ${formatBytes(sourceBytes - sourceLimit)}, or pass --ignore-limit to submit anyway.`,
+            );
+        }
+    }
+
     if (options.dryRun !== true && options.config.submit.clip === "always") {
         const copied = await (dependencies.copyToClipboard ?? copyToClipboard)(content);
         if (!copied) {
@@ -660,6 +787,7 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
         problemUrl: metadata.url,
         displayName: problemSource.displayName,
         config: options.config,
+        problemKey: metadata.key,
     });
     if (target === undefined) {
         info("Login cancelled.");
@@ -741,6 +869,7 @@ export function createSubmitCommand(): Command<[string | undefined]> {
         .option("--no-wait", "Submit immediately")
         .option("--no-presubmit", "Submit the source file without running presubmit")
         .option("--dry-run", "Show the preview without contacting the platform")
+        .option("--ignore-limit", "Submit even when the source is over the platform's limit")
         .option("--open", "Open the submission page after submitting")
         .option("--no-open", "Do not open the submission page")
         .action(async (source, options) => {
@@ -758,6 +887,7 @@ export function createSubmitCommand(): Command<[string | undefined]> {
                     waitSeconds: options.wait === false ? 0 : options.wait,
                     presubmit: options.presubmit,
                     dryRun: options.dryRun,
+                    ignoreLimit: options.ignoreLimit,
                     open: options.open,
                     stdout: process.stdout,
                     stderr: process.stderr,

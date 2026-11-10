@@ -1,4 +1,5 @@
 import { hasAtCoderCredentials, isAtCoderLoggedIn, loginToAtCoder } from "@/feature/login/atcoder";
+import { hasShareOjCredentials, isShareOjLoggedIn, loginToShareOj } from "@/feature/login/shareoj";
 import {
     hasYukicoderCredentials,
     isYukicoderLoggedIn,
@@ -49,5 +50,20 @@ export const platforms: Platform[] = [
         ],
         isLoggedIn: isYukicoderLoggedIn,
         hasCredentials: hasYukicoderCredentials,
+    },
+    {
+        name: "shareoj",
+        displayName: "ShareOJ",
+        description: "Log in to ShareOJ",
+        login: loginToShareOj,
+        loginOptions: [
+            {
+                flags: "--method <method>",
+                description: 'Authentication method: "password" (email and password)',
+                defaultValue: "password",
+            },
+        ],
+        isLoggedIn: isShareOjLoggedIn,
+        hasCredentials: hasShareOjCredentials,
     },
 ];

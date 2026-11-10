@@ -553,6 +553,15 @@ export const configSchema = v.pipe(
                         ),
                         30,
                     ),
+                    check_limit: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Refuse to submit a source that exceeds the platform's documented size limit. Set it to false when a platform changes its limit before neoj updates it; --ignore-limit does the same for one run.",
+                            ),
+                        ),
+                        true,
+                    ),
                 }),
                 v.description("How neoj submits a solution."),
             ),
@@ -563,6 +572,7 @@ export const configSchema = v.pipe(
                 clip: "never",
                 preview_lines: 5,
                 presubmit_timeout: 30,
+                check_limit: true,
             },
         ),
         languages: v.optional(

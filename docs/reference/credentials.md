@@ -20,6 +20,10 @@ that platform's credentials:
 - yukicoder stores either a CLI token (`method: "token"`, `token`, `expiresAt`)
   or an account API key (`method: "api-key"`, `apiKey`). The CLI token expires
   24 hours after it is issued; an expired token is treated as logged out.
+- ShareOJ stores `method: "password"` with `accessToken` and `refreshToken`,
+  plus the access token's `expiresAt`. The access token expires within 24
+  hours; `neoj` refreshes it with the refresh token (valid for about 30 days)
+  and saves the new pair automatically.
 
 ```json
 {
@@ -30,13 +34,20 @@ that platform's credentials:
         "method": "token",
         "token": "ysb_...",
         "expiresAt": "2026-11-02T00:00:00Z"
+    },
+    "shareoj": {
+        "method": "password",
+        "accessToken": "...",
+        "refreshToken": "...",
+        "expiresAt": "2026-11-02T00:00:00Z"
     }
 }
 ```
 
 The yukicoder token is used as a `Bearer` credential and is only valid for
 submitting and checking the logged-in user. An API key has broader access and
-should be treated the same way as a password.
+should be treated the same way as a password. The ShareOJ tokens grant the same
+access as a browser login and must be treated like a password.
 
 The file is rewritten whenever a session is saved or removed, and deleted once
 no platform sessions remain.

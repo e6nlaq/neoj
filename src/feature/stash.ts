@@ -51,7 +51,7 @@ export async function loadCurrentProblem(): Promise<CurrentProblem> {
     return {
         projectRoot,
         config,
-        key: deriveProblemKey(metadata.url),
+        key: metadata.key ?? deriveProblemKey(metadata.url),
         url: metadata.url,
     };
 }
@@ -104,7 +104,7 @@ export async function listProblemStashes(): Promise<StashListResult> {
     let current: ProblemKey | undefined;
     if (metadata !== undefined) {
         try {
-            current = deriveProblemKey(metadata.url);
+            current = metadata.key ?? deriveProblemKey(metadata.url);
         } catch {
             current = undefined;
         }

@@ -73,6 +73,7 @@ function createConfig(overrides: Partial<Config["submit"]> = {}): Config {
             clip: "never",
             preview_lines: 5,
             presubmit_timeout: 30,
+            check_limit: true,
             ...overrides,
         },
         testcase: { folder: "test", filename: "sample-{}" },
@@ -121,10 +122,24 @@ function setSubmitLanguage(config: Config, languageId = "5001"): Config {
     return config;
 }
 
+function setSubmitLanguages(
+    config: Config,
+    languages: Partial<Record<"atcoder" | "yukicoder" | "shareoj", string>>,
+): Config {
+    const cpp = config.languages.cpp;
+    if (cpp === undefined) {
+        throw new Error("test setup is missing the cpp language");
+    }
+
+    cpp.submit = { ...cpp.submit, ...languages };
+    return config;
+}
+
 async function createProject(
     options: {
         problemUrl?: string;
         contestrange?: { start: string; end: string };
+        problemKey?: { platform: string; slug: string };
     } = {},
 ): Promise<string> {
     testRoot = await mkdtemp(join(tmpdir(), "neoj-submit-test-"));
@@ -137,6 +152,7 @@ async function createProject(
             join(testRoot, ".neoj", "problem.json"),
             `${JSON.stringify({
                 url: options.problemUrl,
+                ...(options.problemKey === undefined ? {} : { key: options.problemKey }),
                 ...(options.contestrange === undefined
                     ? {}
                     : { contestrange: options.contestrange }),
@@ -158,6 +174,7 @@ function createFakeTarget(
             submissionUrl: string;
         }>;
         warnings?: string[];
+        platform?: "atcoder" | "yukicoder" | "shareoj";
     } = {},
 ): SubmissionTarget & {
     submitted: { source: string; languageId: string }[];
@@ -166,7 +183,7 @@ function createFakeTarget(
     const submitted: { source: string; languageId: string }[] = [];
     let prepared = 0;
     return {
-        platform: "atcoder",
+        platform: options.platform ?? "atcoder",
         displayName: "AtCoder",
         submitted,
         get prepared() {
@@ -532,6 +549,117 @@ describe("runSubmit", () => {
         ).rejects.toThrow("--dry-run cannot be combined with --platform-language.");
     });
 
+    /** A comment-only source of exactly `bytes` UTF-8 bytes. */
+    function largeSource(bytes: number): string {
+        const prefix = "// ";
+        return `${prefix}${"x".repeat(bytes - prefix.length - 1)}\n`;
+    }
+
+    it("refuses a source over the platform limit, even in dry-run mode", async () => {
+        const root = await createProject({ problemUrl: "https://yukicoder.me/problems/no/480" });
+        await Bun.write(join(root, "src", "main.cpp"), largeSource(128 * 1024 + 1));
+        const config = createConfig({ wait: 0 });
+        setSubmitLanguages(config, { yukicoder: "5001" });
+        let targetCreated = false;
+        const dependencies = {
+            createTarget: async () => {
+                targetCreated = true;
+                return createFakeTarget({ platform: "yukicoder" });
+            },
+        };
+
+        await expect(
+            runSubmit({
+                projectRoot: root,
+                config,
+                cwd: root,
+                dryRun: true,
+                waitSeconds: 0,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+                dependencies,
+            }),
+        ).rejects.toThrow(
+            "The source is 128.0 KiB (131,073 bytes), over the yukicoder limit of 128 KiB (131,072 bytes). Shorten it by at least 1 B, or pass --ignore-limit to submit anyway.",
+        );
+        expect(targetCreated).toBe(false);
+    });
+
+    it("accepts a source that exactly meets the limit", async () => {
+        const root = await createProject({ problemUrl: "https://yukicoder.me/problems/no/480" });
+        await Bun.write(join(root, "src", "main.cpp"), largeSource(128 * 1024));
+        const config = createConfig({ wait: 0, open: false });
+        setSubmitLanguages(config, { yukicoder: "5001" });
+
+        const result = await runSubmit({
+            projectRoot: root,
+            config,
+            cwd: root,
+            waitSeconds: 0,
+            yes: true,
+            stdout: createCapture().stream,
+            stderr: createCapture().stream,
+            dependencies: { createTarget: async () => createFakeTarget({ platform: "yukicoder" }) },
+        });
+
+        expect(result.status).toBe("submitted");
+    });
+
+    it("submits an oversized source when --ignore-limit is given", async () => {
+        const root = await createProject({ problemUrl: "https://yukicoder.me/problems/no/480" });
+        await Bun.write(join(root, "src", "main.cpp"), largeSource(128 * 1024 + 1));
+        const config = createConfig({ wait: 0, open: false });
+        setSubmitLanguages(config, { yukicoder: "5001" });
+        const infos: string[] = [];
+
+        const result = await runSubmit({
+            projectRoot: root,
+            config,
+            cwd: root,
+            waitSeconds: 0,
+            yes: true,
+            ignoreLimit: true,
+            stdout: createCapture().stream,
+            stderr: createCapture().stream,
+            dependencies: {
+                createTarget: async () => createFakeTarget({ platform: "yukicoder" }),
+                info: (message) => infos.push(message),
+            },
+        });
+
+        expect(result.status).toBe("submitted");
+        expect(infos).toContain(
+            "Skipped the source size check (--ignore-limit): 128.0 KiB for a 128 KiB limit.",
+        );
+    });
+
+    it("submits an oversized source when submit.check_limit is false", async () => {
+        const root = await createProject({ problemUrl: "https://yukicoder.me/problems/no/480" });
+        await Bun.write(join(root, "src", "main.cpp"), largeSource(128 * 1024 + 1));
+        const config = createConfig({ wait: 0, open: false, check_limit: false });
+        setSubmitLanguages(config, { yukicoder: "5001" });
+        const infos: string[] = [];
+
+        const result = await runSubmit({
+            projectRoot: root,
+            config,
+            cwd: root,
+            waitSeconds: 0,
+            yes: true,
+            stdout: createCapture().stream,
+            stderr: createCapture().stream,
+            dependencies: {
+                createTarget: async () => createFakeTarget({ platform: "yukicoder" }),
+                info: (message) => infos.push(message),
+            },
+        });
+
+        expect(result.status).toBe("submitted");
+        expect(infos).toContain(
+            "Skipped the source size check (submit.check_limit = false): 128.0 KiB for a 128 KiB limit.",
+        );
+    });
+
     it("submits after confirmation and opens the submission URL", async () => {
         const root = await createProject({ problemUrl });
         const stdout = createCapture();
@@ -613,6 +741,79 @@ describe("runSubmit", () => {
 
         expect(result).toEqual({ status: "cancelled" });
         expect(infos).toEqual(["Login cancelled."]);
+    });
+
+    it("submits a ShareOJ contest problem through the API", async () => {
+        const originalLocalAppData = process.env.LOCALAPPDATA;
+        const dataRoot = await mkdtemp(join(tmpdir(), "neoj-submit-shareoj-"));
+        process.env.LOCALAPPDATA = dataRoot;
+        const originalFetch = globalThis.fetch;
+        const bodies: unknown[] = [];
+        globalThis.fetch = Object.assign(
+            async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+                const url = String(input);
+                if (url === "https://api.share-oj.net/my/submissions") {
+                    bodies.push(JSON.parse(String(init?.body)));
+                    return new Response(
+                        JSON.stringify({ id: "7f4a5126-a79a-47a0-a523-4f476156ba7e" }),
+                        { status: 202, headers: { "Content-Type": "application/json" } },
+                    );
+                }
+                throw new Error(`Unexpected fetch: ${url}`);
+            },
+            { preconnect: originalFetch.preconnect },
+        ) as typeof fetch;
+        try {
+            const { saveAuth } = await import("@/lib/util/auth");
+            await saveAuth("shareoj", {
+                method: "password",
+                accessToken: "tok",
+                refreshToken: "ref",
+                expiresAt: Temporal.Instant.fromEpochMilliseconds(
+                    Date.now() + 3_600_000,
+                ).toString(),
+            });
+
+            const root = await createProject({
+                problemUrl: "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A",
+                problemKey: {
+                    platform: "shareoj",
+                    slug: "3sBzHki3excsv1h6ecBczO",
+                },
+            });
+            const stdout = createCapture();
+            const config = createConfig({ wait: 0, open: false });
+            setSubmitLanguages(config, { shareoj: "cpp23-gcc" });
+
+            const result = await runSubmit({
+                projectRoot: root,
+                config,
+                cwd: root,
+                waitSeconds: 0,
+                yes: true,
+                stdout: stdout.stream,
+                stderr: createCapture().stream,
+            });
+
+            expect(result).toEqual({
+                status: "submitted",
+                submissionId: "7f4a5126-a79a-47a0-a523-4f476156ba7e",
+                submissionUrl:
+                    "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/my-submissions/3sBzHki3excsv1h6ecBczO",
+            });
+            expect(bodies).toEqual([
+                {
+                    contestId: "dc6fc9dd-4019-463a-a486-12c3fc10af59",
+                    problemId: "7f4a5126-a79a-47a0-a523-4f476156ba7e",
+                    runtime: "cpp23-gcc",
+                    source: "int main() { return 0; }\n",
+                },
+            ]);
+        } finally {
+            globalThis.fetch = originalFetch;
+            process.env.LOCALAPPDATA = originalLocalAppData;
+            await rm(dataRoot, { recursive: true, force: true, maxRetries: 3 });
+        }
     });
 
     it("lists languages when the platform language is not configured", async () => {

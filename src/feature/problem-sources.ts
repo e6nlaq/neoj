@@ -12,6 +12,12 @@ import {
 } from "@/lib/service/codeforces";
 import type { Problem } from "@/lib/service/problem";
 import {
+    extractShareOjShortId,
+    parseShareOjContestProblemUrl,
+    parseShareOjProblemUrl,
+    ShareOjClient,
+} from "@/lib/service/shareoj";
+import {
     parseYukicoderProblemRoute,
     parseYukicoderProblemUrl,
     YukicoderClient,
@@ -65,6 +71,10 @@ async function fetchCodeforcesProblem(url: string): Promise<Problem> {
     return new CodeforcesClient().getProblem(url);
 }
 
+async function fetchShareOjProblem(url: string): Promise<Problem> {
+    return new ShareOjClient().getProblem(url);
+}
+
 function matchesAtCoderProblem(url: string): boolean {
     try {
         parseAtCoderProblemUrl(url);
@@ -101,6 +111,30 @@ function matchesCodeforcesProblem(url: string): boolean {
     }
 }
 
+function isDirectShareOjProblemUrl(url: string): boolean {
+    try {
+        parseShareOjProblemUrl(url);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+function matchesShareOjProblem(url: string): boolean {
+    return (
+        matchesUrl(parseShareOjProblemUrl, url) || matchesUrl(parseShareOjContestProblemUrl, url)
+    );
+}
+
+function matchesUrl(parse: (value: string) => unknown, url: string): boolean {
+    try {
+        parse(url);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 export const problemSources: ProblemSource[] = [
     {
         name: "atcoder",
@@ -126,13 +160,19 @@ export const problemSources: ProblemSource[] = [
         matches: matchesCodeforcesProblem,
         fetchProblem: fetchCodeforcesProblem,
     },
+    {
+        name: "shareoj",
+        displayName: "ShareOJ",
+        matches: matchesShareOjProblem,
+        fetchProblem: fetchShareOjProblem,
+    },
 ];
 
 export function findProblemSource(url: string): ProblemSource {
     const source = problemSources.find((candidate) => candidate.matches(url));
     if (source === undefined) {
         throw new TypeError(
-            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
+            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces, ShareOJ).",
         );
     }
 
@@ -177,7 +217,19 @@ export function deriveProblemKey(url: string): ProblemKey {
         return { platform: "codeforces", slug: `${contestId}${index}` };
     }
 
+    if (matchesShareOjProblem(url)) {
+        if (isDirectShareOjProblemUrl(url)) {
+            return { platform: "shareoj", slug: extractShareOjShortId(url) };
+        }
+        // A contest problem URL resolves its problem ID through the API, so it
+        // cannot be derived offline. `neoj download` stores the resolved key
+        // in `.neoj/problem.json` instead.
+        throw new TypeError(
+            `Could not derive a stash name from "${url}" offline. Run "neoj download ${url}" again to record the problem key.`,
+        );
+    }
+
     throw new TypeError(
-        "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
+        "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces, ShareOJ).",
     );
 }

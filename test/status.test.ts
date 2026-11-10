@@ -24,6 +24,7 @@ describe("getLoginStatuses", () => {
         await expect(getLoginStatuses({})).resolves.toEqual([
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
         expect(fetched).toBe(false);
     });
@@ -43,6 +44,7 @@ describe("getLoginStatuses", () => {
         ).resolves.toEqual([
             { platform: "atcoder", displayName: "AtCoder", status: "logged-in" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
         expect(requests).toEqual([
             {
@@ -67,6 +69,7 @@ describe("getLoginStatuses", () => {
                 error: "Failed to connect to AtCoder.",
             },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
     });
 
@@ -79,6 +82,7 @@ describe("getLoginStatuses", () => {
                 error: "Saved AtCoder authentication data is invalid.",
             },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
     });
 
@@ -94,6 +98,7 @@ describe("getLoginStatuses", () => {
         ).resolves.toEqual([
             { platform: "atcoder", displayName: "AtCoder", status: "logged-in" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
         expect(fetched).toBe(false);
     });
@@ -108,6 +113,7 @@ describe("getLoginStatuses", () => {
         await expect(getLoginStatuses({}, true)).resolves.toEqual([
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
         expect(fetched).toBe(false);
     });
@@ -121,6 +127,7 @@ describe("getLoginStatuses", () => {
                 error: "Saved AtCoder authentication data is invalid.",
             },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
     });
 
@@ -142,6 +149,7 @@ describe("getLoginStatuses", () => {
         ).resolves.toEqual([
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-in" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
         expect(requests).toEqual([
             {
@@ -159,6 +167,7 @@ describe("getLoginStatuses", () => {
         ).resolves.toEqual([
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-in" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
     });
 
@@ -180,6 +189,7 @@ describe("getLoginStatuses", () => {
         ).resolves.toEqual([
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
         expect(fetched).toBe(false);
     });
@@ -192,6 +202,7 @@ describe("getLoginStatuses", () => {
         ).resolves.toEqual([
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
     });
 
@@ -206,6 +217,7 @@ describe("getLoginStatuses", () => {
                 status: "error",
                 error: "Saved yukicoder authentication data is invalid.",
             },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
     });
 
@@ -227,6 +239,7 @@ describe("getLoginStatuses", () => {
                 status: "error",
                 error: "Failed to connect to yukicoder.",
             },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
     });
 
@@ -246,6 +259,7 @@ describe("getLoginStatuses", () => {
         ).resolves.toEqual([
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-in" },
+            { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
         ]);
         expect(fetched).toBe(false);
     });

@@ -38,6 +38,13 @@ URLs are accepted by `download` and the other URL-driven commands, but neither
 is part of the login registry above: there is no session to check, and
 submissions are not automated yet.
 
+ShareOJ is in the login registry: `neoj login shareoj` performs the same
+headless email + password login as the platform's own CLI, including the MFA
+and new-password challenges, and stores the access and refresh tokens it
+issues. Submissions go through the official API, so no session cookies are
+involved. Accounts that were created through Google must set a password on the
+website before the CLI can log in.
+
 ## Terminology
 
 This documentation says **platform**. The CLI mixes that word with **service** in

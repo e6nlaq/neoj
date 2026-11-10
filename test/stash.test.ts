@@ -59,6 +59,7 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
             clip: "never",
             preview_lines: 5,
             presubmit_timeout: 30,
+            check_limit: true,
         },
         testcase: { folder: options.folder ?? "test", filename: "sample-{}" },
         handmade: { filename: "handmade-{}" },
@@ -120,7 +121,7 @@ describe("deriveProblemKey", () => {
 
     it("rejects URLs from unsupported platforms", () => {
         expect(() => deriveProblemKey("https://example.com/problems/no/480")).toThrow(
-            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
+            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces, ShareOJ).",
         );
     });
 });

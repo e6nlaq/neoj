@@ -4,7 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import type { AtCoderProblem } from "@/lib/service/atcoder";
-import { saveProblemMetadata } from "@/lib/util/problem-metadata";
+import {
+    parseProblemMetadata,
+    readProblemMetadata,
+    saveProblemMetadata,
+} from "@/lib/util/problem-metadata";
 
 let testRoot: string | undefined;
 
@@ -42,6 +46,36 @@ describe("saveProblemMetadata", () => {
             },
         });
         await expect(readdir(join(projectRoot, ".neoj"))).resolves.toEqual(["problem.json"]);
+    });
+
+    it("writes and reads back the problem key when the problem provides one", async () => {
+        const projectRoot = await createProject();
+
+        await saveProblemMetadata(projectRoot, {
+            url: "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A",
+            key: { platform: "shareoj", slug: "7f4a5126a79a47a0a5234f476156ba7e" },
+        });
+
+        await expect(Bun.file(join(projectRoot, ".neoj", "problem.json")).json()).resolves.toEqual({
+            url: "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A",
+            key: { platform: "shareoj", slug: "7f4a5126a79a47a0a5234f476156ba7e" },
+        });
+        await expect(readProblemMetadata(projectRoot)).resolves.toEqual({
+            url: "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A",
+            key: { platform: "shareoj", slug: "7f4a5126a79a47a0a5234f476156ba7e" },
+        });
+    });
+
+    it("rejects a malformed problem key", () => {
+        expect(() =>
+            parseProblemMetadata({ url: "https://x.example.com/p", key: {} }, "problem.json"),
+        ).toThrow(/invalid key/u);
+        expect(() =>
+            parseProblemMetadata(
+                { url: "https://x.example.com/p", key: { platform: "shareoj" } },
+                "problem.json",
+            ),
+        ).toThrow(/invalid key/u);
     });
 
     it("omits the contest window when the problem does not provide one", async () => {

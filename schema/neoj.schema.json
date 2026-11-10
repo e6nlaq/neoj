@@ -346,6 +346,11 @@
                     "minimum": 0.001,
                     "description": "Wall-clock limit for the presubmit command in seconds.",
                     "default": 30
+                },
+                "check_limit": {
+                    "type": "boolean",
+                    "description": "Refuse to submit a source that exceeds the platform's documented size limit. Set it to false when a platform changes its limit before neoj updates it; --ignore-limit does the same for one run.",
+                    "default": true
                 }
             },
             "required": [],
@@ -357,7 +362,8 @@
                 "open": true,
                 "clip": "never",
                 "preview_lines": 5,
-                "presubmit_timeout": 30
+                "presubmit_timeout": 30,
+                "check_limit": true
             }
         },
         "languages": {

@@ -8,7 +8,7 @@ neoj submits                  # alias
 ```
 
 `neoj submit` sends the solution to the problem recorded by `.neoj/problem.json`,
-so download the problem first. It works with AtCoder and yukicoder.
+so download the problem first. It works with AtCoder, yukicoder, and ShareOJ.
 
 ## Before you submit
 
@@ -79,9 +79,27 @@ Then a countdown runs so you can still press Ctrl-C; the default is 3 seconds.
 | `--yes`            | Skip the confirmation prompt. |
 | `--wait <seconds>` | Change the wait for one run.  |
 | `--no-wait`        | Submit immediately.           |
+| `--ignore-limit`   | Send an oversized source.     |
 
 `--yes` skips only the prompt: the wait still runs. Cancelling the confirmation
 or the wait exits with `0` without submitting.
+
+## Source size limits
+
+`neoj submit` compares the UTF-8 size of the text it would send (after
+`presubmit`) with the platform's documented limit: 512 KiB for AtCoder, and
+128 KiB for yukicoder and ShareOJ. An oversized source stops the command before
+the preview and before any network request, and reports how many bytes are over
+the limit:
+
+```text
+The source is 140.0 KiB (143,360 bytes), over the yukicoder limit of 128 KiB (131,072 bytes). Shorten it by at least 12.0 KiB, or pass --ignore-limit to submit anyway.
+```
+
+Limits belong to the platforms and can change. When one does before this table
+is updated, pass `--ignore-limit` for one run, or set `check_limit = false` in
+the `[submit]` table to stop checking. Each run that skips the check says so.
+`neoj languages <platform>` prints the limit it uses in its header.
 
 The confirmation prompt, the wait, and the browser behavior come from the
 `[submit]` table:
@@ -93,6 +111,7 @@ wait = 3
 open = true
 clip = "never"
 preview_lines = 5
+check_limit = true
 ```
 
 After a successful submission, neoj prints the submission ID and URL and opens
@@ -174,6 +193,13 @@ there. In that case set `submit.clip = "fail"` to have the text ready to paste.
 
 yukicoder accepts submissions through the same API as its web form, so no contest
 window is recorded or required.
+
+ShareOJ submissions use the official API with the login from
+`neoj login shareoj`. A problem downloaded from a contest URL is submitted
+into that contest, and ShareOJ reports `contest_participation_required` when
+you have not joined it yet; join the contest on the website and submit again.
+The command returns as soon as ShareOJ accepts the submission and prints the
+submission page URL; the URL of a contest submission is contest-specific.
 
 ## Related
 

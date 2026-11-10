@@ -6,6 +6,7 @@ import { join, resolve } from "node:path";
 import { downloadProblem, formatSamples, getProblemWithLoginHint } from "@/feature/download";
 import type { AtCoderProblem } from "@/lib/service/atcoder";
 import { AtCoderProblemRequestError } from "@/lib/service/atcoder";
+import { readProblemMetadata } from "@/lib/util/problem-metadata";
 import { downloadSamples } from "@/lib/util/testcase";
 
 let testRoot: string | undefined;
@@ -272,6 +273,63 @@ describe("downloadProblem", () => {
         });
     });
 
+    it("records the resolved problem key for a ShareOJ contest problem URL", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await Bun.write(join(projectRoot, "neoj.toml"), "");
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async (input: Parameters<typeof fetch>[0]) => {
+                const url = String(input);
+                if (
+                    url === "https://api.share-oj.net/contests/dc6fc9dd-4019-463a-a486-12c3fc10af59"
+                ) {
+                    return Response.json({
+                        id: "dc6fc9dd-4019-463a-a486-12c3fc10af59",
+                        problems: [{ id: "7f4a5126-a79a-47a0-a523-4f476156ba7e" }],
+                    });
+                }
+                if (
+                    url ===
+                    "https://api.share-oj.net/contests/dc6fc9dd-4019-463a-a486-12c3fc10af59/problems/7f4a5126-a79a-47a0-a523-4f476156ba7e"
+                ) {
+                    return Response.json({ id: "x", title: "Welcome to ShareOJ!" });
+                }
+                if (
+                    url ===
+                    "https://api.share-oj.net/problems/7f4a5126-a79a-47a0-a523-4f476156ba7e/samples"
+                ) {
+                    return Response.json({
+                        items: [{ name: "case_001.txt", input: "1\n", output: "2\n" }],
+                    });
+                }
+                throw new Error(`Unexpected fetch: ${url}`);
+            },
+        });
+        try {
+            await downloadProblem("https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A");
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
+
+        await expect(readProblemMetadata(projectRoot)).resolves.toEqual({
+            url: "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A",
+            key: { platform: "shareoj", slug: "3sBzHki3excsv1h6ecBczO" },
+        });
+    });
+
     it("downloads yukicoder samples without storing a contest window", async () => {
         const projectRoot = await createProject();
         const homeDirectory = join(projectRoot, "home");
@@ -513,7 +571,7 @@ describe("downloadProblem", () => {
 
     it("rejects unsupported problem URLs", async () => {
         await expect(downloadProblem("https://example.com/problems/no/480")).rejects.toThrow(
-            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces).",
+            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces, ShareOJ).",
         );
     });
 });

@@ -2,23 +2,23 @@
 
 ## Commands
 
-| Command                                                    | Description                                                                 |
-| ---------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `neoj init [--force]`                                      | Copy the bundled templates into the current project.                        |
-| `neoj download <url>` (alias: `neoj d`)                    | Download a problem's sample tests into the test-case directory.             |
-| `neoj open [options]` (alias: `neoj o`)                    | Open the current problem in the browser.                                    |
-| `neoj handmade` (alias: `neoj h`)                          | Create a handmade test case from interactive input.                         |
-| `neoj generate` (alias: `neoj g`)                          | Create random test cases with a generator and a naive solution.             |
-| `neoj login <platform>`                                    | Log in to a platform. The supported names are `atcoder` and `yukicoder`.    |
-| `neoj logout [--service <name...>]`                        | Log out of the given platforms, or of every platform when no name is given. |
-| `neoj status [--offline]`                                  | Show the login status of every supported platform.                          |
-| `neoj stash [save\|list\|apply\|pop\|drop\|clear]`         | Save and restore the working files of the current problem.                  |
-| `neoj test [source]` (alias: `neoj t`)                     | Build the solution and run it against the sample tests.                     |
-| `neoj run [source] [args...]` (alias: `neoj r`)            | Build the solution and run it without tests, forwarding `args`.             |
-| `neoj submit [source]` (aliases: `neoj s`, `neoj submits`) | Submit the solution for the current problem.                                |
-| `neoj languages [platform]` (alias: `neoj langs`)          | List the language IDs a platform accepts.                                   |
-| `neoj prune [--dry-run]`                                   | Remove every cached build under `.neoj/build/`.                             |
-| `neoj completions <shell>` (alias: `neoj completion`)      | Print a completion script for bash, zsh, fish, or PowerShell.               |
+| Command                                                    | Description                                                                          |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `neoj init [--force]`                                      | Copy the bundled templates into the current project.                                 |
+| `neoj download <url>` (alias: `neoj d`)                    | Download a problem's sample tests into the test-case directory.                      |
+| `neoj open [options]` (alias: `neoj o`)                    | Open the current problem in the browser.                                             |
+| `neoj handmade` (alias: `neoj h`)                          | Create a handmade test case from interactive input.                                  |
+| `neoj generate` (alias: `neoj g`)                          | Create random test cases with a generator and a naive solution.                      |
+| `neoj login <platform>`                                    | Log in to a platform. The supported names are `atcoder`, `yukicoder`, and `shareoj`. |
+| `neoj logout [--service <name...>]`                        | Log out of the given platforms, or of every platform when no name is given.          |
+| `neoj status [--offline]`                                  | Show the login status of every supported platform.                                   |
+| `neoj stash [save\|list\|apply\|pop\|drop\|clear]`         | Save and restore the working files of the current problem.                           |
+| `neoj test [source]` (alias: `neoj t`)                     | Build the solution and run it against the sample tests.                              |
+| `neoj run [source] [args...]` (alias: `neoj r`)            | Build the solution and run it without tests, forwarding `args`.                      |
+| `neoj submit [source]` (aliases: `neoj s`, `neoj submits`) | Submit the solution for the current problem.                                         |
+| `neoj languages [platform]` (alias: `neoj langs`)          | List the language IDs a platform accepts.                                            |
+| `neoj prune [--dry-run]`                                   | Remove every cached build under `.neoj/build/`.                                      |
+| `neoj completions <shell>` (alias: `neoj completion`)      | Print a completion script for bash, zsh, fish, or PowerShell.                        |
 
 ### `init`
 
@@ -31,9 +31,9 @@ directory when none is found. The search stops at the repository root.
 
 ### `download`
 
-| Argument | Description                                                          |
-| -------- | -------------------------------------------------------------------- |
-| `<url>`  | An AtCoder, yukicoder, Aizu Online Judge, or Codeforces problem URL. |
+| Argument | Description                                                                                                                   |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `<url>`  | An AtCoder, yukicoder, Aizu Online Judge, Codeforces, or ShareOJ problem URL (ShareOJ also accepts its contest problem URLs). |
 
 Requires an initialized project. See
 [Download sample tests](../how-to/download-samples.md).
@@ -53,11 +53,11 @@ Opens the page for the problem recorded by the last successful download, so run
 `--contest` and `--submissions` cannot be combined, and neither can `--clip` and
 `--url`.
 
-| Target          | AtCoder                                                                  | yukicoder                                                                                                                        |
-| --------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| (default)       | The problem page.                                                        | The problem page.                                                                                                                |
-| `--contest`     | `https://atcoder.jp/contests/<contestId>`                                | The contest that published the problem, resolved through the public API.                                                         |
-| `--submissions` | `https://atcoder.jp/contests/<contestId>/submissions/me?f.Task=<taskId>` | The problem's own submissions page (`/problems/no/<n>/submissions` or `/problems/<id>/submissions`) with `my_submission=enabled` |
+| Target          | AtCoder                                                                  | yukicoder                                                                                                                        | ShareOJ                                                                                         |
+| --------------- | ------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| (default)       | The problem page.                                                        | The problem page.                                                                                                                | The problem page.                                                                               |
+| `--contest`     | `https://atcoder.jp/contests/<contestId>`                                | The contest that published the problem, resolved through the public API.                                                         | The contest page of a contest problem; a standalone problem reports that it is unknown.         |
+| `--submissions` | `https://atcoder.jp/contests/<contestId>/submissions/me?f.Task=<taskId>` | The problem's own submissions page (`/problems/no/<n>/submissions` or `/problems/<id>/submissions`) with `my_submission=enabled` | The problem's own submissions view (`?view=my-submissions`), narrowed to the label in a contest |
 
 AtCoder URLs are derived from the problem URL. yukicoder does not record the
 contest in the problem URL, so `--contest` asks the public API; it needs network
@@ -65,7 +65,9 @@ access, and a problem that belongs to no contest cannot be opened this way. When
 a problem appears in several contests, the API reports only one of them.
 
 AOJ problems support only the default target: `--contest` and `--submissions`
-report that they are not supported for AOJ yet.
+report that they are not supported for AOJ yet. Codeforces supports `--contest`
+but not `--submissions`. ShareOJ needs a recorded contest problem URL for
+`--contest`, and its `--submissions` view requires a browser login.
 
 If the browser cannot be started, the URL is printed so it can be opened by
 hand and the command exits with `1`.
@@ -146,9 +148,9 @@ See [Generate random test cases](../how-to/generate-random-tests.md).
 
 ### `login`
 
-| Argument     | Description                              |
-| ------------ | ---------------------------------------- |
-| `<platform>` | Platform name: `atcoder` or `yukicoder`. |
+| Argument     | Description                                          |
+| ------------ | ---------------------------------------------------- |
+| `<platform>` | Platform name: `atcoder`, `yukicoder`, or `shareoj`. |
 
 For yukicoder, `--method` selects the credential type:
 
@@ -289,10 +291,18 @@ matching `[languages.<key>]` entries. The file is not compiled before submission
 | `--no-wait`                      | Submit immediately, as if `--wait 0` were given.             |
 | `--no-presubmit`                 | Submit the source file without running `presubmit`.          |
 | `--dry-run`                      | Show the preview without contacting the platform.            |
+| `--ignore-limit`                 | Send the source even if it exceeds the platform's limit.     |
 | `--open` / `--no-open`           | Open or do not open the submission page afterwards.          |
 
-The command runs these steps in order: the language's `presubmit` command, a
-preview, the confirmation prompt (default **No**), the wait, and the submission.
+The command runs these steps in order: the language's `presubmit` command, the
+size check, a preview, the confirmation prompt (default **No**), the wait, and
+the submission.
+
+The size check compares the UTF-8 size of the text that would be sent with the
+platform's documented limit: 512 KiB for AtCoder, and 128 KiB for yukicoder and
+ShareOJ. An oversized source stops the command before it contacts the platform,
+and `--dry-run` reports it too. `--ignore-limit`, or `submit.check_limit = false`
+in `neoj.toml`, sends it anyway for when a platform changes its limit.
 
 The preview shows the first and last `submit.preview_lines` lines with their real
 line numbers and `...` between them; a file with at most `2 * preview_lines`
@@ -339,13 +349,15 @@ yukicoder submissions use the same API as the web form. See
 
 ### `languages`
 
-| Argument     | Description                                                               |
-| ------------ | ------------------------------------------------------------------------- |
-| `[platform]` | Platform name: `atcoder` or `yukicoder`. Defaults to the current problem. |
+| Argument     | Description                                                                           |
+| ------------ | ------------------------------------------------------------------------------------- |
+| `[platform]` | Platform name: `atcoder`, `yukicoder`, or `shareoj`. Defaults to the current problem. |
 
 Prints the language IDs that `--platform-language` and
-`languages.<key>.submit.<platform>` accept. The table lists each ID with the
-language name, and a `*` marks every ID already configured for that platform.
+`languages.<key>.submit.<platform>` accept. The header names the platform's
+source size limit (512 KiB for AtCoder, 128 KiB for yukicoder and ShareOJ), the
+table lists each ID with the language name, and a `*` marks every ID already
+configured for that platform.
 The closing line names the `neoj.toml` keys that set those IDs, or explains how
 to configure one when none is set.
 
@@ -355,7 +367,8 @@ to configure one when none is set.
 
 When `[platform]` is omitted, the platform recorded in `.neoj/problem.json` is
 used; without a recorded problem the command asks for a platform instead.
-`yukicoder` needs no login. `atcoder` requires a session and follows
+`yukicoder` and `shareoj` need no login for the language list. `atcoder`
+requires a session and follows
 `login.auto_login`: cancelling the login exits with `0`, and a failed login
 exits with `1`. Without a recorded AtCoder problem, the command queries contest
 `abc100` and labels it as a fallback in the header, because the language list

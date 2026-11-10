@@ -62,6 +62,7 @@ function createConfig(options: {
             clip: "never",
             preview_lines: 5,
             presubmit_timeout: 30,
+            check_limit: true,
         },
         testcase: { folder: "test", filename: "sample-{}", ...options.testcase },
         handmade: { filename: "handmade-{}" },

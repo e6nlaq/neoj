@@ -486,6 +486,18 @@ the real line numbers and `...` between the two blocks. A file with at most
 Wall-clock limit for `languages.<key>.presubmit`. When it expires, neoj stops the
 command and reports that the presubmit timed out.
 
+### `submit.check_limit`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Refuse to submit a source that exceeds the platform's documented size limit:
+512 KiB for AtCoder, and 128 KiB for yukicoder and ShareOJ. The size is the
+UTF-8 size of the text that would be sent, after `presubmit`. Set it to `false`
+to keep working when a platform changes its limit before `neoj` does;
+`neoj submit --ignore-limit` does the same for one run.
+
 ### `languages.<key>.source`
 
 | Type                  | Default  | Scope             |
@@ -578,7 +590,8 @@ submit = { atcoder = "5001", yukicoder = "5001" }
 | table of string values | none    | global or project |
 
 Platform language IDs for this language, keyed by platform name. `neoj submit`
-uses `submit.atcoder` for AtCoder and `submit.yukicoder` for yukicoder.
+uses `submit.atcoder` for AtCoder and `submit.yukicoder` for yukicoder, and
+`submit.shareoj` for ShareOJ (a runtime ID from `neoj languages shareoj`).
 `--platform-language <id>` overrides the value for one run. When the key is
 missing, the command lists the platform's available IDs and exits with `1`
 instead of prompting.
@@ -723,6 +736,7 @@ open = true
 clip = "never"
 preview_lines = 5
 presubmit_timeout = 30
+check_limit = true
 
 [languages.cpp]
 source = "src/**/*.cpp"
