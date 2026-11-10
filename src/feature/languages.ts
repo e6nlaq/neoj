@@ -14,6 +14,7 @@ import { maxValue } from "@/lib/util/numbers";
 import { readProblemMetadata, type ProblemMetadata } from "@/lib/util/problem-metadata";
 import type { ProgressStream } from "@/lib/util/progress";
 import { findProjectConfig } from "@/lib/util/project";
+import { formatSourceLimit } from "@/lib/util/source-limit";
 
 export const fallbackAtCoderContestId = "abc100";
 
@@ -145,11 +146,11 @@ function languageLabel(language: PlatformLanguage): string {
 
 /** Render the listing as an aligned table with a marker for configured IDs. */
 export function formatLanguageListing(listing: LanguageListing): string[] {
-    const header =
+    const title =
         listing.context === undefined
             ? listing.displayName
             : `${listing.displayName} (${listing.context})`;
-    const lines = [header];
+    const lines = [`${title} — ${formatSourceLimit(listing.platform)} source limit`];
 
     if (listing.languages.length === 0) {
         lines.push(

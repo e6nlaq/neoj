@@ -73,6 +73,7 @@ function createConfig(overrides: Partial<Config["submit"]> = {}): Config {
             clip: "never",
             preview_lines: 5,
             presubmit_timeout: 30,
+            check_limit: true,
             ...overrides,
         },
         testcase: { folder: "test", filename: "sample-{}" },
@@ -173,6 +174,7 @@ function createFakeTarget(
             submissionUrl: string;
         }>;
         warnings?: string[];
+        platform?: "atcoder" | "yukicoder" | "shareoj";
     } = {},
 ): SubmissionTarget & {
     submitted: { source: string; languageId: string }[];
@@ -181,7 +183,7 @@ function createFakeTarget(
     const submitted: { source: string; languageId: string }[] = [];
     let prepared = 0;
     return {
-        platform: "atcoder",
+        platform: options.platform ?? "atcoder",
         displayName: "AtCoder",
         submitted,
         get prepared() {
@@ -545,6 +547,117 @@ describe("runSubmit", () => {
                 platformLanguage: "5001",
             }),
         ).rejects.toThrow("--dry-run cannot be combined with --platform-language.");
+    });
+
+    /** A comment-only source of exactly `bytes` UTF-8 bytes. */
+    function largeSource(bytes: number): string {
+        const prefix = "// ";
+        return `${prefix}${"x".repeat(bytes - prefix.length - 1)}\n`;
+    }
+
+    it("refuses a source over the platform limit, even in dry-run mode", async () => {
+        const root = await createProject({ problemUrl: "https://yukicoder.me/problems/no/480" });
+        await Bun.write(join(root, "src", "main.cpp"), largeSource(128 * 1024 + 1));
+        const config = createConfig({ wait: 0 });
+        setSubmitLanguages(config, { yukicoder: "5001" });
+        let targetCreated = false;
+        const dependencies = {
+            createTarget: async () => {
+                targetCreated = true;
+                return createFakeTarget({ platform: "yukicoder" });
+            },
+        };
+
+        await expect(
+            runSubmit({
+                projectRoot: root,
+                config,
+                cwd: root,
+                dryRun: true,
+                waitSeconds: 0,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+                dependencies,
+            }),
+        ).rejects.toThrow(
+            "The source is 128.0 KiB (131,073 bytes), over the yukicoder limit of 128 KiB (131,072 bytes). Shorten it by at least 1 B, or pass --ignore-limit to submit anyway.",
+        );
+        expect(targetCreated).toBe(false);
+    });
+
+    it("accepts a source that exactly meets the limit", async () => {
+        const root = await createProject({ problemUrl: "https://yukicoder.me/problems/no/480" });
+        await Bun.write(join(root, "src", "main.cpp"), largeSource(128 * 1024));
+        const config = createConfig({ wait: 0, open: false });
+        setSubmitLanguages(config, { yukicoder: "5001" });
+
+        const result = await runSubmit({
+            projectRoot: root,
+            config,
+            cwd: root,
+            waitSeconds: 0,
+            yes: true,
+            stdout: createCapture().stream,
+            stderr: createCapture().stream,
+            dependencies: { createTarget: async () => createFakeTarget({ platform: "yukicoder" }) },
+        });
+
+        expect(result.status).toBe("submitted");
+    });
+
+    it("submits an oversized source when --ignore-limit is given", async () => {
+        const root = await createProject({ problemUrl: "https://yukicoder.me/problems/no/480" });
+        await Bun.write(join(root, "src", "main.cpp"), largeSource(128 * 1024 + 1));
+        const config = createConfig({ wait: 0, open: false });
+        setSubmitLanguages(config, { yukicoder: "5001" });
+        const infos: string[] = [];
+
+        const result = await runSubmit({
+            projectRoot: root,
+            config,
+            cwd: root,
+            waitSeconds: 0,
+            yes: true,
+            ignoreLimit: true,
+            stdout: createCapture().stream,
+            stderr: createCapture().stream,
+            dependencies: {
+                createTarget: async () => createFakeTarget({ platform: "yukicoder" }),
+                info: (message) => infos.push(message),
+            },
+        });
+
+        expect(result.status).toBe("submitted");
+        expect(infos).toContain(
+            "Skipped the source size check (--ignore-limit): 128.0 KiB for a 128 KiB limit.",
+        );
+    });
+
+    it("submits an oversized source when submit.check_limit is false", async () => {
+        const root = await createProject({ problemUrl: "https://yukicoder.me/problems/no/480" });
+        await Bun.write(join(root, "src", "main.cpp"), largeSource(128 * 1024 + 1));
+        const config = createConfig({ wait: 0, open: false, check_limit: false });
+        setSubmitLanguages(config, { yukicoder: "5001" });
+        const infos: string[] = [];
+
+        const result = await runSubmit({
+            projectRoot: root,
+            config,
+            cwd: root,
+            waitSeconds: 0,
+            yes: true,
+            stdout: createCapture().stream,
+            stderr: createCapture().stream,
+            dependencies: {
+                createTarget: async () => createFakeTarget({ platform: "yukicoder" }),
+                info: (message) => infos.push(message),
+            },
+        });
+
+        expect(result.status).toBe("submitted");
+        expect(infos).toContain(
+            "Skipped the source size check (submit.check_limit = false): 128.0 KiB for a 128 KiB limit.",
+        );
     });
 
     it("submits after confirmation and opens the submission URL", async () => {

@@ -291,10 +291,18 @@ matching `[languages.<key>]` entries. The file is not compiled before submission
 | `--no-wait`                      | Submit immediately, as if `--wait 0` were given.             |
 | `--no-presubmit`                 | Submit the source file without running `presubmit`.          |
 | `--dry-run`                      | Show the preview without contacting the platform.            |
+| `--ignore-limit`                 | Send the source even if it exceeds the platform's limit.     |
 | `--open` / `--no-open`           | Open or do not open the submission page afterwards.          |
 
-The command runs these steps in order: the language's `presubmit` command, a
-preview, the confirmation prompt (default **No**), the wait, and the submission.
+The command runs these steps in order: the language's `presubmit` command, the
+size check, a preview, the confirmation prompt (default **No**), the wait, and
+the submission.
+
+The size check compares the UTF-8 size of the text that would be sent with the
+platform's documented limit: 512 KiB for AtCoder, and 128 KiB for yukicoder and
+ShareOJ. An oversized source stops the command before it contacts the platform,
+and `--dry-run` reports it too. `--ignore-limit`, or `submit.check_limit = false`
+in `neoj.toml`, sends it anyway for when a platform changes its limit.
 
 The preview shows the first and last `submit.preview_lines` lines with their real
 line numbers and `...` between them; a file with at most `2 * preview_lines`
@@ -346,8 +354,10 @@ yukicoder submissions use the same API as the web form. See
 | `[platform]` | Platform name: `atcoder`, `yukicoder`, or `shareoj`. Defaults to the current problem. |
 
 Prints the language IDs that `--platform-language` and
-`languages.<key>.submit.<platform>` accept. The table lists each ID with the
-language name, and a `*` marks every ID already configured for that platform.
+`languages.<key>.submit.<platform>` accept. The header names the platform's
+source size limit (512 KiB for AtCoder, 128 KiB for yukicoder and ShareOJ), the
+table lists each ID with the language name, and a `*` marks every ID already
+configured for that platform.
 The closing line names the `neoj.toml` keys that set those IDs, or explains how
 to configure one when none is set.
 

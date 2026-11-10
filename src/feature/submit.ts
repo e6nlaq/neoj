@@ -24,6 +24,7 @@ import { YukicoderClient } from "@/lib/service/yukicoder";
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
 import { readAuth } from "@/lib/util/auth";
 import { openInBrowser } from "@/lib/util/browser";
+import { formatBytes } from "@/lib/util/bytes";
 import { copyToClipboard } from "@/lib/util/clipboard";
 import { runCommand } from "@/lib/util/command-runner";
 import { loadConfig, type Config } from "@/lib/util/config";
@@ -32,6 +33,7 @@ import type { ProblemMetadata } from "@/lib/util/problem-metadata";
 import { readProblemMetadata } from "@/lib/util/problem-metadata";
 import type { ProgressStream } from "@/lib/util/progress";
 import { requireInitializedProject } from "@/lib/util/project";
+import { formatSourceLimit, sourceLimitBytes } from "@/lib/util/source-limit";
 import type { ProblemKey } from "@/lib/util/stash";
 import {
     detectLanguage,
@@ -151,17 +153,6 @@ export function formatSubmitPreview(
         "...",
         ...numberLines(lines.slice(-limit), total - limit + 1, total, styles),
     ];
-}
-
-function formatBytes(bytes: number): string {
-    if (bytes < 1024) {
-        return `${bytes} B`;
-    }
-    if (bytes < 1024 * 1024) {
-        return `${(bytes / 1024).toFixed(1)} KiB`;
-    }
-
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
 /** A one-line description of the submitted text's size. */
@@ -654,6 +645,8 @@ export interface RunSubmitOptions {
     /** `false` skips the presubmit command. */
     presubmit?: boolean;
     dryRun?: boolean;
+    /** Submit even when the source is over the platform's documented limit. */
+    ignoreLimit?: boolean;
     /** undefined uses `submit.open`. */
     open?: boolean;
     stdout?: ProgressStream;
@@ -722,6 +715,26 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
               });
     if (isEmptyOutput(content)) {
         throw new Error(`"${resolved.relativePath}" is empty, so there is nothing to submit.`);
+    }
+
+    // The limit applies to the text that is sent, after the presubmit command.
+    const sourceBytes = Buffer.byteLength(content, "utf8");
+    const sourceLimit = sourceLimitBytes[platform];
+    if (sourceBytes > sourceLimit) {
+        const limitLabel = formatSourceLimit(platform);
+        if (options.ignoreLimit === true) {
+            info(
+                `Skipped the source size check (--ignore-limit): ${formatBytes(sourceBytes)} for a ${limitLabel} limit.`,
+            );
+        } else if (options.config.submit.check_limit === false) {
+            info(
+                `Skipped the source size check (submit.check_limit = false): ${formatBytes(sourceBytes)} for a ${limitLabel} limit.`,
+            );
+        } else {
+            throw new Error(
+                `The source is ${formatBytes(sourceBytes)} (${sourceBytes.toLocaleString("en-US")} bytes), over the ${problemSource.displayName} limit of ${limitLabel} (${sourceLimit.toLocaleString("en-US")} bytes). Shorten it by at least ${formatBytes(sourceBytes - sourceLimit)}, or pass --ignore-limit to submit anyway.`,
+            );
+        }
     }
 
     if (options.dryRun !== true && options.config.submit.clip === "always") {
@@ -856,6 +869,7 @@ export function createSubmitCommand(): Command<[string | undefined]> {
         .option("--no-wait", "Submit immediately")
         .option("--no-presubmit", "Submit the source file without running presubmit")
         .option("--dry-run", "Show the preview without contacting the platform")
+        .option("--ignore-limit", "Submit even when the source is over the platform's limit")
         .option("--open", "Open the submission page after submitting")
         .option("--no-open", "Do not open the submission page")
         .action(async (source, options) => {
@@ -873,6 +887,7 @@ export function createSubmitCommand(): Command<[string | undefined]> {
                     waitSeconds: options.wait === false ? 0 : options.wait,
                     presubmit: options.presubmit,
                     dryRun: options.dryRun,
+                    ignoreLimit: options.ignoreLimit,
                     open: options.open,
                     stdout: process.stdout,
                     stderr: process.stderr,

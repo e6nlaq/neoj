@@ -52,6 +52,7 @@ function createConfig(): Config {
             clip: "never",
             preview_lines: 5,
             presubmit_timeout: 30,
+            check_limit: true,
         },
         testcase: { folder: "test", filename: "sample-{}" },
         handmade: { filename: "handmade-{}" },
@@ -121,7 +122,7 @@ function createFakeTarget(input: CreateLanguageTargetInput): LanguageTarget {
 }
 
 describe("formatLanguageListing", () => {
-    it("aligns the ID column and marks configured languages", () => {
+    it("aligns the ID column and prints the language with its source limit", () => {
         const lines = formatLanguageListing({
             displayName: "AtCoder",
             context: "abc300",
@@ -132,14 +133,28 @@ describe("formatLanguageListing", () => {
             filter: undefined,
         });
 
-        expect(lines).toEqual([
-            "AtCoder (abc300)",
-            "  ID    Language",
-            "  5001  C++ 20 (C++)     *",
-            "  5002  Python (Python)",
-            "",
-            "* matches languages.cpp.submit.atcoder in neoj.toml.",
-        ]);
+        expect(lines[0]).toBe("AtCoder (abc300) — 512 KiB source limit");
+        expect(lines[1]).toBe("  ID    Language");
+        expect(lines[2]).toContain("5001");
+        expect(lines[2]?.endsWith(" *")).toBe(true);
+        expect(lines[3]).toContain("5002");
+        expect(lines.some((line) => line.includes("languages.cpp.submit.atcoder"))).toBe(true);
+    });
+
+    it("names the source limit of every platform", () => {
+        const listing = (platform: "atcoder" | "yukicoder" | "shareoj", displayName: string) =>
+            formatLanguageListing({
+                displayName,
+                context: undefined,
+                platform,
+                languages: atCoderLanguages,
+                configuredIds: new Set(),
+                configuredKeys: [],
+                filter: undefined,
+            })[0];
+
+        expect(listing("yukicoder", "yukicoder")).toBe("yukicoder — 128 KiB source limit");
+        expect(listing("shareoj", "ShareOJ")).toBe("ShareOJ — 128 KiB source limit");
     });
 
     it("explains how to configure an ID when none is set", () => {
@@ -153,24 +168,25 @@ describe("formatLanguageListing", () => {
             filter: undefined,
         });
 
-        expect(lines).toContain("yukicoder");
+        expect(lines[0]).toBe("yukicoder — 128 KiB source limit");
         expect(lines.at(-1)).toBe(
             'No ID is configured. Add languages.<key>.submit.yukicoder in neoj.toml, or run "neoj submit --platform-language <id>".',
         );
     });
 
     it("reports an empty result for a filter", () => {
-        expect(
-            formatLanguageListing({
-                displayName: "yukicoder",
-                context: undefined,
-                platform: "yukicoder",
-                languages: [],
-                configuredIds: new Set(),
-                configuredKeys: [],
-                filter: "rust",
-            }),
-        ).toEqual(["yukicoder", 'No languages matched "rust".']);
+        const lines = formatLanguageListing({
+            displayName: "yukicoder",
+            context: undefined,
+            platform: "yukicoder",
+            languages: [],
+            configuredIds: new Set(),
+            configuredKeys: [],
+            filter: "rust",
+        });
+
+        expect(lines[0]).toBe("yukicoder — 128 KiB source limit");
+        expect(lines).toContain('No languages matched "rust".');
     });
 });
 
@@ -270,7 +286,7 @@ describe("runLanguages", () => {
             contestId: "abc300",
             fallback: false,
         });
-        expect(stdout.text()).toContain("AtCoder (abc300)");
+        expect(stdout.text()).toContain("AtCoder (abc300) — 512 KiB source limit");
         expect(stdout.text()).toContain("* matches languages.cpp.submit.atcoder in neoj.toml.");
     });
 
@@ -298,7 +314,7 @@ describe("runLanguages", () => {
             contestId: undefined,
             fallback: false,
         });
-        expect(stdout.text()).toContain("yukicoder");
+        expect(stdout.text()).toContain("yukicoder — 128 KiB source limit");
     });
 
     it("falls back to abc100 when no AtCoder problem is recorded", async () => {

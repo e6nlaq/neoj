@@ -59,6 +59,7 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
             clip: "never",
             preview_lines: 5,
             presubmit_timeout: 30,
+            check_limit: true,
         },
         testcase: { folder: options.folder ?? "test", filename: "sample-{}" },
         handmade: { filename: "handmade-{}" },
