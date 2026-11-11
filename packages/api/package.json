@@ -87,7 +87,7 @@
     },
     "scripts": {
         "clean": "rm -rf dist",
-        "build": "bun run clean && bun build ./src/index.ts ./src/aoj.ts ./src/atcoder.ts ./src/codeforces.ts ./src/errors.ts ./src/problem.ts ./src/problem-key.ts ./src/shareoj.ts ./src/user-agent.ts ./src/yukicoder.ts --root ./src --outdir ./dist --target node --packages external --splitting --check && tsc -p tsconfig.build.json",
+        "build": "bun run clean && bun build ./src/index.ts ./src/aoj.ts ./src/atcoder.ts ./src/codeforces.ts ./src/errors.ts ./src/problem.ts ./src/problem-key.ts ./src/shareoj.ts ./src/user-agent.ts ./src/yukicoder.ts --root ./src --outdir ./dist --target node --packages external --splitting --check --minify && tsc -p tsconfig.build.json",
         "typecheck": "bun check"
     },
     "dependencies": {
@@ -95,7 +95,7 @@
         "valibot": "^1.5.0"
     },
     "devDependencies": {
-        "typescript": "^6.0.3"
+        "typescript": "^7"
     },
     "engines": {
         "node": ">=26"
