@@ -10,6 +10,9 @@ dist
 packages/cli-*/neoj
 packages/cli-*/neoj.exe
 
+# runtimes fetched by cross-compiling
+.bun-cache
+
 # temp
 tmp
 data
