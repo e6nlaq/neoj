@@ -1,7 +1,8 @@
 import { Command } from "@commander-js/extra-typings";
+import { deriveProblemKey } from "@neoj/api";
+import type { ProblemKey } from "@neoj/api/problem";
 import { consola } from "consola";
 
-import { deriveProblemKey } from "@/feature/problem-sources";
 import type { Config } from "@/lib/util/config";
 import { loadConfig } from "@/lib/util/config";
 import { readProblemMetadata } from "@/lib/util/problem-metadata";
@@ -14,7 +15,6 @@ import {
     listStashes,
     saveStash,
     type ApplyStashResult,
-    type ProblemKey,
     type SaveStashResult,
     type StashEntry,
 } from "@/lib/util/stash";

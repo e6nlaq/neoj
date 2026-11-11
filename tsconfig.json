@@ -24,7 +24,9 @@
         "noUnusedParameters": false,
         "noPropertyAccessFromIndexSignature": false,
         "paths": {
-            "@/*": ["./src/*"]
+            "@/*": ["./src/*"],
+            "@neoj/api": ["./packages/api/src/index.ts"],
+            "@neoj/api/*": ["./packages/api/src/*.ts"]
         }
     },
     "exclude": ["dist"]

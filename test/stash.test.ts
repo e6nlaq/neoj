@@ -3,7 +3,8 @@ import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { deriveProblemKey } from "@/feature/problem-sources";
+import { deriveProblemKey } from "@neoj/api";
+
 import { clearProblemStashes, listProblemStashes, saveCurrentProblemStash } from "@/feature/stash";
 import type { Config } from "@/lib/util/config";
 import {

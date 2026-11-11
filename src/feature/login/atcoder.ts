@@ -1,7 +1,7 @@
 import { confirm, password } from "@inquirer/prompts";
+import { AtCoderClient, normalizeRevelSession } from "@neoj/api/atcoder";
 import * as v from "valibot";
 
-import { AtCoderClient, normalizeRevelSession } from "@/lib/service/atcoder";
 import { readAuth, saveAuth } from "@/lib/util/auth";
 
 const atCoderAuthSchema = v.object({

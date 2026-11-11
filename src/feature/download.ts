@@ -1,8 +1,9 @@
 import { Command } from "@commander-js/extra-typings";
+import { deriveProblemKey } from "@neoj/api";
+import type { ProblemSample } from "@neoj/api/problem";
 import { consola } from "consola";
 
-import { deriveProblemKey, findProblemSource } from "@/feature/problem-sources";
-import type { ProblemSample } from "@/lib/service/problem";
+import { findProblemSource } from "@/feature/problem-sources";
 import { loadConfig } from "@/lib/util/config";
 import { readProblemMetadata, saveProblemMetadata } from "@/lib/util/problem-metadata";
 import { requireInitializedProject } from "@/lib/util/project";

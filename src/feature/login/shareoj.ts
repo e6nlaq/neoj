@@ -1,13 +1,13 @@
 import { confirm, input, password } from "@inquirer/prompts";
-import { consola } from "consola";
-import * as v from "valibot";
-
 import {
     ShareOjApiError,
     ShareOjClient,
     type ShareOjChallenge,
     type ShareOjTokens,
-} from "@/lib/service/shareoj";
+} from "@neoj/api/shareoj";
+import { consola } from "consola";
+import * as v from "valibot";
+
 import { readAuth, replaceAuth } from "@/lib/util/auth";
 
 const shareOjAuthSchema = v.strictObject({

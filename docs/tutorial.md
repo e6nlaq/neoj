@@ -5,7 +5,8 @@ a few minutes and uses AtCoder, one of the platforms `neoj` ships with.
 
 ## Before you start
 
-- [Install `neoj`](how-to/install.md). It requires Bun 1.4 or newer.
+- [Install `neoj`](how-to/install.md). The npm package needs Node.js 18 or newer;
+  the standalone binaries need no runtime.
 - You do not need an AtCoder account to download samples from a public problem.
 
 ## 1. Create a project

@@ -1,0 +1,27 @@
+{
+    "name": "@neoj/cli-win32-x64",
+    "version": "0.0.6",
+    "description": "The neoj binary for Windows x64",
+    "license": "MIT",
+    "author": {
+        "name": "e6nlaq"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/e6nlaq/neoj.git",
+        "directory": "packages/cli-win32-x64"
+    },
+    "files": [
+        "neoj.exe",
+        "LICENSE"
+    ],
+    "os": [
+        "win32"
+    ],
+    "cpu": [
+        "x64"
+    ],
+    "publishConfig": {
+        "access": "public"
+    }
+}

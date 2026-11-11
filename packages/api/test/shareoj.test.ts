@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import { deriveProblemKey } from "@/feature/problem-sources";
+import { deriveProblemKey } from "@neoj/api";
 import {
     ShareOjApiError,
     ShareOjClient,
@@ -12,7 +12,7 @@ import {
     parseShareOjContestProblemUrl,
     parseShareOjProblemLabel,
     parseShareOjProblemUrl,
-} from "@/lib/service/shareoj";
+} from "@neoj/api/shareoj";
 
 const originalFetch = globalThis.fetch;
 type FetchHandler = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>;

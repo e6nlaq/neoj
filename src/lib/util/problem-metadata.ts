@@ -2,9 +2,9 @@ import { randomUUID } from "node:crypto";
 import { lstat, mkdir, open, readFile, rename, rm } from "node:fs/promises";
 import { join, resolve } from "node:path";
 
-import type { Problem } from "@/lib/service/problem";
+import type { Problem, ProblemKey } from "@neoj/api/problem";
+
 import { hasErrorCode } from "@/lib/util/errors";
-import type { ProblemKey } from "@/lib/util/stash";
 
 export interface ProblemMetadata {
     url: string;

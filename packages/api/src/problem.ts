@@ -1,4 +1,7 @@
-import type { ProblemKey } from "@/lib/util/stash";
+export interface ProblemKey {
+    platform: string;
+    slug: string;
+}
 
 export interface ProblemSample {
     input: string;

@@ -3,7 +3,8 @@ import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { AtCoderProblem } from "@/lib/service/atcoder";
+import type { AtCoderProblem } from "@neoj/api/atcoder";
+
 import {
     parseProblemMetadata,
     readProblemMetadata,

@@ -3,9 +3,10 @@ import { mkdir, mkdtemp, readdir, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import type { AtCoderProblem } from "@neoj/api/atcoder";
+import { AtCoderProblemRequestError } from "@neoj/api/atcoder";
+
 import { downloadProblem, formatSamples, getProblemWithLoginHint } from "@/feature/download";
-import type { AtCoderProblem } from "@/lib/service/atcoder";
-import { AtCoderProblemRequestError } from "@/lib/service/atcoder";
 import { readProblemMetadata } from "@/lib/util/problem-metadata";
 import { downloadSamples } from "@/lib/util/testcase";
 

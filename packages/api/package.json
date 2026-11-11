@@ -1,0 +1,103 @@
+{
+    "name": "@neoj/api",
+    "version": "0.0.6",
+    "description": "API clients for the competitive programming platforms supported by neoj",
+    "license": "MIT",
+    "author": {
+        "name": "e6nlaq"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/e6nlaq/neoj.git",
+        "directory": "packages/api"
+    },
+    "files": [
+        "dist",
+        "src",
+        "README.md",
+        "LICENSE"
+    ],
+    "type": "module",
+    "sideEffects": false,
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "bun": "./src/index.ts",
+            "import": "./dist/index.js",
+            "default": "./dist/index.js"
+        },
+        "./aoj": {
+            "types": "./dist/aoj.d.ts",
+            "bun": "./src/aoj.ts",
+            "import": "./dist/aoj.js",
+            "default": "./dist/aoj.js"
+        },
+        "./atcoder": {
+            "types": "./dist/atcoder.d.ts",
+            "bun": "./src/atcoder.ts",
+            "import": "./dist/atcoder.js",
+            "default": "./dist/atcoder.js"
+        },
+        "./codeforces": {
+            "types": "./dist/codeforces.d.ts",
+            "bun": "./src/codeforces.ts",
+            "import": "./dist/codeforces.js",
+            "default": "./dist/codeforces.js"
+        },
+        "./errors": {
+            "types": "./dist/errors.d.ts",
+            "bun": "./src/errors.ts",
+            "import": "./dist/errors.js",
+            "default": "./dist/errors.js"
+        },
+        "./problem": {
+            "types": "./dist/problem.d.ts",
+            "bun": "./src/problem.ts",
+            "import": "./dist/problem.js",
+            "default": "./dist/problem.js"
+        },
+        "./problem-key": {
+            "types": "./dist/problem-key.d.ts",
+            "bun": "./src/problem-key.ts",
+            "import": "./dist/problem-key.js",
+            "default": "./dist/problem-key.js"
+        },
+        "./shareoj": {
+            "types": "./dist/shareoj.d.ts",
+            "bun": "./src/shareoj.ts",
+            "import": "./dist/shareoj.js",
+            "default": "./dist/shareoj.js"
+        },
+        "./user-agent": {
+            "types": "./dist/user-agent.d.ts",
+            "bun": "./src/user-agent.ts",
+            "import": "./dist/user-agent.js",
+            "default": "./dist/user-agent.js"
+        },
+        "./yukicoder": {
+            "types": "./dist/yukicoder.d.ts",
+            "bun": "./src/yukicoder.ts",
+            "import": "./dist/yukicoder.js",
+            "default": "./dist/yukicoder.js"
+        },
+        "./package.json": "./package.json"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "scripts": {
+        "clean": "rm -rf dist",
+        "build": "bun run clean && bun build ./src/index.ts ./src/aoj.ts ./src/atcoder.ts ./src/codeforces.ts ./src/errors.ts ./src/problem.ts ./src/problem-key.ts ./src/shareoj.ts ./src/user-agent.ts ./src/yukicoder.ts --root ./src --outdir ./dist --target node --packages external --splitting --check && tsc -p tsconfig.build.json",
+        "typecheck": "bun check"
+    },
+    "dependencies": {
+        "node-html-parser": "^9.0.6",
+        "valibot": "^1.5.0"
+    },
+    "devDependencies": {
+        "typescript": "^6.0.3"
+    },
+    "engines": {
+        "node": ">=26"
+    }
+}

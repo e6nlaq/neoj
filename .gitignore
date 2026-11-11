@@ -6,6 +6,10 @@ out
 dist
 *.tgz
 
+# compiled platform binaries
+packages/cli-*/neoj
+packages/cli-*/neoj.exe
+
 # temp
 tmp
 data

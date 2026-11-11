@@ -1,13 +1,13 @@
 import { dirname, resolve } from "node:path";
 
 import { Command } from "@commander-js/extra-typings";
+import { AtCoderClient, parseAtCoderTask } from "@neoj/api/atcoder";
+import { ShareOjClient } from "@neoj/api/shareoj";
+import { YukicoderClient } from "@neoj/api/yukicoder";
 import { consola } from "consola";
 
 import { getAtCoderSession, loginToAtCoder } from "@/feature/login/atcoder";
 import { findProblemSource } from "@/feature/problem-sources";
-import { AtCoderClient, parseAtCoderTask } from "@/lib/service/atcoder";
-import { ShareOjClient } from "@/lib/service/shareoj";
-import { YukicoderClient } from "@/lib/service/yukicoder";
 import { readAuth } from "@/lib/util/auth";
 import { loadConfig, type Config } from "@/lib/util/config";
 import { maxValue } from "@/lib/util/numbers";

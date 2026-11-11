@@ -1,6 +1,6 @@
-import type { Problem, ProblemSample } from "@/lib/service/problem";
-import { isTimeoutError } from "@/lib/util/errors";
-import { USER_AGENT } from "@/lib/util/user-agent";
+import { isTimeoutError } from "./errors.js";
+import type { Problem, ProblemSample } from "./problem.js";
+import { USER_AGENT } from "./user-agent.js";
 
 /** The public API origin, documented at https://www.share-oj.net/docs/api. */
 const API_ORIGIN = "https://api.share-oj.net";

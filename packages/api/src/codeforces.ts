@@ -1,8 +1,8 @@
 import { parse, type HTMLElement } from "node-html-parser";
 
-import type { Problem, ProblemSample } from "@/lib/service/problem";
-import { isTimeoutError } from "@/lib/util/errors";
-import { USER_AGENT } from "@/lib/util/user-agent";
+import { isTimeoutError } from "./errors.js";
+import type { Problem, ProblemSample } from "./problem.js";
+import { USER_AGENT } from "./user-agent.js";
 
 const CODEFORCES_ORIGIN = "https://codeforces.com";
 const REQUEST_TIMEOUT_MS = 15_000;

@@ -26,9 +26,12 @@ problem.
 
 ```bash
 bun install
+bun run hooks
 ```
 
-The `prepare` script installs the Lefthook pre-commit hook.
+`bun run hooks` installs the Lefthook pre-commit hook. The package ships no
+install scripts, so npm and Bun do not run anything when someone installs
+`@neoj/cli`.
 
 ### Run the checks
 
@@ -37,7 +40,7 @@ bun test           # unit tests
 bun run format     # format the code
 bun run lint       # lint with Oxlint
 bun run typecheck  # type-check with TypeScript
-bun run build      # bundle the CLI into dist/
+bun run build      # bundle the CLI into dist/ and emit @neoj/api declarations
 ```
 
 The pre-commit hook runs formatting, linting, and type checking.
@@ -52,21 +55,31 @@ for example `docs: restructure the guides` or `feat: add problem metadata`.
 Releases are created manually with the `Release` GitHub Actions workflow
 (`.github/workflows/release.yml`):
 
-1. Bump the `version` field in `package.json` on `main` and merge it.
+1. Bump the `version` in the root `package.json` and every
+   `packages/*/package.json` on `main` and merge it. `test/package-versions.test.ts`
+   fails when they disagree.
 2. Open the **Release** workflow in the Actions tab and run it (optionally as a
-   dry run). The version is read from `package.json`.
-3. The workflow verifies the version, publishes `@neoj/cli` to npm using trusted
-   publishing (OIDC, no stored token), compiles standalone binaries for Linux,
-   macOS, and Windows, and creates a GitHub Release tagged `v<version>` with the
-   binaries and their checksums attached.
+   dry run). The version is read from the root `package.json`.
+3. The workflow verifies the version and that every package is unpublished,
+   compiles standalone binaries for Linux, macOS, and Windows, drops each binary
+   into its `@neoj/cli-<platform>` package, and publishes in dependency order:
+   the platform packages, `@neoj/api`, then `@neoj/cli`. Finally it creates a
+   GitHub Release tagged `v<version>` with the binaries and their checksums
+   attached.
 
-npm trusted publishing must be configured on npmjs.com with this repository,
-the `release.yml` workflow file, and no environment. The workflow publishes
-with `npm publish --ignore-scripts` after an explicit `bun run build`, so the
-package's `prepare` script (Lefthook) never runs in CI.
+npm trusted publishing must be configured on npmjs.com for every published
+package (`@neoj/cli`, `@neoj/api`, and the five `@neoj/cli-<platform>` packages),
+with this repository, the `release.yml` workflow file, and no environment. The
+workflow publishes with `npm stage publish --ignore-scripts`. Staged versions
+become installable after a maintainer approves each package in the npm stage
+queue.
 
 Binaries are produced with `bun build --compile` and embed the project
-templates, so `neoj init` works from a standalone executable.
+templates, so `neoj init` works from a standalone executable. The compiled
+binaries are not committed; the `@neoj/cli` tarball only ships the Node.js
+launcher in `bin/neoj.js`, which starts the `@neoj/cli-<platform>` binary. The
+package has no install scripts, so it works with npm 12's default of blocking
+them.
 
 ## Related
 

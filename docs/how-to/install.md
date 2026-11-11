@@ -1,12 +1,8 @@
 # Install neoj
 
-`neoj` is published on npm as `@neoj/cli`. Install it globally with Bun or npm.
-
-## With Bun (recommended)
-
-```bash
-bun install -g @neoj/cli
-```
+`neoj` is published on npm as `@neoj/cli`. The package ships a small Node.js
+launcher; it starts the prebuilt binary for your platform, so you do not need
+Bun and you do not need to allow install scripts.
 
 ## With npm
 
@@ -14,9 +10,21 @@ bun install -g @neoj/cli
 npm install -g @neoj/cli
 ```
 
+## With Bun
+
+```bash
+bun add -g @neoj/cli
+```
+
+Neither npm nor Bun runs package install scripts for `@neoj/cli`: the package
+has none. The launcher finds `@neoj/cli-<platform>` in the installed tree and
+runs its binary, so `neoj` works with the defaults of npm 12 and newer and with
+Bun's blocked-script default.
+
 ## Prebuilt binaries
 
-Unsigned standalone executables are attached to each
+If you want to skip the Node.js startup cost, download the standalone
+executable attached to each
 [GitHub Release](https://github.com/e6nlaq/neoj/releases):
 
 - `neoj-<version>-linux-x64`
@@ -42,13 +50,23 @@ xattr -d com.apple.quarantine ./neoj-<version>-darwin-arm64
 SHA-256 checksums for every asset are published as `SHA256SUMS.txt` in the same
 release.
 
-## Requirements
+## Supported platforms
 
-`neoj` requires [Bun](https://bun.com) 1.4 or newer at runtime. If Bun is not
-already available, follow the [Bun installation guide](https://bun.com/docs/installation)
-first.
+| Platform            | npm package              |
+| ------------------- | ------------------------ |
+| Linux x64 (glibc)   | `@neoj/cli-linux-x64`    |
+| Linux arm64 (glibc) | `@neoj/cli-linux-arm64`  |
+| macOS x64           | `@neoj/cli-darwin-x64`   |
+| macOS arm64         | `@neoj/cli-darwin-arm64` |
+| Windows x64         | `@neoj/cli-win32-x64`    |
 
-Verify that the CLI is on your `PATH`:
+Linux binaries link against glibc. Alpine Linux and other musl distributions are
+not supported yet.
+
+Node.js 18 or newer is needed to run the launcher. The standalone binaries have
+no runtime dependency.
+
+## Verify the installation
 
 ```bash
 neoj --help

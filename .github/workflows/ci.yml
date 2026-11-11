@@ -105,14 +105,32 @@ jobs:
                   done
 
             - name: Compile a standalone binary
-              run: bun build ./src/index.ts --compile --target=bun-linux-x64 --outfile dist-bin/neoj
+              run: |
+                  mkdir -p packages/cli-linux-x64
+                  bun build ./src/index.ts --compile --target=bun-linux-x64 \
+                      --no-compile-autoload-dotenv --no-compile-autoload-bunfig \
+                      --no-compile-autoload-tsconfig --no-compile-autoload-package-json \
+                      --outfile packages/cli-linux-x64/neoj
 
             - name: Smoke test the standalone binary
               run: |
-                  test -n "$(./dist-bin/neoj --version)"
+                  test -n "$(./packages/cli-linux-x64/neoj --version)"
                   workdir="$(mktemp -d)"
                   cd "$workdir"
-                  "$GITHUB_WORKSPACE/dist-bin/neoj" init
+                  "$GITHUB_WORKSPACE/packages/cli-linux-x64/neoj" init
                   test -f neoj.toml
                   test -f src/main.cpp
                   test -f template/main.cpp
+
+            - name: Smoke test the npm wrapper
+              run: |
+                  prefix="$(mktemp -d)"
+                  pack="$(mktemp -d)"
+                  platform_tarball="$(npm pack --silent --ignore-scripts --pack-destination "$pack" ./packages/cli-linux-x64)"
+                  wrapper_tarball="$(npm pack --silent --ignore-scripts --pack-destination "$pack" .)"
+                  echo '{ "name": "smoke", "private": true }' > "$prefix/package.json"
+                  npm install --prefix "$prefix" --no-audit --no-fund \
+                      "$pack/$platform_tarball" "$pack/$wrapper_tarball"
+                  # The wrapper's bin is a Node launcher, so it works even with
+                  # install scripts blocked (the npm 12 default).
+                  test -n "$("$prefix/node_modules/.bin/neoj" --version)"

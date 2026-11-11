@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://npmx.dev/package/@neoj/cli"><img src="https://img.shields.io/npm/v/@neoj/cli?style=flat-square&amp;label=npm&amp;labelColor=24292f&amp;color=24292f" alt="npm version"></a>
-  <a href="https://bun.com"><img src="https://img.shields.io/badge/Bun-1.4%2B-24292f?style=flat-square&amp;labelColor=24292f&amp;logo=bun&amp;logoColor=fff" alt="Bun 1.4+"></a>
+  <a href="https://github.com/e6nlaq/neoj/blob/main/docs/how-to/install.md"><img src="https://img.shields.io/badge/platforms-linux%20%7C%20macOS%20%7C%20Windows-24292f?style=flat-square" alt="Supported platforms"></a>
   <a href="https://www.typescriptlang.org/"><img src="https://img.shields.io/badge/TypeScript-strict-3178C6?style=flat-square&amp;labelColor=24292f&amp;logo=typescript&amp;logoColor=fff" alt="TypeScript strict"></a>
   <a href="https://github.com/e6nlaq/neoj/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-24292f?style=flat-square&amp;labelColor=24292f" alt="MIT license"></a>
 </p>
@@ -19,10 +19,20 @@
 
 ---
 
-`neoj` is a command-line tool for competitive programming workflows, built with
-[Bun](https://bun.com) and TypeScript. It aims to be a modern alternative to `oj`:
-a clear CLI, a reliable problem workflow, and a consistent interface across
-contest platforms.
+`neoj` is a command-line tool for competitive programming workflows, written in
+TypeScript with [Bun](https://bun.com). The npm package starts a prebuilt binary
+for Linux, macOS, and Windows, so you do not need Bun to use it. It aims to be a
+modern alternative to `oj`: a clear CLI, a reliable problem workflow, and a
+consistent interface across contest platforms.
+
+## Install
+
+```bash
+npm install -g @neoj/cli
+```
+
+See [Install neoj](https://github.com/e6nlaq/neoj/blob/main/docs/how-to/install.md)
+for standalone-binary instructions that skip the Node.js launcher.
 
 ## Supported services
 
@@ -36,6 +46,20 @@ contest platforms.
 
 AOJ and Codeforces support is download-only for now: samples can be fetched,
 but submissions and sessions are not implemented yet.
+
+## API client
+
+The platform integrations are also published as
+[`@neoj/api`](https://www.npmjs.com/package/@neoj/api). It contains the HTTP
+requests, URL validation, and parsing without the CLI:
+
+```ts
+import { YukicoderClient } from "@neoj/api/yukicoder";
+
+const problem = await new YukicoderClient().getProblem("https://yukicoder.me/problems/no/480");
+```
+
+See [`packages/api/README.md`](packages/api/README.md) for the full surface.
 
 ## Documentation
 

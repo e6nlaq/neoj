@@ -1,6 +1,6 @@
 {
     "$schema": "./node_modules/oxfmt/configuration_schema.json",
-    "ignorePatterns": ["aoj.htm", "test/fixtures/"],
+    "ignorePatterns": ["aoj.htm", "test/fixtures/", "packages/api/test/fixtures/"],
     "useTabs": false,
     "tabWidth": 4,
     "endOfLine": "lf",
