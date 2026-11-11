@@ -229,15 +229,15 @@ jobs:
             - name: Publish the platform packages
               run: |
                   for platform in linux-x64 linux-arm64 darwin-x64 darwin-arm64 win32-x64; do
-                      (cd "packages/cli-$platform" && npm stage publish --ignore-scripts --provenance ${{ inputs.dry_run && '--dry-run' || '' }})
+                      (cd "packages/cli-$platform" && npm publish --ignore-scripts --provenance ${{ inputs.dry_run && '--dry-run' || '' }})
                   done
 
             - name: Publish @neoj/api
               working-directory: packages/api
-              run: npm stage publish --ignore-scripts --provenance ${{ inputs.dry_run && '--dry-run' || '' }}
+              run: npm publish --ignore-scripts --provenance ${{ inputs.dry_run && '--dry-run' || '' }}
 
             - name: Publish @neoj/cli
-              run: npm stage publish --ignore-scripts --provenance ${{ inputs.dry_run && '--dry-run' || '' }}
+              run: npm publish --ignore-scripts --provenance ${{ inputs.dry_run && '--dry-run' || '' }}
 
     release:
         name: Create GitHub Release

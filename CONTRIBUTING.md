@@ -70,9 +70,20 @@ Releases are created manually with the `Release` GitHub Actions workflow
 npm trusted publishing must be configured on npmjs.com for every published
 package (`@neoj/cli`, `@neoj/api`, and the five `@neoj/cli-<platform>` packages),
 with this repository, the `release.yml` workflow file, and no environment. The
-workflow publishes with `npm stage publish --ignore-scripts`. Staged versions
-become installable after a maintainer approves each package in the npm stage
-queue.
+workflow publishes with `npm publish --ignore-scripts`.
+
+Trusted publishing cannot be configured until a package exists, so the first
+publish of `@neoj/api` and the platform packages is done by a maintainer. Copy
+the compiled binaries into `packages/cli-<platform>/` first, then publish
+everything except the wrapper:
+
+```bash
+for package in cli-linux-x64 cli-linux-arm64 cli-darwin-x64 cli-darwin-arm64 cli-win32-x64 api; do
+    (cd "packages/$package" && npm publish --access public)
+done
+```
+
+The wrapper goes last: `npm publish --access public` in the repository root.
 
 Binaries are produced with `bun build --compile` and embed the project
 templates, so `neoj init` works from a standalone executable. The compiled
