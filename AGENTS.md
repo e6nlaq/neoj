@@ -104,7 +104,7 @@ The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messag
 - npm links only the top-level package's `bin` into `node_modules/.bin` and the global bin directory; a `bin` declared by an optional dependency is ignored, so the wrapper has to own the entry point.
 - npm's Windows shim hard-codes `node` for a target with a shebang, and runs a shebang-less target directly, so a launcher file cannot be replaced by a native binary after install. Keep the launcher and exec the binary from it.
 - `npm pack` does not rewrite specifiers, and npm does not understand the `workspace:` protocol (it is a pnpm/Bun extension): pin every cross-package `@neoj/*` dependency to the exact released version so Bun and npm both link the workspace and the published manifests stay installable. Local install tests must also pass the platform tarball explicitly, because the pinned version is not on the registry before the release.
-- `bun build --compile --bytecode` fails on top-level await, which `src/index.ts` uses; compile without `--bytecode` and disable the autoload flags so a stray `bunfig.toml`, `.env`, or `package.json` next to the binary cannot change its behavior.
+- `bun build --compile --bytecode` needs `--format=esm` when the entry uses top-level await, which `src/index.ts` does. Compile with `--format=esm --minify --bytecode` and disable the autoload flags so a stray `bunfig.toml`, `.env`, or `package.json` next to the binary cannot change its behavior.
 
 ## Response
 
