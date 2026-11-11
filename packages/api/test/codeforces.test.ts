@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { join } from "node:path";
 
-import { deriveProblemKey } from "@/feature/problem-sources";
+import { deriveProblemKey, USER_AGENT } from "@neoj/api";
 import {
     buildCodeforcesContestUrl,
     buildCodeforcesProblemUrl,
@@ -10,8 +11,7 @@ import {
     parseCodeforcesProblem,
     parseCodeforcesProblemUrl,
     stripCodeforcesTitleIndex,
-} from "@/lib/service/codeforces";
-import { USER_AGENT } from "@/lib/util/user-agent";
+} from "@neoj/api/codeforces";
 
 const originalFetch = globalThis.fetch;
 type FetchHandler = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>;
@@ -211,7 +211,9 @@ describe("parseCodeforcesProblem", () => {
 describe("CodeforcesClient", () => {
     describe("getProblem", () => {
         it("parses the problem page fixture", async () => {
-            const html = await Bun.file("test/fixtures/codeforces-problem.html").text();
+            const html = await Bun.file(
+                join(import.meta.dir, "fixtures", "codeforces-problem.html"),
+            ).text();
             let requestedUrl: string | undefined;
             let userAgent: string | undefined;
             setFetch((input, init) => {

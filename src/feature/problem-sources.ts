@@ -1,29 +1,20 @@
-import { getAtCoderSession } from "@/feature/login/atcoder";
-import { extractAojProblemId, parseAojProblemUrl, AojClient } from "@/lib/service/aoj";
+import { parseAojProblemUrl, AojClient } from "@neoj/api/aoj";
 import {
     AtCoderClient,
     AtCoderProblemRequestError,
     parseAtCoderProblemUrl,
-} from "@/lib/service/atcoder";
+} from "@neoj/api/atcoder";
+import { CodeforcesClient, parseCodeforcesProblemUrl } from "@neoj/api/codeforces";
+import type { Problem } from "@neoj/api/problem";
 import {
-    CodeforcesClient,
-    extractCodeforcesProblemRoute,
-    parseCodeforcesProblemUrl,
-} from "@/lib/service/codeforces";
-import type { Problem } from "@/lib/service/problem";
-import {
-    extractShareOjShortId,
     parseShareOjContestProblemUrl,
     parseShareOjProblemUrl,
     ShareOjClient,
-} from "@/lib/service/shareoj";
-import {
-    parseYukicoderProblemRoute,
-    parseYukicoderProblemUrl,
-    YukicoderClient,
-} from "@/lib/service/yukicoder";
+} from "@neoj/api/shareoj";
+import { parseYukicoderProblemUrl, YukicoderClient } from "@neoj/api/yukicoder";
+
+import { getAtCoderSession } from "@/feature/login/atcoder";
 import { readAuth } from "@/lib/util/auth";
-import type { ProblemKey } from "@/lib/util/stash";
 
 export interface ProblemSource {
     name: string;
@@ -76,48 +67,19 @@ async function fetchShareOjProblem(url: string): Promise<Problem> {
 }
 
 function matchesAtCoderProblem(url: string): boolean {
-    try {
-        parseAtCoderProblemUrl(url);
-        return true;
-    } catch {
-        return false;
-    }
+    return matchesUrl(parseAtCoderProblemUrl, url);
 }
 
 function matchesYukicoderProblem(url: string): boolean {
-    try {
-        parseYukicoderProblemUrl(url);
-        return true;
-    } catch {
-        return false;
-    }
+    return matchesUrl(parseYukicoderProblemUrl, url);
 }
 
 function matchesAojProblem(url: string): boolean {
-    try {
-        parseAojProblemUrl(url);
-        return true;
-    } catch {
-        return false;
-    }
+    return matchesUrl(parseAojProblemUrl, url);
 }
 
 function matchesCodeforcesProblem(url: string): boolean {
-    try {
-        parseCodeforcesProblemUrl(url);
-        return true;
-    } catch {
-        return false;
-    }
-}
-
-function isDirectShareOjProblemUrl(url: string): boolean {
-    try {
-        parseShareOjProblemUrl(url);
-        return true;
-    } catch {
-        return false;
-    }
+    return matchesUrl(parseCodeforcesProblemUrl, url);
 }
 
 function matchesShareOjProblem(url: string): boolean {
@@ -177,59 +139,4 @@ export function findProblemSource(url: string): ProblemSource {
     }
 
     return source;
-}
-
-const PROBLEM_SLUG_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]*$/u;
-
-function deriveSlug(pathname: string, url: string): string {
-    const segments = pathname.split("/").filter((segment) => segment.length > 0);
-    const slug = segments[segments.length - 1];
-    if (slug === undefined || !PROBLEM_SLUG_PATTERN.test(slug)) {
-        throw new TypeError(`Could not derive a stash name from "${url}".`);
-    }
-
-    return slug;
-}
-
-export function deriveProblemKey(url: string): ProblemKey {
-    if (matchesAtCoderProblem(url)) {
-        const problemUrl = parseAtCoderProblemUrl(url);
-        return { platform: "atcoder", slug: deriveSlug(problemUrl.pathname, url) };
-    }
-
-    if (matchesYukicoderProblem(url)) {
-        const route = parseYukicoderProblemRoute(url);
-        return {
-            platform: "yukicoder",
-            slug: `${route.kind === "no" ? "no" : "id"}${route.number}`,
-        };
-    }
-
-    if (matchesAojProblem(url)) {
-        // v1 and v2 URLs of the same problem share one slug, so re-downloading
-        // through either form preserves the working files.
-        return { platform: "aoj", slug: extractAojProblemId(url) };
-    }
-
-    if (matchesCodeforcesProblem(url)) {
-        // /contest and /problemset URLs of the same problem share one slug.
-        const { contestId, index } = extractCodeforcesProblemRoute(url);
-        return { platform: "codeforces", slug: `${contestId}${index}` };
-    }
-
-    if (matchesShareOjProblem(url)) {
-        if (isDirectShareOjProblemUrl(url)) {
-            return { platform: "shareoj", slug: extractShareOjShortId(url) };
-        }
-        // A contest problem URL resolves its problem ID through the API, so it
-        // cannot be derived offline. `neoj download` stores the resolved key
-        // in `.neoj/problem.json` instead.
-        throw new TypeError(
-            `Could not derive a stash name from "${url}" offline. Run "neoj download ${url}" again to record the problem key.`,
-        );
-    }
-
-    throw new TypeError(
-        "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces, ShareOJ).",
-    );
 }

@@ -1,9 +1,9 @@
 import { parse, type HTMLElement } from "node-html-parser";
 import * as v from "valibot";
 
-import type { Problem, ProblemSample } from "@/lib/service/problem";
-import { isTimeoutError } from "@/lib/util/errors";
-import { USER_AGENT } from "@/lib/util/user-agent";
+import { isTimeoutError } from "./errors.js";
+import type { Problem, ProblemSample } from "./problem.js";
+import { USER_AGENT } from "./user-agent.js";
 
 const YUKICODER_ORIGIN = "https://yukicoder.me";
 const API_ORIGIN = `${YUKICODER_ORIGIN}/api`;

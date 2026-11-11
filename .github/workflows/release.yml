@@ -1,14 +1,18 @@
 name: Release
 
 # Manual release pipeline:
-#   1. verify the requested version matches package.json and is unpublished
-#   2. publish the npm package with trusted publishing (OIDC, no stored token)
-#   3. compile standalone binaries for the supported platforms
+#   1. verify every workspace package shares the version and is unpublished
+#   2. compile the standalone binaries for the supported platforms
+#   3. drop each binary into its platform package and publish, in dependency
+#      order: @neoj/cli-<platform> -> @neoj/api -> @neoj/cli
 #   4. create a GitHub Release tagged `v<version>` with the binaries attached
 #
-# Prerequisite: on npmjs.com, add a trusted publisher for `@neoj/cli` pointing at
-# this repository, the workflow file `release.yml`, and no environment.
-# Bump `version` in package.json on `main` before dispatching this workflow.
+# Prerequisite: on npmjs.com, add a trusted publisher for each published package
+# (`@neoj/cli`, `@neoj/api`, and the five `@neoj/cli-<platform>` packages)
+# pointing at this repository, the workflow file `release.yml`, and no
+# environment. Bump `version` in the root package.json and every
+# `packages/*/package.json` on `main` before dispatching this workflow; the
+# `package-versions.test.ts` test keeps them in lockstep.
 
 on:
     workflow_dispatch:
@@ -54,16 +58,119 @@ jobs:
                       echo "::error::Tag v$package_version already exists."
                       exit 1
                   fi
-                  if npm view "@neoj/cli@$package_version" version >/dev/null 2>&1; then
-                      echo "::error::@neoj/cli@$package_version is already published on npm."
-                      exit 1
-                  fi
+
+                  for manifest in package.json packages/*/package.json; do
+                      version="$(node -p "require('./$manifest').version")"
+                      name="$(node -p "require('./$manifest').name")"
+                      if [ "$version" != "$package_version" ]; then
+                          echo "::error::$name is $version, but the CLI is $package_version."
+                          exit 1
+                      fi
+                      if npm view "$name@$version" version >/dev/null 2>&1; then
+                          echo "::error::$name@$version is already published on npm."
+                          exit 1
+                      fi
+                  done
+
                   echo "version=$package_version" >> "$GITHUB_OUTPUT"
-                  echo "Releasing @neoj/cli@$package_version."
+                  echo "Releasing $package_version."
+
+    binaries:
+        name: Build ${{ matrix.platform }} binary
+        needs: verify
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - target: bun-linux-x64
+                      platform: linux-x64
+                      asset: linux-x64
+                      os: ubuntu-latest
+                      smoke: true
+                    - target: bun-linux-arm64
+                      platform: linux-arm64
+                      asset: linux-arm64
+                      os: ubuntu-latest
+                    - target: bun-darwin-x64
+                      platform: darwin-x64
+                      asset: darwin-x64
+                      os: macos-latest
+                    - target: bun-darwin-arm64
+                      platform: darwin-arm64
+                      asset: darwin-arm64
+                      os: macos-latest
+                      smoke: true
+                    - target: bun-windows-x64
+                      platform: win32-x64
+                      asset: windows-x64
+                      os: ubuntu-latest
+                      extension: ".exe"
+        steps:
+            - name: Check out the repository
+              uses: actions/checkout@v7
+
+            - name: Set up tools with mise
+              uses: jdx/mise-action@v5
+              with:
+                  install: true
+                  cache: true
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile --ignore-scripts
+
+            - name: Compile
+              run: |
+                  mkdir -p "packages/cli-${{ matrix.platform }}"
+                  bun build ./src/index.ts --compile --target="${{ matrix.target }}" \
+                      --no-compile-autoload-dotenv --no-compile-autoload-bunfig \
+                      --no-compile-autoload-tsconfig --no-compile-autoload-package-json \
+                      --format=esm --minify --bytecode \
+                      --outfile "packages/cli-${{ matrix.platform }}/neoj${{ matrix.extension }}"
+
+            - name: Sign and verify the macOS binary
+              if: ${{ matrix.os == 'macos-latest' }}
+              run: |
+                  binary="packages/cli-${{ matrix.platform }}/neoj"
+                  # Bun ad-hoc signs host-architecture builds; sign cross-built
+                  # binaries ourselves so they stay loadable on Apple Silicon.
+                  if ! codesign -dv "$binary" 2>/dev/null; then
+                      codesign --force --sign - "$binary"
+                  fi
+                  codesign -dv "$binary"
+
+            - name: Stage the release asset
+              env:
+                  VERSION: ${{ needs.verify.outputs.version }}
+              run: |
+                  mkdir -p release
+                  cp "packages/cli-${{ matrix.platform }}/neoj${{ matrix.extension }}" \
+                      "release/neoj-$VERSION-${{ matrix.asset }}${{ matrix.extension }}"
+
+            - name: Smoke test the binary
+              if: ${{ matrix.smoke }}
+              run: |
+                  binary="packages/cli-${{ matrix.platform }}/neoj${{ matrix.extension }}"
+                  test -n "$("$binary" --version)"
+                  workdir="$(mktemp -d)"
+                  cd "$workdir"
+                  "$GITHUB_WORKSPACE/$binary" init
+                  test -f neoj.toml
+                  test -f src/main.cpp
+                  test -f template/main.cpp
+
+            - name: Upload the binary
+              uses: actions/upload-artifact@v7
+              with:
+                  name: cli-${{ matrix.platform }}
+                  path: |
+                      packages/cli-${{ matrix.platform }}/neoj${{ matrix.extension }}
+                      release/
+                  if-no-files-found: error
 
     npm:
         name: Publish to npm
-        needs: verify
+        needs: [verify, binaries]
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -84,113 +191,58 @@ jobs:
             - name: Install dependencies
               run: bun install --frozen-lockfile --ignore-scripts
 
-            - name: Build the npm bundle
-              run: bun run build
-
-            - name: Smoke test the npm bundle
-              run: |
-                  workdir="$(mktemp -d)"
-                  cd "$workdir"
-                  bun "$GITHUB_WORKSPACE/dist/index.js" init
-                  test -f .gitignore
-                  test -f neoj.toml
-                  test -f src/main.cpp
-                  test -f template/main.cpp
-
-            - name: Verify the tarball contents
-              run: |
-                  tarball="$(npm pack --silent --ignore-scripts --pack-destination "$RUNNER_TEMP")"
-                  if [ -z "$tarball" ]; then
-                      echo "::error::npm pack did not produce a tarball."
-                      exit 1
-                  fi
-                  node -e '
-                      const { execFileSync } = require("node:child_process");
-                      const files = execFileSync("tar", ["-tzf", process.argv[1]], { encoding: "utf8" })
-                          .split(/\r?\n/)
-                          .filter(Boolean);
-                      for (const extension of ["gitignore", "toml", "cpp"]) {
-                          if (!files.some((path) => path.startsWith("package/dist/") && path.endsWith("." + extension))) {
-                              throw new Error("npm package is missing the bundled *." + extension + " template asset.");
-                          }
-                      }
-                  ' "$RUNNER_TEMP/$tarball"
-
-            - name: Publish
-              # Trusted publishing derives provenance from the OIDC token, so no
-              # NODE_AUTH_TOKEN secret is required.
-              run: |
-                  if [ "${{ inputs.dry_run }}" = "true" ]; then
-                      npm stage publish --ignore-scripts --dry-run
-                  else
-                      npm stage publish --ignore-scripts
-                  fi
-
-    binaries:
-        name: Build ${{ matrix.platform }} binary
-        needs: verify
-        runs-on: ubuntu-latest
-        strategy:
-            fail-fast: false
-            matrix:
-                include:
-                    - target: bun-linux-x64
-                      platform: linux-x64
-                      smoke: true
-                    - target: bun-linux-arm64
-                      platform: linux-arm64
-                    - target: bun-darwin-x64
-                      platform: darwin-x64
-                    - target: bun-darwin-arm64
-                      platform: darwin-arm64
-                    - target: bun-windows-x64
-                      platform: windows-x64
-                      extension: ".exe"
-        steps:
-            - name: Check out the repository
-              uses: actions/checkout@v7
-
-            - name: Set up tools with mise
-              uses: jdx/mise-action@v5
+            - name: Download the binaries
+              uses: actions/download-artifact@v8
               with:
-                  install: true
-                  cache: true
+                  pattern: cli-*
+                  path: binaries
+                  merge-multiple: true
 
-            - name: Install dependencies
-              run: bun install --frozen-lockfile --ignore-scripts
-
-            - name: Compile
-              env:
-                  VERSION: ${{ needs.verify.outputs.version }}
+            - name: Place the binaries in their platform packages
               run: |
-                  mkdir -p dist-bin
-                  bun build ./src/index.ts --compile --production --format=esm --bytecode --target="${{ matrix.target }}" \
-                      --outfile "dist-bin/neoj-$VERSION-${{ matrix.platform }}${{ matrix.extension }}"
+                  version="$(node -p "require('./package.json').version")"
+                  for directory in binaries/packages/*; do
+                      platform="$(basename "$directory")"
+                      test -f "$directory/neoj" || test -f "$directory/neoj.exe"
+                      cp "$directory"/neoj* "packages/$platform/"
+                  done
+                  test -f packages/cli-linux-x64/neoj
+                  test -f packages/cli-linux-arm64/neoj
+                  test -f packages/cli-darwin-x64/neoj
+                  test -f packages/cli-darwin-arm64/neoj
+                  test -f packages/cli-win32-x64/neoj.exe
+                  echo "Staged binaries for $version."
 
-            - name: Smoke test the binary
-              if: ${{ matrix.smoke }}
-              env:
-                  VERSION: ${{ needs.verify.outputs.version }}
+            - name: Build the API types
+              run: bun run --filter @neoj/api build
+
+            - name: Smoke test the published layout
               run: |
-                  binary="dist-bin/neoj-$VERSION-${{ matrix.platform }}"
-                  test -n "$("$binary" --version)"
-                  workdir="$(mktemp -d)"
-                  cd "$workdir"
-                  "$GITHUB_WORKSPACE/$binary" init
-                  test -f neoj.toml
-                  test -f src/main.cpp
-                  test -f template/main.cpp
+                  prefix="$(mktemp -d)"
+                  pack="$(mktemp -d)"
+                  platform_tarball="$(npm pack --silent --ignore-scripts --pack-destination "$pack" ./packages/cli-linux-x64)"
+                  wrapper_tarball="$(npm pack --silent --ignore-scripts --pack-destination "$pack" .)"
+                  echo '{ "name": "smoke", "private": true }' > "$prefix/package.json"
+                  npm install --prefix "$prefix" --no-audit --no-fund \
+                      "$pack/$platform_tarball" "$pack/$wrapper_tarball"
+                  "$prefix/node_modules/.bin/neoj" --version
 
-            - name: Upload the binary
-              uses: actions/upload-artifact@v7
-              with:
-                  name: neoj-${{ matrix.platform }}
-                  path: dist-bin/*
-                  if-no-files-found: error
+            - name: Publish the platform packages
+              run: |
+                  for platform in linux-x64 linux-arm64 darwin-x64 darwin-arm64 win32-x64; do
+                      (cd "packages/cli-$platform" && npm publish --ignore-scripts --provenance ${{ inputs.dry_run && '--dry-run' || '' }})
+                  done
+
+            - name: Publish @neoj/api
+              working-directory: packages/api
+              run: npm publish --ignore-scripts --provenance ${{ inputs.dry_run && '--dry-run' || '' }}
+
+            - name: Publish @neoj/cli
+              run: npm publish --ignore-scripts --provenance ${{ inputs.dry_run && '--dry-run' || '' }}
 
     release:
         name: Create GitHub Release
-        needs: [verify, npm, binaries]
+        needs: [verify, binaries, npm]
         if: ${{ !inputs.dry_run }}
         runs-on: ubuntu-latest
         permissions:
@@ -204,11 +256,14 @@ jobs:
             - name: Download the binaries
               uses: actions/download-artifact@v8
               with:
-                  path: assets
+                  pattern: cli-*
+                  path: binaries
                   merge-multiple: true
 
             - name: Generate checksums
               run: |
+                  mkdir -p assets
+                  cp binaries/release/* assets/
                   cd assets
                   ls -l
                   sha256sum neoj-* > SHA256SUMS.txt

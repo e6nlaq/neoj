@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { join } from "node:path";
 
-import { deriveProblemKey } from "@/feature/problem-sources";
+import { deriveProblemKey } from "@neoj/api";
 import {
     AojClient,
     AojProblemRequestError,
@@ -10,7 +11,7 @@ import {
     parseAojProblemId,
     parseAojProblemUrl,
     resolveAojPageLanguage,
-} from "@/lib/service/aoj";
+} from "@neoj/api/aoj";
 
 const originalFetch = globalThis.fetch;
 type FetchHandler = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>;
@@ -262,7 +263,9 @@ describe("parseAojProblem", () => {
 describe("AojClient", () => {
     describe("getProblem", () => {
         it("parses the v1 problem page fixture", async () => {
-            const html = await Bun.file("test/fixtures/aoj-problem.html").text();
+            const html = await Bun.file(
+                join(import.meta.dir, "fixtures", "aoj-problem.html"),
+            ).text();
             let requestedUrl: URL | undefined;
             setFetch((input) => {
                 requestedUrl = new URL(input.toString());

@@ -58,6 +58,13 @@ argument handling and presentation. Keeping those apart is what lets a new
 platform reuse the existing file, template, and credential logic without
 touching it.
 
+The platform code lives in [`packages/api`](https://github.com/e6nlaq/neoj/tree/main/packages/api)
+and is published as `@neoj/api`, so other tools can use the same clients without
+installing the CLI. The package never reads or writes credential files; the CLI
+loads a saved session, passes it to a client, and decides what to store. See
+[`packages/api/README.md`](https://github.com/e6nlaq/neoj/blob/main/packages/api/README.md)
+for the public entry points.
+
 ## Related
 
 - [Log in, check status, and log out](../how-to/manage-sessions.md)

@@ -6,13 +6,21 @@ Build `neoj` as a modern, feature-rich alternative to `oj`, the competitive-prog
 
 ## Architecture
 
-- Keep the CLI entry point in `src/index.ts` and platform-specific integrations under `src/lib/service/`.
+- Keep the CLI entry point in `src/index.ts` and platform-specific integrations under `packages/api/src/`. `@neoj/api` is published separately; the CLI imports it through the `@neoj/api/*` subpaths.
 - Put user-facing command features under `src/feature/`; wire commands in `src/feature/program.ts` (`createProgram()`) with explicit imports, which Bun bundles into a single CLI. `src/index.ts` only parses the program, and completion generation reuses the same command tree.
 - Treat contest-window metadata (`event-timer`) as AtCoder-specific. AtCoder uses Turnstile outside contest windows, so submission automation is only reliable during a contest; do not store or rely on contest windows for yukicoder.
 - Put shared filesystem and configuration helpers under `src/lib/util/`.
-- Keep platform HTTP and HTML handling in service modules, separate from CLI argument parsing and presentation.
+- Keep platform HTTP and HTML handling in `packages/api/src/`, separate from CLI argument parsing and presentation. API modules use relative `./x.js` imports so the emitted declarations resolve in Node.js; run `bun run --filter @neoj/api build` after changing the package surface.
 - Add shared abstractions only when multiple integrations need them; avoid speculative frameworks and one-off indirection.
 - Validate external URLs and responses, and report actionable errors rather than silently returning incomplete results.
+
+## Distribution
+
+- npm packages: `@neoj/cli` (Node.js launcher), `@neoj/cli-<platform>` (one prebuilt binary each), `@neoj/api` (service clients).
+- `@neoj/cli` has no install scripts. npm 12 and Bun block dependency `postinstall` by default, so `bin/neoj.js` resolves `@neoj/cli-<platform>` and spawns its binary. Do not reintroduce a postinstall that swaps the bin target: the package manager writes the shim before install scripts run, and a shebang shim hard-codes `node`, so replacing the file breaks `neoj`.
+- Keep the platform table in `bin/neoj.js` in sync with the exact-version `optionalDependencies` and the `packages/cli-*` directories; `test/package-versions.test.ts` checks both. A dependency's `bin` is not linked into `node_modules/.bin` or the global bin directory, so the wrapper must own the `bin` entry itself.
+- Linux support is glibc-only; musl/Alpine is out of scope until a `-musl` platform package exists.
+- Release order is platform packages → `@neoj/api` → `@neoj/cli`; every package shares the root version.
 
 ## Code and Dependencies
 
@@ -92,6 +100,11 @@ The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messag
 - `Bun.spawn` stdin is a `FileSink`: `write()` may return a promise that rejects with `EPIPE` after the reader exits. Await the result and treat a failed write as the end of that relay; an unhandled rejection escapes the pump and fails the entire test run on Windows.
 - When one side of an interactive pipe exits first, keep draining the other side's output until EOF instead of cancelling the reader. Cancelling hands the surviving writer an `EPIPE` it cannot handle, which turns a normal early exit into a spurious judge error.
 - Reap both interactive children in a `finally` before returning. On Windows a leaked process keeps its working directory and executables locked, so later `rm` calls fail with `EBUSY` and hide the real failure; test cleanup should also pass `maxRetries` to `rm`.
+- npm 12 and Bun block dependency install scripts by default: `postinstall` never runs for `npm install -g <pkg>` unless the user passes `--allow-scripts=<pkg>` or sets `npm config set allow-scripts=<pkg> --location=user`, and Bun needs `bun pm -g trust <pkg>`. Never ship a package that relies on `postinstall` to make its `bin` usable; ship a launcher instead and let users opt into the native binaries from a GitHub Release.
+- npm links only the top-level package's `bin` into `node_modules/.bin` and the global bin directory; a `bin` declared by an optional dependency is ignored, so the wrapper has to own the entry point.
+- npm's Windows shim hard-codes `node` for a target with a shebang, and runs a shebang-less target directly, so a launcher file cannot be replaced by a native binary after install. Keep the launcher and exec the binary from it.
+- `npm pack` does not rewrite specifiers, and npm does not understand the `workspace:` protocol (it is a pnpm/Bun extension): pin every cross-package `@neoj/*` dependency to the exact released version so Bun and npm both link the workspace and the published manifests stay installable. Local install tests must also pass the platform tarball explicitly, because the pinned version is not on the registry before the release.
+- `bun build --compile --bytecode` needs `--format=esm` when the entry uses top-level await, which `src/index.ts` does. Compile with `--format=esm --minify --bytecode` and disable the autoload flags so a stray `bunfig.toml`, `.env`, or `package.json` next to the binary cannot change its behavior.
 
 ## Response
 

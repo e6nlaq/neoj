@@ -1,7 +1,8 @@
 import { lstat, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 
-import type { Problem, ProblemClient, ProblemSample } from "@/lib/service/problem";
+import type { Problem, ProblemClient, ProblemSample } from "@neoj/api/problem";
+
 import type { Config } from "@/lib/util/config";
 import { commitStagedDirectory } from "@/lib/util/directory-replace";
 import { hasErrorCode } from "@/lib/util/errors";

@@ -1,12 +1,12 @@
 import { confirm, password } from "@inquirer/prompts";
-import { consola } from "consola";
-import * as v from "valibot";
-
 import {
     normalizeYukicoderCredential,
     YukicoderClient,
     type PollDeviceTokenOptions,
-} from "@/lib/service/yukicoder";
+} from "@neoj/api/yukicoder";
+import { consola } from "consola";
+import * as v from "valibot";
+
 import { readAuth, replaceAuth } from "@/lib/util/auth";
 import { openInBrowser } from "@/lib/util/browser";
 import { loadConfig } from "@/lib/util/config";

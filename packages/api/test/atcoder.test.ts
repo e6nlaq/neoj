@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
+import { USER_AGENT } from "@neoj/api";
 import {
     AtCoderClient,
     AtCoderProblemRequestError,
@@ -7,8 +8,7 @@ import {
     normalizeRevelSession,
     parseAtCoderLatestSubmission,
     parseAtCoderSubmitPage,
-} from "@/lib/service/atcoder";
-import { USER_AGENT } from "@/lib/util/user-agent";
+} from "@neoj/api/atcoder";
 
 const problemUrl = "https://atcoder.jp/contests/abc001/tasks/abc001_1";
 const formatContestTime = (date: Date) =>

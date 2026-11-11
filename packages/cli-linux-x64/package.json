@@ -1,0 +1,30 @@
+{
+    "name": "@neoj/cli-linux-x64",
+    "version": "0.0.6",
+    "description": "The neoj binary for Linux x64 (glibc)",
+    "license": "MIT",
+    "author": {
+        "name": "e6nlaq"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/e6nlaq/neoj.git",
+        "directory": "packages/cli-linux-x64"
+    },
+    "files": [
+        "neoj",
+        "LICENSE"
+    ],
+    "os": [
+        "linux"
+    ],
+    "cpu": [
+        "x64"
+    ],
+    "libc": [
+        "glibc"
+    ],
+    "publishConfig": {
+        "access": "public"
+    }
+}

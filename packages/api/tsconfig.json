@@ -1,0 +1,11 @@
+{
+    "extends": "../../tsconfig.json",
+    "compilerOptions": {
+        "paths": {
+            "@neoj/api": ["./src/index.ts"],
+            "@neoj/api/*": ["./src/*.ts"]
+        }
+    },
+    "include": ["src", "test"],
+    "exclude": ["dist"]
+}

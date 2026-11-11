@@ -1,17 +1,17 @@
 import { Command } from "@commander-js/extra-typings";
-import { consola } from "consola";
-
-import { findProblemSource } from "@/feature/problem-sources";
-import { buildAtCoderContestUrl, buildAtCoderSubmissionsUrl } from "@/lib/service/atcoder";
-import { buildCodeforcesContestUrl, extractCodeforcesProblemRoute } from "@/lib/service/codeforces";
+import { buildAtCoderContestUrl, buildAtCoderSubmissionsUrl } from "@neoj/api/atcoder";
+import { buildCodeforcesContestUrl, extractCodeforcesProblemRoute } from "@neoj/api/codeforces";
 import {
     buildShareOjContestSubmissionsUrl,
     buildShareOjContestUrl,
     buildShareOjProblemSubmissionsUrl,
     extractShareOjShortId,
     parseShareOjContestProblemUrl,
-} from "@/lib/service/shareoj";
-import { buildYukicoderSubmissionsUrl, fetchYukicoderContestUrl } from "@/lib/service/yukicoder";
+} from "@neoj/api/shareoj";
+import { buildYukicoderSubmissionsUrl, fetchYukicoderContestUrl } from "@neoj/api/yukicoder";
+import { consola } from "consola";
+
+import { findProblemSource } from "@/feature/problem-sources";
 import { openInBrowser } from "@/lib/util/browser";
 import { copyToClipboard } from "@/lib/util/clipboard";
 import { readProblemMetadata } from "@/lib/util/problem-metadata";

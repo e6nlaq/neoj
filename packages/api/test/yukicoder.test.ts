@@ -1,5 +1,7 @@
 import { afterEach, describe, expect, it } from "bun:test";
+import { join } from "node:path";
 
+import { USER_AGENT } from "@neoj/api";
 import {
     fetchYukicoderContestUrl,
     normalizeYukicoderCredential,
@@ -7,8 +9,7 @@ import {
     YukicoderClient,
     YukicoderProblemRequestError,
     type YukicoderDeviceCode,
-} from "@/lib/service/yukicoder";
-import { USER_AGENT } from "@/lib/util/user-agent";
+} from "@neoj/api/yukicoder";
 
 const originalFetch = globalThis.fetch;
 type FetchHandler = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>;
@@ -147,7 +148,9 @@ describe("YukicoderClient", () => {
         });
 
         it("parses the problem page fixture", async () => {
-            const html = await Bun.file("test/fixtures/yukicoder-problem.html").text();
+            const html = await Bun.file(
+                join(import.meta.dir, "fixtures", "yukicoder-problem.html"),
+            ).text();
             setFetch(async () => new Response(html, { status: 200 }));
 
             const problem = await new YukicoderClient().getProblem(

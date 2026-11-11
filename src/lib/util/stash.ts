@@ -12,17 +12,13 @@ import {
 } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 
+import type { ProblemKey } from "@neoj/api/problem";
 import * as v from "valibot";
 
 import type { Config } from "@/lib/util/config";
 import { commitStagedDirectory } from "@/lib/util/directory-replace";
 import { hasErrorCode } from "@/lib/util/errors";
 import { assertDirectoriesDoNotOverlap, resolveProjectDirectory } from "@/lib/util/project-path";
-
-export interface ProblemKey {
-    platform: string;
-    slug: string;
-}
 
 export const stashSlots = ["src", "testcase"] as const;
 
