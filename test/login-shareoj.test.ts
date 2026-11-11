@@ -116,7 +116,7 @@ describe("ShareOJ login state", () => {
             requests += 1;
             expect(String(input)).toBe("https://api.share-oj.net/auth/me");
             expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer tok");
-            return jsonResponse({ user: { id: "u1" } }, 200);
+            return jsonResponse({ id: "u1" }, 200);
         });
 
         await expect(
@@ -140,7 +140,7 @@ describe("ShareOJ login state", () => {
             }
             if (url === "https://api.share-oj.net/auth/me") {
                 expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer tok2");
-                return jsonResponse({ user: { id: "u1" } }, 200);
+                return jsonResponse({ id: "u1" }, 200);
             }
             throw new Error(`Unexpected fetch: ${url}`);
         });

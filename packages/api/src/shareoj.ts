@@ -647,17 +647,14 @@ export class ShareOjClient {
             throw await parseErrorResponse(response);
         }
 
+        // `/auth/me` returns `{"id": "<user id>"}` at the top level.
         const body: unknown = await response.json();
         if (typeof body !== "object" || body === null) {
             return undefined;
         }
-        const user = (body as { user?: unknown }).user;
-        if (typeof user !== "object" || user === null) {
-            return undefined;
-        }
 
-        return typeof (user as { id?: unknown }).id === "string"
-            ? (user as { id: string }).id
+        return typeof (body as { id?: unknown }).id === "string"
+            ? (body as { id: string }).id
             : undefined;
     }
 
