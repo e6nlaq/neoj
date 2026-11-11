@@ -31,6 +31,7 @@
         "build": "bun run template-assets && bun run --filter @neoj/api build && rm -rf dist && bun build ./src/index.ts --target bun --outdir dist --packages external --splitting --check --minify",
         "neoj": "bun run src/index.ts",
         "schema": "bun run scripts/generate-schema.ts",
+        "set-version": "bun run scripts/set-version.ts",
         "template-assets": "bun run scripts/generate-template-assets.ts",
         "format": "bun fmt",
         "format:check": "bun fmt --check",

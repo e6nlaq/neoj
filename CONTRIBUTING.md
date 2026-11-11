@@ -55,9 +55,10 @@ for example `docs: restructure the guides` or `feat: add problem metadata`.
 Releases are created manually with the `Release` GitHub Actions workflow
 (`.github/workflows/release.yml`):
 
-1. Bump the `version` in the root `package.json` and every
-   `packages/*/package.json` on `main` and merge it. `test/package-versions.test.ts`
-   fails when they disagree.
+1. Set the version everywhere: `bun run set-version 0.1.0` rewrites the root
+   `package.json`, every `packages/*/package.json`, the exact `@neoj/*` pins, and
+   `bun.lock`. Run `bun install`, commit, and merge to `main`.
+   `test/package-versions.test.ts` fails when the versions disagree.
 2. Open the **Release** workflow in the Actions tab and run it (optionally as a
    dry run). The version is read from the root `package.json`.
 3. The workflow verifies the version and that every package is unpublished,
