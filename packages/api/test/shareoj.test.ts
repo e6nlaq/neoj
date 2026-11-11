@@ -373,7 +373,7 @@ describe("ShareOjClient authentication and submission", () => {
     it("checks /auth/me", async () => {
         setFetch(async (input, init) => {
             expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer tok");
-            return jsonResponse({ user: { id: "u1" } }, 200);
+            return jsonResponse({ id: "u1" }, 200);
         });
 
         await expect(new ShareOjClient().getMe("tok")).resolves.toBe("u1");
