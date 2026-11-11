@@ -55,7 +55,9 @@ if (!existsSync(binary)) {
 const child = spawn(binary, process.argv.slice(2), { stdio: "inherit" });
 
 child.on("error", (error) => {
-    console.error(`neoj: failed to run ${binary}: ${error.message}`);
+    const hint =
+        error.code === "EACCES" ? ` Make sure the file is executable (chmod +x "${binary}").` : "";
+    console.error(`neoj: failed to run ${binary}: ${error.message}${hint}`);
     process.exit(1);
 });
 

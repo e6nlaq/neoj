@@ -206,10 +206,15 @@ jobs:
                       test -f "$directory/neoj" || test -f "$directory/neoj.exe"
                       cp "$directory"/neoj* "packages/$platform/"
                   done
-                  test -f packages/cli-linux-x64/neoj
-                  test -f packages/cli-linux-arm64/neoj
-                  test -f packages/cli-darwin-x64/neoj
-                  test -f packages/cli-darwin-arm64/neoj
+
+                  # upload-artifact stores the files without the executable bit,
+                  # so restore it before npm packs the platform packages.
+                  for platform in linux-x64 linux-arm64 darwin-x64 darwin-arm64; do
+                      chmod 0755 "packages/cli-$platform/neoj"
+                      test -x "packages/cli-$platform/neoj"
+                  done
+                  chmod 0755 packages/cli-win32-x64/neoj.exe
+
                   test -f packages/cli-win32-x64/neoj.exe
                   echo "Staged binaries for $version."
 
