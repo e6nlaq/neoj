@@ -90,7 +90,7 @@ describe("loginToShareOj", () => {
             }
             if (url === "https://api.share-oj.net/auth/me") {
                 expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer tok");
-                return jsonResponse({ user: { id: "u1" } });
+                return jsonResponse({ id: "u1" });
             }
             throw new Error(`Unexpected request: ${url}`);
         });
@@ -156,7 +156,7 @@ describe("loginToShareOj", () => {
                 return jsonResponse({ access_token: "tok", refresh_token: "ref", expires_in: 60 });
             }
             if (url === "https://api.share-oj.net/auth/me") {
-                return jsonResponse({ user: { id: "u1" } });
+                return jsonResponse({ id: "u1" });
             }
             throw new Error(`Unexpected request: ${url}`);
         });
@@ -192,7 +192,7 @@ describe("loginToShareOj", () => {
                 return jsonResponse({ access_token: "tok", expires_in: 60 });
             }
             if (url === "https://api.share-oj.net/auth/me") {
-                return jsonResponse({ user: { id: "u1" } });
+                return jsonResponse({ id: "u1" });
             }
             throw new Error(`Unexpected request: ${url}`);
         });
