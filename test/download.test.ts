@@ -7,6 +7,7 @@ import type { AtCoderProblem } from "@neoj/api/atcoder";
 import { AtCoderProblemRequestError } from "@neoj/api/atcoder";
 
 import { downloadProblem, formatSamples, getProblemWithLoginHint } from "@/feature/download";
+import { createAnsiStyles } from "@/lib/util/ansi";
 import { readProblemMetadata } from "@/lib/util/problem-metadata";
 import { downloadSamples } from "@/lib/util/testcase";
 
@@ -66,9 +67,10 @@ function createAtCoderHtml(input: string, output: string): string {
 }
 
 const config = { folder: "testcases", filename: "sample-{}" };
+const plain = createAnsiStyles(false);
 
 describe("formatSamples", () => {
-    it("formats sample input and output with numbered headings and a trailing newline", () => {
+    it("formats each sample as a heading, a path, and labelled blocks", () => {
         expect(
             formatSamples(
                 [
@@ -77,16 +79,36 @@ describe("formatSamples", () => {
                 ],
                 "test",
                 "sample-{}",
+                plain,
             ),
         ).toEqual([
-            "Sample 1\nInput [test/sample-1.in]:\n1 2\n\nOutput [test/sample-1.out]:\n3\n\n",
-            "Sample 2\nInput [test/sample-2.in]:\n4 5\nOutput [test/sample-2.out]:\n9\n",
+            "Sample 1  test/sample-1.in\n  Input\n  │ 1 2\n  Output\n  │ 3",
+            "Sample 2  test/sample-2.in\n  Input\n  │ 4 5\n  Output\n  │ 9",
         ]);
     });
 
     it("uses configured nested paths and normalizes separators for display", () => {
-        expect(formatSamples([{ input: "x", output: "y" }], "cases\\atcoder", "case-{}")).toEqual([
-            "Sample 1\nInput [cases/atcoder/case-1.in]:\nx\nOutput [cases/atcoder/case-1.out]:\ny\n",
+        expect(
+            formatSamples([{ input: "x", output: "y" }], "cases\\atcoder", "case-{}", plain),
+        ).toEqual(["Sample 1  cases/atcoder/case-1.in\n  Input\n  │ x\n  Output\n  │ y"]);
+    });
+
+    it("keeps interior blank lines and trims trailing whitespace", () => {
+        expect(
+            formatSamples([{ input: "a  \n\nb\n\n", output: "" }], "test", "sample-{}", plain),
+        ).toEqual(["Sample 1  test/sample-1.in\n  Input\n  │ a\n  │\n  │ b\n  Output"]);
+    });
+
+    it("styles the heading, the path, and the gutter when color is enabled", () => {
+        expect(
+            formatSamples(
+                [{ input: "x", output: "y" }],
+                "test",
+                "sample-{}",
+                createAnsiStyles(true),
+            ),
+        ).toEqual([
+            "\u001B[1mSample 1\u001B[0m  \u001B[2mtest/sample-1.in\u001B[0m\n  Input\n  \u001B[2m│\u001B[0m x\n  Output\n  \u001B[2m│\u001B[0m y",
         ]);
     });
 });

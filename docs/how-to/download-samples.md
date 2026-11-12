@@ -78,7 +78,19 @@ template and the stash are not applied again, so working files under `src/` keep
 your edits.
 
 The summary reports how many samples were written. Set
-`download.show_sample = true` to print each sample's contents as well.
+`download.show_sample = true` to print each sample's contents as well. The
+heading shows the `.in` file that was written, and the `Input` and `Output`
+blocks below it hold the sample text:
+
+```text
+Sample 1  test/sample-1.in
+  Input
+  │ 1 2
+  Output
+  │ 3
+```
+
+Long samples are printed in full rather than truncated.
 
 ## When something fails
 

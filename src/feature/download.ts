@@ -4,6 +4,7 @@ import type { ProblemSample } from "@neoj/api/problem";
 import { consola } from "consola";
 
 import { findProblemSource } from "@/feature/problem-sources";
+import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
 import { loadConfig } from "@/lib/util/config";
 import { readProblemMetadata, saveProblemMetadata } from "@/lib/util/problem-metadata";
 import { requireInitializedProject } from "@/lib/util/project";
@@ -13,16 +14,41 @@ import { fetchSamples, writeSamples } from "@/lib/util/testcase";
 
 export { getProblemWithLoginHint } from "@/feature/problem-sources";
 
+/** Split a sample into display lines, dropping a trailing newline and CRLF. */
+function sampleContentLines(content: string): string[] {
+    const normalized = content.replace(/\r\n/gu, "\n").replace(/\n+$/u, "");
+    return normalized === "" ? [] : normalized.split("\n");
+}
+
 export function formatSamples(
     samples: readonly ProblemSample[],
     folder: string,
     filenamePattern: string,
+    styles: AnsiStyles,
 ): string[] {
     const relativeFolder = folder.split(/[\\/]/u).join("/");
-    return samples.map(
-        (sample, index) =>
-            `Sample ${index + 1}\nInput [${relativeFolder}/${filenamePattern.replace("{}", String(index + 1))}.in]:\n${sample.input}\nOutput [${relativeFolder}/${filenamePattern.replace("{}", String(index + 1))}.out]:\n${sample.output}\n`,
-    );
+    const gutter = styles.dim("│");
+
+    return samples.map((sample, index) => {
+        const number = index + 1;
+        const fileBase = filenamePattern.replace("{}", String(number));
+        const lines = [
+            `${styles.bold(`Sample ${number}`)}  ${styles.dim(`${relativeFolder}/${fileBase}.in`)}`,
+        ];
+
+        for (const [label, content] of [
+            ["Input", sample.input],
+            ["Output", sample.output],
+        ] as const) {
+            lines.push(`  ${label}`);
+            for (const raw of sampleContentLines(content)) {
+                const text = raw.trimEnd();
+                lines.push(text === "" ? `  ${gutter}` : `  ${gutter} ${text}`);
+            }
+        }
+
+        return lines.join("\n");
+    });
 }
 
 function formatKey(key: { platform: string; slug: string }): string {
@@ -117,13 +143,13 @@ export async function downloadProblem(url: string): Promise<void> {
     }
 
     if (config.download.show_sample) {
-        for (const sample of formatSamples(
+        const blocks = formatSamples(
             result.samples,
             config.testcase.folder,
             config.testcase.filename,
-        )) {
-            consola.info(sample);
-        }
+            createAnsiStyles(supportsColor(process.stdout)),
+        );
+        consola.log(`\n${blocks.join("\n\n")}\n`);
     }
 
     consola.success(`Downloaded ${result.count} sample(s) to "${result.directory}".`);
