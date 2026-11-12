@@ -1,6 +1,6 @@
 {
     "name": "@neoj/cli-linux-arm64",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "description": "The neoj binary for Linux arm64 (glibc)",
     "license": "MIT",
     "author": {
