@@ -145,6 +145,42 @@ describe("AtCoderClient", () => {
             ]);
         });
 
+        it("reads the account name from the login check page", async () => {
+            setFetch(
+                async () =>
+                    new Response('<script>var userScreenName = "kenkoooo";</script>', {
+                        status: 200,
+                    }),
+            );
+            const client = new AtCoderClient();
+
+            await expect(client.login("test-session")).resolves.toBe(true);
+
+            expect(client.username).toBe("kenkoooo");
+        });
+
+        it("leaves the account name undefined when the page omits it", async () => {
+            setFetch(async () => new Response(null, { status: 200 }));
+            const client = new AtCoderClient();
+
+            await expect(client.login("test-session")).resolves.toBe(true);
+
+            expect(client.username).toBeUndefined();
+        });
+
+        it("clears the account name when a later login fails", async () => {
+            setFetch(async () => new Response('<script>var userScreenName = "kenkoooo";</script>'));
+            const client = new AtCoderClient();
+            await client.login("test-session");
+
+            setFetch(
+                async () => new Response(null, { status: 302, headers: { Location: "/login" } }),
+            );
+            await expect(client.login("expired-session")).resolves.toBe(false);
+
+            expect(client.username).toBeUndefined();
+        });
+
         it("rejects a redirected login and clears the session", async () => {
             const requests: Array<{ url: string; cookie: string | null }> = [];
             let loginAttempts = 0;

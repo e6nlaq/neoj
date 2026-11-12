@@ -63,6 +63,12 @@ neoj login yukicoder --method api-key
 Paste the API key from your yukicoder profile. An API key has broader access than
 the CLI token, so treat it like a password.
 
+After a successful login, `neoj` prints the account name it read from the
+platform, for example `Logged in to AtCoder as e6nlaq.` Reading the name is best
+effort: an account without a ShareOJ profile, or a page that cannot be parsed,
+still logs in, and `neoj` warns that the name was unavailable. The name is only
+displayed, never saved with the credentials.
+
 If you are already logged in to that platform, `neoj` asks for confirmation
 before replacing the saved credentials. yukicoder tokens that have already
 expired are replaced without asking.

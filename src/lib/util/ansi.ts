@@ -39,3 +39,24 @@ export function createAnsiStyles(enabled: boolean): AnsiStyles {
         cyan: (text) => wrap(enabled, [36], text),
     };
 }
+
+// oxlint-disable-next-line no-control-regex -- terminal sequences start with ESC
+const OSC_PATTERN = /\u001B\][^\u0007\u001B]*(?:\u0007|\u001B\\)/gu;
+// oxlint-disable-next-line no-control-regex -- terminal sequences start with ESC
+const CSI_PATTERN = /\u001B\[[0-9;?]*[ -/]*[@-~]/gu;
+const CONTROL_PATTERN = /\p{Cc}/gu;
+
+/**
+ * Make text received from a service safe to print on one terminal line.
+ *
+ * Account names are user-controlled, so escape sequences are removed and any
+ * remaining control characters collapse into spaces before display.
+ */
+export function sanitizeForTerminal(text: string): string {
+    return text
+        .replace(OSC_PATTERN, "")
+        .replace(CSI_PATTERN, "")
+        .replace(CONTROL_PATTERN, " ")
+        .replace(/\s+/gu, " ")
+        .trim();
+}

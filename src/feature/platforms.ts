@@ -16,11 +16,18 @@ export interface PlatformLoginOption {
     defaultValue?: string;
 }
 
+/** The account a successful login resolved, when the platform reports one. */
+export interface LoginSession {
+    /** The account name, absent when it could not be read after logging in. */
+    username?: string;
+}
+
 export interface Platform {
     name: string;
     displayName: string;
     description: string;
-    login: (options: PlatformLoginOptions) => Promise<boolean>;
+    /** Returns the session, or `undefined` when the user cancelled the login. */
+    login: (options: PlatformLoginOptions) => Promise<LoginSession | undefined>;
     loginOptions: readonly PlatformLoginOption[];
     isLoggedIn: (auth: unknown) => Promise<boolean>;
     hasCredentials: (auth: unknown) => boolean;

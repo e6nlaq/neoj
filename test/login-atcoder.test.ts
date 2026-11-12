@@ -54,7 +54,7 @@ describe("loginToAtCoder", () => {
         await saveAuth("atcoder", { revelSession: "saved-session" });
         setFetch(async () => new Response(null, { status: 200 }));
 
-        await expect(loginToAtCoder()).resolves.toBe(false);
+        await expect(loginToAtCoder()).resolves.toBeUndefined();
 
         expect(confirmPrompt).toHaveBeenCalledWith({
             message: "Already logged in to AtCoder. Continue with a new session?",
@@ -70,9 +70,14 @@ describe("loginToAtCoder", () => {
         await setupDataDirectory();
         await saveAuth("atcoder", { revelSession: "saved-session" });
         confirmPrompt.mockImplementation(async () => true);
-        setFetch(async () => new Response(null, { status: 200 }));
+        setFetch(
+            async () =>
+                new Response('<script>var userScreenName = "kenkoooo";</script>', {
+                    status: 200,
+                }),
+        );
 
-        await expect(loginToAtCoder()).resolves.toBe(true);
+        await expect(loginToAtCoder()).resolves.toEqual({ username: "kenkoooo" });
 
         expect(passwordPrompt).toHaveBeenCalledTimes(1);
         await expect(readAuth()).resolves.toEqual({
@@ -87,10 +92,12 @@ describe("loginToAtCoder", () => {
             const cookie = new Headers(init?.headers).get("Cookie");
             return cookie === "REVEL_SESSION=expired-session"
                 ? new Response(null, { status: 302, headers: { Location: "/login" } })
-                : new Response(null, { status: 200 });
+                : new Response('<script>var userScreenName = "kenkoooo";</script>', {
+                      status: 200,
+                  });
         });
 
-        await expect(loginToAtCoder()).resolves.toBe(true);
+        await expect(loginToAtCoder()).resolves.toEqual({ username: "kenkoooo" });
 
         expect(confirmPrompt).not.toHaveBeenCalled();
         expect(passwordPrompt).toHaveBeenCalledTimes(1);
@@ -104,7 +111,7 @@ describe("loginToAtCoder", () => {
         passwordPrompt.mockImplementation(async () => "  REVEL_SESSION=opaque%00session  ");
         setFetch(async () => new Response(null, { status: 200 }));
 
-        await expect(loginToAtCoder()).resolves.toBe(true);
+        await expect(loginToAtCoder()).resolves.toEqual({ username: undefined });
 
         await expect(readAuth()).resolves.toEqual({
             atcoder: { revelSession: "opaque%00session" },

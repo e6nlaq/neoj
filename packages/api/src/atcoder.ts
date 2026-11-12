@@ -13,6 +13,9 @@ const REQUEST_TIMEOUT_MS = 15_000;
 // so the pattern stays free of literal control escapes.
 const REVEL_SESSION_PATTERN = /^[^\s;,"\\]+$/;
 const CONTROL_CHARACTER_PATTERN = /\p{Cc}/u;
+// Every page renders the signed-in account as `var userScreenName = "<name>"`.
+// Signed-out pages leave it empty, so the value alone cannot prove a session.
+const USER_SCREEN_NAME_PATTERN = /var userScreenName = "([^"]*)"/u;
 
 export type AtCoderSample = ProblemSample;
 
@@ -62,6 +65,18 @@ function parseContestTime(value: string): Temporal.Instant {
     } catch (error) {
         throw new Error("AtCoder contest start or end time is invalid.", { cause: error });
     }
+}
+
+/**
+ * Read the account name from an AtCoder page.
+ *
+ * Signed-out pages (and a page rendered before the session is applied) leave
+ * `userScreenName` empty, so `undefined` means "not readable" rather than
+ * "logged out".
+ */
+export function parseAtCoderUsername(html: string): string | undefined {
+    const name = USER_SCREEN_NAME_PATTERN.exec(html)?.[1]?.trim();
+    return name === undefined || name === "" ? undefined : name;
 }
 
 export function normalizeRevelSession(value: string): string {
@@ -331,10 +346,16 @@ function parseLocationSubmissionId(location: string, contestId: string): string 
 export class AtCoderClient {
     private session: string | undefined;
     private csrfTokenValue: string | undefined;
+    private usernameValue: string | undefined;
     private submitPages = new Map<string, AtCoderSubmitPage>();
 
     get csrfToken(): string | undefined {
         return this.csrfTokenValue;
+    }
+
+    /** The account name reported by the last successful `login()`, when readable. */
+    get username(): string | undefined {
+        return this.usernameValue;
     }
 
     private createHeaders(): Headers {
@@ -353,6 +374,7 @@ export class AtCoderClient {
         const csrfToken = decodedSession.match(/(?:^|\0)csrf_token:([^\0]*)/i)?.[1];
         this.session = session;
         this.csrfTokenValue = csrfToken || undefined;
+        this.usernameValue = undefined;
         this.submitPages.clear();
 
         // Unauthenticated requests to /settings redirect to /login, so a plain 200
@@ -370,9 +392,14 @@ export class AtCoderClient {
         if (redirected || !response.ok) {
             this.session = undefined;
             this.csrfTokenValue = undefined;
+            this.usernameValue = undefined;
             this.submitPages.clear();
             return false;
         }
+
+        // The same response carries the account name, so reading it costs no
+        // extra request. It stays undefined when the markup is unavailable.
+        this.usernameValue = parseAtCoderUsername(await response.text());
 
         return true;
     }

@@ -102,6 +102,9 @@ describe("loginToYukicoder", () => {
             if (url.endsWith("/v1/device/token")) {
                 return tokenResponse();
             }
+            if (url.endsWith("/v1/authUser")) {
+                return jsonResponse({ Id: 7, Name: "yuki2006" });
+            }
             throw new Error(`Unexpected request: ${url}`);
         });
 
@@ -114,7 +117,7 @@ describe("loginToYukicoder", () => {
                 sleep: async () => undefined,
                 now: () => 0,
             }),
-        ).resolves.toBe(true);
+        ).resolves.toEqual({ username: "yuki2006" });
 
         expect(openedUrls).toEqual(["https://yukicoder.me/device?user_code=WDJB-MJHT"]);
         await expect(readAuth()).resolves.toEqual({
@@ -135,6 +138,9 @@ describe("loginToYukicoder", () => {
             if (url.endsWith("/v1/device/code")) {
                 return deviceCodeResponse();
             }
+            if (url.endsWith("/v1/authUser")) {
+                return jsonResponse({ Id: 7, Name: "yuki2006" });
+            }
             return tokenResponse();
         });
 
@@ -147,9 +153,42 @@ describe("loginToYukicoder", () => {
                 sleep: async () => undefined,
                 now: () => 0,
             }),
-        ).resolves.toBe(true);
+        ).resolves.toEqual({ username: "yuki2006" });
 
         expect(opened).toBe(false);
+    });
+
+    it("keeps the login when the account name cannot be read", async () => {
+        await setupDirectories();
+        setFetch(async (input) => {
+            const url = String(input);
+            if (url.endsWith("/v1/device/code")) {
+                return deviceCodeResponse();
+            }
+            if (url.endsWith("/v1/device/token")) {
+                return tokenResponse();
+            }
+            if (url.endsWith("/v1/authUser")) {
+                return new Response("error", { status: 500 });
+            }
+            throw new Error(`Unexpected request: ${url}`);
+        });
+
+        await expect(
+            loginToYukicoder({
+                openUrl: async () => true,
+                sleep: async () => undefined,
+                now: () => 0,
+            }),
+        ).resolves.toEqual({ username: undefined });
+
+        await expect(readAuth()).resolves.toEqual({
+            yukicoder: {
+                method: "token",
+                token: "ysb_token",
+                expiresAt: "1970-01-02T00:00:00Z",
+            },
+        });
     });
 
     it("saves a validated API key", async () => {
@@ -164,7 +203,9 @@ describe("loginToYukicoder", () => {
             return jsonResponse({ Id: 1, Name: "user" });
         });
 
-        await expect(loginToYukicoder({ method: "api-key" })).resolves.toBe(true);
+        await expect(loginToYukicoder({ method: "api-key" })).resolves.toEqual({
+            username: "user",
+        });
 
         expect(requests).toEqual([
             {
@@ -192,7 +233,7 @@ describe("loginToYukicoder", () => {
         await saveAuth("yukicoder", { method: "api-key", apiKey: "old-key" });
         setFetch(async () => jsonResponse({ Id: 1, Name: "user" }));
 
-        await expect(loginToYukicoder({ method: "api-key" })).resolves.toBe(false);
+        await expect(loginToYukicoder({ method: "api-key" })).resolves.toBeUndefined();
 
         expect(confirmPrompt).toHaveBeenCalledWith({
             message: "Already logged in to yukicoder. Continue with a new login?",
@@ -216,6 +257,9 @@ describe("loginToYukicoder", () => {
             if (url.endsWith("/v1/device/code")) {
                 return deviceCodeResponse();
             }
+            if (url.endsWith("/v1/authUser")) {
+                return jsonResponse({ Id: 7, Name: "yuki2006" });
+            }
             return tokenResponse();
         });
 
@@ -225,7 +269,7 @@ describe("loginToYukicoder", () => {
                 sleep: async () => undefined,
                 now: () => 0,
             }),
-        ).resolves.toBe(true);
+        ).resolves.toEqual({ username: "yuki2006" });
 
         expect(confirmPrompt).not.toHaveBeenCalled();
         await expect(readAuth()).resolves.toEqual({

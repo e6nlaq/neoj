@@ -365,6 +365,12 @@ export interface ShareOjChallenge {
     parameters: Record<string, string>;
 }
 
+/** The public profile of the signed-in user. */
+export interface ShareOjProfile {
+    /** The unique public handle, for example `loop0919`. */
+    handle: string;
+}
+
 export interface ShareOjRuntime {
     id: string;
     label: string;
@@ -656,6 +662,43 @@ export class ShareOjClient {
         return typeof (body as { id?: unknown }).id === "string"
             ? (body as { id: string }).id
             : undefined;
+    }
+
+    /**
+     * Read the signed-in user's public profile.
+     *
+     * Returns `undefined` when the account has not registered a profile yet
+     * (`{"profile": null}`), which is not a login failure. Throws
+     * `ShareOjApiError` for rejected tokens and other request failures.
+     */
+    async getMyProfile(token: string): Promise<ShareOjProfile | undefined> {
+        const response = await request(new URL("/my/profile", API_ORIGIN), {
+            headers: {
+                "User-Agent": USER_AGENT,
+                Accept: "application/json",
+                Authorization: `Bearer ${token}`,
+            },
+        });
+        if (!response.ok) {
+            throw await parseErrorResponse(response);
+        }
+
+        let body: unknown;
+        try {
+            body = await response.json();
+        } catch {
+            return undefined;
+        }
+        if (typeof body !== "object" || body === null) {
+            return undefined;
+        }
+        const profile = (body as { profile?: unknown }).profile;
+        if (typeof profile !== "object" || profile === null) {
+            return undefined;
+        }
+        const handle = (profile as { handle?: unknown }).handle;
+
+        return typeof handle === "string" && handle !== "" ? { handle } : undefined;
     }
 
     /** The language runtimes available for submissions. */

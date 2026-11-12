@@ -54,6 +54,14 @@ const submissionSchema = v.object({
     SubmissionId: v.union([v.pipe(v.number(), v.integer()), v.pipe(v.string(), v.nonEmpty())]),
 });
 
+// `/v1/authUser` adds `langId` to the user object; only the account fields are
+// used here. Both are optional so a malformed 200 body cannot be mistaken for a
+// rejected credential.
+const authUserSchema = v.object({
+    Id: v.optional(v.pipe(v.number(), v.integer())),
+    Name: v.optional(v.pipe(v.string(), v.nonEmpty())),
+});
+
 export type YukicoderProblem = Problem;
 
 export interface YukicoderDeviceCode {
@@ -68,6 +76,27 @@ export interface YukicoderDeviceCode {
 export interface YukicoderDeviceToken {
     accessToken: string;
     expiresAt: Temporal.Instant;
+}
+
+/** The account behind a credential, as reported by `/v1/authUser`. */
+export interface YukicoderAuthUser {
+    /** The stable numeric user ID. */
+    id: number | undefined;
+    /** The display name; not unique across accounts and may change. */
+    name: string | undefined;
+}
+
+/**
+ * Read the account fields from an `/v1/authUser` body.
+ *
+ * Fields that are missing or malformed are dropped instead of failing, because
+ * the HTTP status already proves whether the credential was accepted.
+ */
+export function parseYukicoderAuthUser(value: unknown): YukicoderAuthUser {
+    const parsed = v.safeParse(authUserSchema, value);
+    return parsed.success
+        ? { id: parsed.output.Id, name: parsed.output.Name }
+        : { id: undefined, name: undefined };
 }
 
 export interface YukicoderLanguage {
@@ -537,7 +566,14 @@ export class YukicoderClient {
         return new Error(`yukicoder submission failed (${status}).`);
     }
 
-    async checkCredential(credential: string): Promise<boolean> {
+    /**
+     * Read the account behind a credential.
+     *
+     * Returns `undefined` when the API rejects the credential (401/403) and
+     * throws for transport or server failures, so callers can tell a bad login
+     * apart from a broken request.
+     */
+    async getAuthUser(credential: string): Promise<YukicoderAuthUser | undefined> {
         const normalized = normalizeYukicoderCredential(credential);
         const response = await request(`${API_ORIGIN}/v1/authUser`, {
             headers: {
@@ -547,12 +583,17 @@ export class YukicoderClient {
         });
 
         if (response.status === 401 || response.status === 403) {
-            return false;
+            return undefined;
         }
         if (!response.ok) {
             throw new Error(`yukicoder login check failed (${response.status}).`);
         }
 
-        return true;
+        const body: unknown = await response.json().catch(() => undefined);
+        return parseYukicoderAuthUser(body);
+    }
+
+    async checkCredential(credential: string): Promise<boolean> {
+        return (await this.getAuthUser(credential)) !== undefined;
     }
 }

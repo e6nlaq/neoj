@@ -7,6 +7,7 @@ import {
 import { consola } from "consola";
 import * as v from "valibot";
 
+import type { LoginSession } from "@/feature/platforms";
 import { readAuth, replaceAuth } from "@/lib/util/auth";
 import { openInBrowser } from "@/lib/util/browser";
 import { loadConfig } from "@/lib/util/config";
@@ -81,7 +82,9 @@ export async function isYukicoderLoggedIn(auth: unknown): Promise<boolean> {
     return new YukicoderClient().checkCredential(credential);
 }
 
-export async function loginToYukicoder(options: LoginToYukicoderOptions = {}): Promise<boolean> {
+export async function loginToYukicoder(
+    options: LoginToYukicoderOptions = {},
+): Promise<LoginSession | undefined> {
     const method = parseYukicoderLoginMethod(options.method);
     const auth = await readAuth();
     const savedAuth = getYukicoderAuth(auth.yukicoder);
@@ -91,7 +94,7 @@ export async function loginToYukicoder(options: LoginToYukicoderOptions = {}): P
             default: false,
         });
         if (!shouldContinue) {
-            return false;
+            return undefined;
         }
     }
 
@@ -103,12 +106,13 @@ export async function loginToYukicoder(options: LoginToYukicoderOptions = {}): P
             validate: (value) => value.trim().length > 0 || "API key cannot be empty.",
         });
         const credential = normalizeYukicoderCredential(apiKey);
-        if (!(await client.checkCredential(credential))) {
+        const user = await client.getAuthUser(credential);
+        if (user === undefined) {
             throw new Error("yukicoder API key is invalid.");
         }
 
         await replaceAuth("yukicoder", { method: "api-key", apiKey: credential });
-        return true;
+        return { username: user.name };
     }
 
     const config = await loadConfig();
@@ -133,5 +137,20 @@ export async function loginToYukicoder(options: LoginToYukicoderOptions = {}): P
         expiresAt: token.expiresAt.toString(),
     });
 
-    return true;
+    return { username: await readYukicoderUsername(client, token.accessToken) };
+}
+
+/**
+ * Read the display name after the token was issued. The login has already
+ * succeeded, so a failed lookup only hides the name and must not undo it.
+ */
+async function readYukicoderUsername(
+    client: YukicoderClient,
+    accessToken: string,
+): Promise<string | undefined> {
+    try {
+        return (await client.getAuthUser(accessToken))?.name;
+    } catch {
+        return undefined;
+    }
 }
