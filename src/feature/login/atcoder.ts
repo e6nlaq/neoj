@@ -2,6 +2,7 @@ import { confirm, password } from "@inquirer/prompts";
 import { AtCoderClient, normalizeRevelSession } from "@neoj/api/atcoder";
 import * as v from "valibot";
 
+import type { LoginSession } from "@/feature/platforms";
 import { readAuth, saveAuth } from "@/lib/util/auth";
 
 const atCoderAuthSchema = v.object({
@@ -36,7 +37,7 @@ export async function isAtCoderLoggedIn(auth: unknown): Promise<boolean> {
     return new AtCoderClient().login(savedSession);
 }
 
-export async function loginToAtCoder(): Promise<boolean> {
+export async function loginToAtCoder(): Promise<LoginSession | undefined> {
     const auth = await readAuth();
     const savedAtCoderAuth = auth.atcoder;
     if (await isAtCoderLoggedIn(savedAtCoderAuth)) {
@@ -45,7 +46,7 @@ export async function loginToAtCoder(): Promise<boolean> {
             default: false,
         });
         if (!shouldContinue) {
-            return false;
+            return undefined;
         }
     }
 
@@ -62,5 +63,5 @@ export async function loginToAtCoder(): Promise<boolean> {
     }
 
     await saveAuth("atcoder", { revelSession: session });
-    return true;
+    return { username: client.username };
 }

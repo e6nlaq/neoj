@@ -2,23 +2,23 @@
 
 ## Commands
 
-| Command                                                    | Description                                                                          |
-| ---------------------------------------------------------- | ------------------------------------------------------------------------------------ |
-| `neoj init [--force]`                                      | Copy the bundled templates into the current project.                                 |
-| `neoj download <url>` (alias: `neoj d`)                    | Download a problem's sample tests into the test-case directory.                      |
-| `neoj open [options]` (alias: `neoj o`)                    | Open the current problem in the browser.                                             |
-| `neoj handmade` (alias: `neoj h`)                          | Create a handmade test case from interactive input.                                  |
-| `neoj generate` (alias: `neoj g`)                          | Create random test cases with a generator and a naive solution.                      |
-| `neoj login <platform>`                                    | Log in to a platform. The supported names are `atcoder`, `yukicoder`, and `shareoj`. |
-| `neoj logout [--service <name...>]`                        | Log out of the given platforms, or of every platform when no name is given.          |
-| `neoj status [--offline]`                                  | Show the login status of every supported platform.                                   |
-| `neoj stash [save\|list\|apply\|pop\|drop\|clear]`         | Save and restore the working files of the current problem.                           |
-| `neoj test [source]` (alias: `neoj t`)                     | Build the solution and run it against the sample tests.                              |
-| `neoj run [source] [args...]` (alias: `neoj r`)            | Build the solution and run it without tests, forwarding `args`.                      |
-| `neoj submit [source]` (aliases: `neoj s`, `neoj submits`) | Submit the solution for the current problem.                                         |
-| `neoj languages [platform]` (alias: `neoj langs`)          | List the language IDs a platform accepts.                                            |
-| `neoj prune [--dry-run]`                                   | Remove every cached build under `.neoj/build/`.                                      |
-| `neoj completions <shell>` (alias: `neoj completion`)      | Print a completion script for bash, zsh, fish, or PowerShell.                        |
+| Command                                                    | Description                                                                                                               |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `neoj init [--force]`                                      | Copy the bundled templates into the current project.                                                                      |
+| `neoj download <url>` (alias: `neoj d`)                    | Download a problem's sample tests into the test-case directory.                                                           |
+| `neoj open [options]` (alias: `neoj o`)                    | Open the current problem in the browser.                                                                                  |
+| `neoj handmade` (alias: `neoj h`)                          | Create a handmade test case from interactive input.                                                                       |
+| `neoj generate` (alias: `neoj g`)                          | Create random test cases with a generator and a naive solution.                                                           |
+| `neoj login <platform>`                                    | Log in to a platform and print the account name when it can be read. The names are `atcoder`, `yukicoder`, and `shareoj`. |
+| `neoj logout [--service <name...>]`                        | Log out of the given platforms, or of every platform when no name is given.                                               |
+| `neoj status [--offline]`                                  | Show the login status of every supported platform.                                                                        |
+| `neoj stash [save\|list\|apply\|pop\|drop\|clear]`         | Save and restore the working files of the current problem.                                                                |
+| `neoj test [source]` (alias: `neoj t`)                     | Build the solution and run it against the sample tests.                                                                   |
+| `neoj run [source] [args...]` (alias: `neoj r`)            | Build the solution and run it without tests, forwarding `args`.                                                           |
+| `neoj submit [source]` (aliases: `neoj s`, `neoj submits`) | Submit the solution for the current problem.                                                                              |
+| `neoj languages [platform]` (alias: `neoj langs`)          | List the language IDs a platform accepts.                                                                                 |
+| `neoj prune [--dry-run]`                                   | Remove every cached build under `.neoj/build/`.                                                                           |
+| `neoj completions <shell>` (alias: `neoj completion`)      | Print a completion script for bash, zsh, fish, or PowerShell.                                                             |
 
 ### `init`
 

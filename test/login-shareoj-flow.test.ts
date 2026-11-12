@@ -92,19 +92,64 @@ describe("loginToShareOj", () => {
                 expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer tok");
                 return jsonResponse({ id: "u1" });
             }
+            if (url === "https://api.share-oj.net/my/profile") {
+                expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer tok");
+                return jsonResponse({ profile: { handle: "alice" } });
+            }
             throw new Error(`Unexpected request: ${url}`);
         });
 
-        await expect(loginToShareOj()).resolves.toBe(true);
+        await expect(loginToShareOj()).resolves.toEqual({ username: "alice" });
 
         expect(requests).toEqual([
             "https://api.share-oj.net/auth/login",
             "https://api.share-oj.net/auth/me",
+            "https://api.share-oj.net/my/profile",
         ]);
         const saved = getShareOjAuth((await readAuth()).shareoj);
         expect(saved?.accessToken).toBe("tok");
         expect(saved?.refreshToken).toBe("ref");
         expect(saved?.expiresAt).toBeDefined();
+    });
+
+    it("keeps the login when the account has no profile yet", async () => {
+        await setupDirectories();
+        setFetch(async (input) => {
+            const url = String(input);
+            if (url === "https://api.share-oj.net/auth/login") {
+                return jsonResponse({ access_token: "tok", expires_in: 3600 });
+            }
+            if (url === "https://api.share-oj.net/auth/me") {
+                return jsonResponse({ id: "u1" });
+            }
+            if (url === "https://api.share-oj.net/my/profile") {
+                return jsonResponse({ profile: null });
+            }
+            throw new Error(`Unexpected request: ${url}`);
+        });
+
+        await expect(loginToShareOj()).resolves.toEqual({ username: undefined });
+        expect(getShareOjAuth((await readAuth()).shareoj)?.accessToken).toBe("tok");
+    });
+
+    it("keeps the login when the profile request fails", async () => {
+        await setupDirectories();
+        setFetch(async (input) => {
+            const url = String(input);
+            if (url === "https://api.share-oj.net/auth/login") {
+                return jsonResponse({ access_token: "tok", expires_in: 3600 });
+            }
+            if (url === "https://api.share-oj.net/auth/me") {
+                return jsonResponse({ id: "u1" });
+            }
+            if (url === "https://api.share-oj.net/my/profile") {
+                return jsonResponse({ error: "internal" }, 500);
+            }
+            throw new Error(`Unexpected request: ${url}`);
+        });
+
+        await expect(loginToShareOj()).resolves.toEqual({ username: undefined });
+        expect(getShareOjAuth((await readAuth()).shareoj)?.accessToken).toBe("tok");
     });
 
     it("does not replace the saved session when the new tokens are unusable", async () => {
@@ -158,11 +203,14 @@ describe("loginToShareOj", () => {
             if (url === "https://api.share-oj.net/auth/me") {
                 return jsonResponse({ id: "u1" });
             }
+            if (url === "https://api.share-oj.net/my/profile") {
+                return jsonResponse({ profile: { handle: "alice" } });
+            }
             throw new Error(`Unexpected request: ${url}`);
         });
         passwordPrompt.mockImplementation(async () => "123456");
 
-        await expect(loginToShareOj()).resolves.toBe(true);
+        await expect(loginToShareOj()).resolves.toEqual({ username: "alice" });
         expect(challengeBodies).toEqual([
             {
                 username: "resolved-user",
@@ -194,6 +242,9 @@ describe("loginToShareOj", () => {
             if (url === "https://api.share-oj.net/auth/me") {
                 return jsonResponse({ id: "u1" });
             }
+            if (url === "https://api.share-oj.net/my/profile") {
+                return jsonResponse({ profile: { handle: "alice" } });
+            }
             throw new Error(`Unexpected request: ${url}`);
         });
         passwordPrompt.mockImplementation(async () => "new-password");
@@ -208,7 +259,7 @@ describe("loginToShareOj", () => {
             return "alice@example.com";
         }) as unknown as () => Promise<string>);
 
-        await expect(loginToShareOj()).resolves.toBe(true);
+        await expect(loginToShareOj()).resolves.toEqual({ username: "alice" });
         expect(challengeBodies).toEqual([
             {
                 username: "alice@example.com",

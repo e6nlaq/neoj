@@ -433,6 +433,56 @@ describe("YukicoderClient", () => {
             );
         });
     });
+
+    describe("getAuthUser", () => {
+        it("reads the account id and display name", async () => {
+            setFetch(async (input, init) => {
+                expect(String(input)).toBe("https://yukicoder.me/api/v1/authUser");
+                expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer ysb_token");
+                return jsonResponse({ Id: 7, Name: "yuki2006", Solved: 313, langId: "cpp23" });
+            });
+
+            await expect(new YukicoderClient().getAuthUser("ysb_token")).resolves.toEqual({
+                id: 7,
+                name: "yuki2006",
+            });
+        });
+
+        it("returns undefined for rejected credentials", async () => {
+            for (const status of [401, 403]) {
+                setFetch(async () => new Response("denied", { status }));
+                await expect(
+                    new YukicoderClient().getAuthUser("ysb_token"),
+                ).resolves.toBeUndefined();
+            }
+        });
+
+        it("keeps the credential valid when the account fields are missing", async () => {
+            setFetch(async () => jsonResponse({ unexpected: true }));
+
+            await expect(new YukicoderClient().getAuthUser("ysb_token")).resolves.toEqual({
+                id: undefined,
+                name: undefined,
+            });
+        });
+
+        it("accepts a non-JSON body as a valid credential without a name", async () => {
+            setFetch(async () => new Response("<html>ok</html>", { status: 200 }));
+
+            await expect(new YukicoderClient().getAuthUser("ysb_token")).resolves.toEqual({
+                id: undefined,
+                name: undefined,
+            });
+        });
+
+        it("reports server errors", async () => {
+            setFetch(async () => new Response("error", { status: 500 }));
+
+            await expect(new YukicoderClient().getAuthUser("ysb_token")).rejects.toThrow(
+                "yukicoder login check failed (500).",
+            );
+        });
+    });
 });
 
 describe("fetchYukicoderContestUrl", () => {

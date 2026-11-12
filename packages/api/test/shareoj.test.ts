@@ -379,6 +379,40 @@ describe("ShareOjClient authentication and submission", () => {
         await expect(new ShareOjClient().getMe("tok")).resolves.toBe("u1");
     });
 
+    it("reads the public handle from /my/profile", async () => {
+        setFetch(async (input, init) => {
+            expect(String(input)).toBe("https://api.share-oj.net/my/profile");
+            expect(new Headers(init?.headers).get("Authorization")).toBe("Bearer tok");
+            return jsonResponse({ profile: { handle: "loop0919", version: 3 } }, 200);
+        });
+
+        await expect(new ShareOjClient().getMyProfile("tok")).resolves.toEqual({
+            handle: "loop0919",
+        });
+    });
+
+    it("treats a missing profile as an account without one", async () => {
+        setFetch(async () => jsonResponse({ profile: null }, 200));
+
+        await expect(new ShareOjClient().getMyProfile("tok")).resolves.toBeUndefined();
+    });
+
+    it("treats a malformed profile response as unreadable", async () => {
+        setFetch(async () => new Response("not json", { status: 200 }));
+
+        await expect(new ShareOjClient().getMyProfile("tok")).resolves.toBeUndefined();
+    });
+
+    it("reports a rejected token on /my/profile", async () => {
+        setFetch(async () => jsonResponse({ error: "invalid_token" }, 401));
+
+        await expect(new ShareOjClient().getMyProfile("tok")).rejects.toMatchObject({
+            name: "ShareOjApiError",
+            status: 401,
+            code: "invalid_token",
+        });
+    });
+
     it("submits code and builds the submission URL", async () => {
         setFetch(async (input, init) => {
             expect(String(input)).toBe("https://api.share-oj.net/my/submissions");

@@ -8,6 +8,7 @@ import {
 import { consola } from "consola";
 import * as v from "valibot";
 
+import type { LoginSession } from "@/feature/platforms";
 import { readAuth, replaceAuth } from "@/lib/util/auth";
 
 const shareOjAuthSchema = v.strictObject({
@@ -247,7 +248,9 @@ async function resolveChallenges(
     }
 }
 
-export async function loginToShareOj(options: LoginToShareOjOptions = {}): Promise<boolean> {
+export async function loginToShareOj(
+    options: LoginToShareOjOptions = {},
+): Promise<LoginSession | undefined> {
     parseShareOjLoginMethod(options.method);
     const auth = await readAuth();
     const savedAuth = getShareOjAuth(auth.shareoj);
@@ -257,7 +260,7 @@ export async function loginToShareOj(options: LoginToShareOjOptions = {}): Promi
             default: false,
         });
         if (!shouldContinue) {
-            return false;
+            return undefined;
         }
     }
 
@@ -284,5 +287,20 @@ export async function loginToShareOj(options: LoginToShareOjOptions = {}): Promi
     }
     await saveShareOjTokens(result);
 
-    return true;
+    return { username: await readShareOjUsername(client, result.accessToken) };
+}
+
+/**
+ * Read the public handle after the tokens were saved. The login has already
+ * succeeded, so a failed lookup only hides the name and must not undo it.
+ */
+async function readShareOjUsername(
+    client: ShareOjClient,
+    accessToken: string,
+): Promise<string | undefined> {
+    try {
+        return (await client.getMyProfile(accessToken))?.handle;
+    } catch {
+        return undefined;
+    }
 }
