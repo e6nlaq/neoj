@@ -62,19 +62,30 @@ const authUserSchema = v.object({
     Name: v.optional(v.pipe(v.string(), v.nonEmpty())),
 });
 
+/** A yukicoder problem with its samples. */
 export type YukicoderProblem = Problem;
 
+/** The device authorization returned by `/v1/device/code`. */
 export interface YukicoderDeviceCode {
+    /** The secret polled against `/v1/device/token`. */
     deviceCode: string;
+    /** The short code the user enters on the verification page. */
     userCode: string;
+    /** The page where the user enters `userCode`. */
     verificationUri: string;
+    /** The verification URL with the code prefilled, when the server sends one. */
     verificationUriComplete: string;
+    /** Lifetime of the device code, in seconds. */
     expiresIn: number;
+    /** The minimum polling interval, in seconds. */
     interval: number;
 }
 
+/** An access token obtained through the device flow. */
 export interface YukicoderDeviceToken {
+    /** The bearer token for the submission API. */
     accessToken: string;
+    /** The computed expiry instant. */
     expiresAt: Temporal.Instant;
 }
 
@@ -99,22 +110,33 @@ export function parseYukicoderAuthUser(value: unknown): YukicoderAuthUser {
         : { id: undefined, name: undefined };
 }
 
+/** A language accepted by the yukicoder submission API. */
 export interface YukicoderLanguage {
+    /** The value submitted as `lang`. */
     id: string;
+    /** The display name. */
     name: string;
+    /** The version string, when the API reports one. */
     version: string | undefined;
 }
 
+/** The submission created by {@link YukicoderClient.submit}. */
 export interface YukicoderSubmissionResult {
+    /** The numeric submission ID as a string. */
     submissionId: string;
+    /** The submission page. */
     submissionUrl: string;
 }
 
+/** Hooks that make {@link YukicoderClient.pollDeviceToken} testable. */
 export interface PollDeviceTokenOptions {
+    /** Replaces the default `setTimeout`-based delay. */
     sleep?: (milliseconds: number) => Promise<void>;
+    /** Replaces the clock used for the expiry deadline. */
     now?: () => number;
 }
 
+/** A non-2xx response from a yukicoder problem page. */
 export class YukicoderProblemRequestError extends Error {
     constructor(readonly status: number) {
         super(`yukicoder problem request failed (${status}).`);
@@ -122,6 +144,7 @@ export class YukicoderProblemRequestError extends Error {
     }
 }
 
+/** Parse a `/problems/no/<n>` or `/problems/<id>` URL on yukicoder. */
 export function parseYukicoderProblemUrl(value: string): URL {
     const problemUrl = new URL(value);
     if (
@@ -136,6 +159,10 @@ export function parseYukicoderProblemUrl(value: string): URL {
     return problemUrl;
 }
 
+/**
+ * Strip an optional `Bearer ` prefix and reject values that cannot be sent as
+ * an `Authorization` header.
+ */
 export function normalizeYukicoderCredential(value: string): string {
     const credential = value.trim().replace(BEARER_PREFIX_PATTERN, "").trim();
     if (credential.length === 0) {
@@ -188,9 +215,11 @@ const problemSummarySchema = v.object({
     ContestId: v.optional(v.nullable(v.pipe(v.number(), v.integer()))),
 });
 
+/** The kind and number parsed from a yukicoder problem URL. */
 export interface YukicoderProblemRoute {
     /** `no` for /problems/no/<No>, `id` for /problems/<ProblemId>. */
     kind: "no" | "id";
+    /** The problem number (the `No` field). */
     number: number;
 }
 
@@ -231,6 +260,7 @@ async function resolveProblemNumber(value: string): Promise<number> {
     return (await fetchProblemSummary(route)).No;
 }
 
+/** Your own submissions for a problem URL. */
 export function buildYukicoderSubmissionsUrl(value: string): URL {
     const route = parseYukicoderProblemRoute(value);
     const path =
@@ -329,7 +359,9 @@ function parseProblem(html: string, url: string): YukicoderProblem {
     };
 }
 
+/** yukicoder problem, login, language, and submission requests. */
 export class YukicoderClient {
+    /** Fetch a problem page and parse its samples. */
     async getProblem(url: string): Promise<YukicoderProblem> {
         const problemUrl = parseYukicoderProblemUrl(url);
         const response = await request(problemUrl.href, {
@@ -342,6 +374,7 @@ export class YukicoderClient {
         return parseProblem(await response.text(), problemUrl.href);
     }
 
+    /** Start the device flow with the client name shown to the user. */
     async requestDeviceCode(clientName: string): Promise<YukicoderDeviceCode> {
         const response = await request(`${API_ORIGIN}/v1/device/code`, {
             method: "POST",
@@ -370,6 +403,7 @@ export class YukicoderClient {
         };
     }
 
+    /** Poll until the user approves the device code or it expires. */
     async pollDeviceToken(
         deviceCode: YukicoderDeviceCode,
         options: PollDeviceTokenOptions = {},
@@ -476,6 +510,7 @@ export class YukicoderClient {
         }));
     }
 
+    /** Submit `source` for a problem and return the new submission. */
     async submit(
         problemUrl: string,
         credential: string,
@@ -593,6 +628,7 @@ export class YukicoderClient {
         return parseYukicoderAuthUser(body);
     }
 
+    /** Whether the API accepts the credential. */
     async checkCredential(credential: string): Promise<boolean> {
         return (await this.getAuthUser(credential)) !== undefined;
     }

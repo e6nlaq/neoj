@@ -14,10 +14,13 @@ const REQUEST_TIMEOUT_MS = 15_000;
 // such as "JOI2010ho" all share this shape.
 const PROBLEM_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9_.-]*$/u;
 
+/** One input/output pair from an AOJ statement. */
 export type AojSample = ProblemSample;
 
+/** An AOJ problem, with the URL that was passed to the client. */
 export type AojProblem = Problem;
 
+/** A non-2xx response from an AOJ problem page. */
 export class AojProblemRequestError extends Error {
     constructor(readonly status: number) {
         super(`AOJ problem request failed (${status}).`);
@@ -149,6 +152,7 @@ function parseSampleHeading(heading: HTMLElement):
     };
 }
 
+/** Parse a v1 description page into a problem with its samples. */
 export function parseAojProblem(html: string, url: string): AojProblem {
     const document = parse(html);
     const description = document.querySelector(".description");
@@ -208,6 +212,7 @@ async function request(url: URL, init: RequestInit): Promise<Response> {
     }
 }
 
+/** Fetch AOJ problems through the v1 statement page, which serves the samples. */
 export class AojClient {
     /**
      * Fetch the problem from the v1 statement page.

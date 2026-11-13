@@ -144,9 +144,11 @@ export function encodeShareOjProblemLabel(index: number): string {
               encodeShareOjProblemLabel(index % 26);
 }
 
+/** The parts of a ShareOJ contest problem URL (`/contests/<id>/<label>`). */
 export interface ShareOjContestProblemRoute {
     /** The validated 22-character site short ID of the contest. */
     contestShortId: string;
+    /** The contest problem label, such as `A` or `AB`. */
     label: string;
 }
 
@@ -214,8 +216,10 @@ interface RawShareOjSample {
 /** One sample, with the inline input/output text resolved. */
 export type ShareOjResolvedSample = ProblemSample;
 
+/** A ShareOJ problem, with the stable key of the underlying problem. */
 export type ShareOjProblem = Problem;
 
+/** A sample file that could not be downloaded or verified. */
 export class ShareOjSampleDownloadError extends Error {
     constructor(message: string, options?: { cause?: unknown }) {
         super(message, options);
@@ -326,6 +330,7 @@ function normalizeSampleText(value: string): string {
     return value.replaceAll("\r\n", "\n").replace(/\n$/u, "");
 }
 
+/** A non-2xx response from the ShareOJ API, with its error code when present. */
 export class ShareOjApiError extends Error {
     constructor(
         readonly status: number,
@@ -342,6 +347,7 @@ export class ShareOjApiError extends Error {
 
 /** Tokens returned by `/auth/login`, `/auth/challenge`, and `/auth/refresh`. */
 export interface ShareOjTokens {
+    /** The bearer token for authenticated API calls. */
     accessToken: string;
     /** Long-lived; absent when the server did not return one. */
     refreshToken?: string;
@@ -360,8 +366,11 @@ interface RawAuthResult {
 
 /** A Cognito-style login challenge that must be continued with `/auth/challenge`. */
 export interface ShareOjChallenge {
+    /** The challenge name, such as an MFA method. */
     name: string;
+    /** The challenge session to send back. */
     session: string;
+    /** The challenge parameters the user must answer. */
     parameters: Record<string, string>;
 }
 
@@ -371,20 +380,29 @@ export interface ShareOjProfile {
     handle: string;
 }
 
+/** A submission runtime reported by `/runtimes`. */
 export interface ShareOjRuntime {
+    /** The value submitted as `runtime`. */
     id: string;
+    /** The display name of the runtime. */
     label: string;
 }
 
+/** The body of a submission request. */
 export interface ShareOjSubmissionRequest {
+    /** The API UUID of the problem. */
     problemId: string;
     /** Set when the problem belongs to a contest and the user participates. */
     contestId?: string;
+    /** The runtime ID from {@link ShareOjClient.getRuntimes}. */
     runtime: string;
+    /** The source code to submit. */
     source: string;
 }
 
+/** The submission ID returned by the API. */
 export interface ShareOjSubmission {
+    /** The API UUID of the submission. */
     id: string;
 }
 
@@ -484,6 +502,7 @@ interface ResolvedProblem {
     title: string;
 }
 
+/** ShareOJ API requests: problems, authentication, runtimes, and submissions. */
 export class ShareOjClient {
     /**
      * Resolve a direct problem identifier or a contest problem URL into the

@@ -17,40 +17,58 @@ const CONTROL_CHARACTER_PATTERN = /\p{Cc}/u;
 // Signed-out pages leave it empty, so the value alone cannot prove a session.
 const USER_SCREEN_NAME_PATTERN = /var userScreenName = "([^"]*)"/u;
 
+/** One input/output pair from an AtCoder task page. */
 export type AtCoderSample = ProblemSample;
 
+/** An AtCoder task, including the contest window recorded on its page. */
 export interface AtCoderProblem extends Problem {
+    /** The samples in statement order. */
     samples: AtCoderSample[];
+    /** The start of the contest that published the task. */
     startTime: Temporal.Instant;
+    /** The end of the contest that published the task. */
     endTime: Temporal.Instant;
 }
 
 /** One selectable language on the AtCoder submission form. */
 export interface AtCoderLanguage {
+    /** The value submitted as `data.LanguageId`. */
     id: string;
+    /** The display name, with whitespace collapsed. */
     name: string;
+    /** The `optgroup` label, when the option belongs to a group. */
     group: string | undefined;
 }
 
 /** The submission form, parsed once and reused for the POST. */
 export interface AtCoderSubmitPage {
+    /** The contest that owns the task. */
     contestId: string;
+    /** The task as it appears in the URL. */
     taskId: string;
+    /** The form URL, including the preselected `taskScreenName`. */
     submitUrl: string;
+    /** The hidden `csrf_token` value. */
     csrfToken: string;
+    /** The value submitted as `data.TaskScreenName`. */
     taskScreenName: string;
+    /** The selectable languages. */
     languages: AtCoderLanguage[];
+    /** Whether the form contains a Turnstile widget, which blocks automated posts. */
     hasTurnstile: boolean;
 }
 
+/** The submission created by {@link AtCoderClient.submit}. */
 export interface AtCoderSubmissionResult {
     /** Missing when the submission succeeded but its ID could not be read yet. */
     submissionId: string | undefined;
+    /** The submission page, or the task's submissions list when no ID was read. */
     submissionUrl: string;
 }
 
 const TURNSTILE_PATTERN = /cf-turnstile|turnstile/iu;
 
+/** A non-2xx response from an AtCoder problem page. */
 export class AtCoderProblemRequestError extends Error {
     constructor(readonly status: number) {
         super(`AtCoder problem request failed (${status}).`);
@@ -79,6 +97,10 @@ export function parseAtCoderUsername(html: string): string | undefined {
     return name === undefined || name === "" ? undefined : name;
 }
 
+/**
+ * Strip the optional `REVEL_SESSION=` name and reject values that cannot be
+ * sent as a cookie header.
+ */
 export function normalizeRevelSession(value: string): string {
     const session = value.trim().replace(/^REVEL_SESSION=/i, "");
     if (session.length === 0) {
@@ -97,6 +119,7 @@ export function normalizeRevelSession(value: string): string {
     return session;
 }
 
+/** Parse and validate `/contests/<contestId>/tasks/<taskId>` on AtCoder. */
 export function parseAtCoderProblemUrl(value: string): URL {
     const problemUrl = new URL(value);
     if (
@@ -123,11 +146,13 @@ function parseTaskPath(value: string): { contestId: string; taskId: string } {
     return { contestId, taskId };
 }
 
+/** The contest page for a task URL. */
 export function buildAtCoderContestUrl(value: string): URL {
     const { contestId } = parseTaskPath(value);
     return new URL(`/contests/${contestId}`, ATCODER_ORIGIN);
 }
 
+/** Your own submissions for one task, filtered by task ID. */
 export function buildAtCoderSubmissionsUrl(value: string): URL {
     const { contestId, taskId } = parseTaskPath(value);
     const submissionsUrl = new URL(`/contests/${contestId}/submissions/me`, ATCODER_ORIGIN);
@@ -343,12 +368,19 @@ function parseLocationSubmissionId(location: string, contestId: string): string 
     return /^\d+$/u.test(id) ? id : undefined;
 }
 
+/**
+ * AtCoder requests with an optional `REVEL_SESSION` cookie.
+ *
+ * `login()` keeps the session for later calls. The other methods also work
+ * without a session when the page is public.
+ */
 export class AtCoderClient {
     private session: string | undefined;
     private csrfTokenValue: string | undefined;
     private usernameValue: string | undefined;
     private submitPages = new Map<string, AtCoderSubmitPage>();
 
+    /** The CSRF token embedded in the session cookie, when present. */
     get csrfToken(): string | undefined {
         return this.csrfTokenValue;
     }
@@ -368,6 +400,10 @@ export class AtCoderClient {
         return headers;
     }
 
+    /**
+     * Validate a `REVEL_SESSION` cookie against `/settings` and keep it for
+     * later requests. Returns `false` when AtCoder rejects the session.
+     */
     async login(revelSession: string): Promise<boolean> {
         const session = normalizeRevelSession(revelSession);
         const decodedSession = decodeURIComponent(session);
@@ -404,6 +440,7 @@ export class AtCoderClient {
         return true;
     }
 
+    /** Fetch a task page with its samples and contest window. */
     async getProblem(url: string): Promise<AtCoderProblem> {
         const problemUrl = parseAtCoderProblemUrl(url);
 
@@ -449,6 +486,7 @@ export class AtCoderClient {
         return page;
     }
 
+    /** The languages the submission form accepts for `url`. */
     async getLanguages(url: string): Promise<AtCoderLanguage[]> {
         return (await this.getSubmitPage(url)).languages;
     }
@@ -481,6 +519,11 @@ export class AtCoderClient {
         return parseLanguages(parse(await response.text()));
     }
 
+    /**
+     * Submit `source` for the task at `url`.
+     *
+     * Pass a cached form from `getSubmitPage()` to skip the extra request.
+     */
     async submit(
         url: string,
         languageId: string,
