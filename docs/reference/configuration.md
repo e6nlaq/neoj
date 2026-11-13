@@ -688,6 +688,37 @@ How the template is applied to `src`:
   places and keeping everything else.
 - `replace` removes the contents of `src` before copying the template.
 
+### `update.enabled`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Show an update notification at the end of each command when a newer version is
+available. The notification prints one line on standard error, so piping a
+command's output is unaffected:
+
+```text
+ℹ  Update available: 0.0.8 → 0.0.9. Run: npm install -g @neoj/cli@latest
+```
+
+The check is skipped entirely for `neoj completions` and `neoj --version`. When
+the registry cannot be reached, `neoj` stays silent and never reports the check
+as an error.
+
+### `update.interval`
+
+| Type   | Default  | Scope             |
+| ------ | -------- | ----------------- |
+| number | `259200` | global or project |
+
+Minimum seconds between update checks against the npm registry; the default is
+3 days. The last successful check is cached in neoj's data directory and reused
+between checks, so most commands run without any network access. Within the
+interval, the cached version still drives the notification, so an available
+update is announced on every command until neoj is updated. `0` checks on every
+command.
+
 ## Example
 
 ```toml

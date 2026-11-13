@@ -88,6 +88,7 @@ function createConfig(options: {
                     run: [process.execPath, "run", "{source}"],
                 },
             } satisfies Config["languages"]),
+        update: { enabled: true, interval: 259_200 },
         download: { show_sample: false },
         stash: { auto_stash: false, auto_apply: false, force: true },
         template: { enable: false, exclude: [], mode: "overlay" },

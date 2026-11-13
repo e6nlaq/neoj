@@ -575,6 +575,33 @@ export const configSchema = v.pipe(
                 check_limit: true,
             },
         ),
+        update: v.optional(
+            v.pipe(
+                v.strictObject({
+                    enabled: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Show an update notification at the end of each command when a newer version is available.",
+                            ),
+                        ),
+                        true,
+                    ),
+                    interval: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.minValue(0),
+                            v.description(
+                                "Minimum seconds between update checks against the npm registry. The cached result is reused in between. 0 checks on every command.",
+                            ),
+                        ),
+                        259200,
+                    ),
+                }),
+                v.description("How neoj checks for and reports its own updates."),
+            ),
+            { enabled: true, interval: 259200 },
+        ),
         languages: v.optional(
             v.pipe(
                 v.record(v.pipe(v.string(), v.minLength(1)), languageSchema),
