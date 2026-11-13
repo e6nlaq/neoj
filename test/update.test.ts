@@ -6,7 +6,6 @@ import * as v from "valibot";
 
 import type { Config } from "@/lib/util/config";
 import {
-    compareVersions,
     defaultUpdateIntervalSeconds,
     formatUpdateMessage,
     getPendingUpdateNotification,
@@ -46,33 +45,32 @@ async function writeCache(path: string, cache: UpdateCheckCache): Promise<void> 
     await writeFile(path, `${JSON.stringify(cache, null, 2)}\n`);
 }
 
-describe("compareVersions", () => {
-    it("orders release versions numerically", () => {
-        expect(compareVersions("0.0.8", "0.0.8")).toBe(0);
-        expect(compareVersions("0.0.9", "0.0.8")).toBe(1);
-        expect(compareVersions("0.1.0", "0.0.99")).toBe(1);
-        expect(compareVersions("1.0.0", "0.9.9")).toBe(1);
-        expect(compareVersions("0.0.10", "0.0.9")).toBe(1);
-    });
-
-    it("treats a prerelease as older than its release", () => {
-        expect(compareVersions("1.0.0", "1.0.0-beta.1")).toBe(1);
-        expect(compareVersions("1.0.0-beta.2", "1.0.0-beta.1")).toBe(1);
-        expect(compareVersions("1.0.0-beta", "1.0.0-alpha")).toBe(1);
-    });
-
-    it("falls back to string comparison for non-semver input", () => {
-        expect(compareVersions("abc", "abc")).toBe(0);
-        expect(compareVersions("abc", "abd")).toBe(-1);
-    });
-});
-
 describe("isNewerVersion", () => {
-    it("reports only strictly newer candidates", () => {
+    it("orders release versions numerically", () => {
         expect(isNewerVersion("0.0.8", "0.0.9")).toBe(true);
         expect(isNewerVersion("0.0.8", "0.0.8")).toBe(false);
         expect(isNewerVersion("0.0.8", "0.0.7")).toBe(false);
+        expect(isNewerVersion("0.0.8", "0.0.10")).toBe(true);
+        expect(isNewerVersion("0.0.99", "0.1.0")).toBe(true);
+        expect(isNewerVersion("0.9.9", "1.0.0")).toBe(true);
+    });
+
+    it("treats a prerelease as older than its release", () => {
+        expect(isNewerVersion("1.0.0", "1.0.0-beta.1")).toBe(false);
         expect(isNewerVersion("1.0.0", "1.0.0-rc.1")).toBe(false);
+        expect(isNewerVersion("1.0.0-beta.1", "1.0.0")).toBe(true);
+        expect(isNewerVersion("1.0.0-beta.1", "1.0.0-beta.2")).toBe(true);
+        expect(isNewerVersion("1.0.0-alpha", "1.0.0-beta")).toBe(true);
+    });
+
+    it("accepts a leading v and tolerates build metadata", () => {
+        expect(isNewerVersion("0.0.8", "v0.0.9")).toBe(true);
+        expect(isNewerVersion("0.0.8+local", "0.0.9")).toBe(true);
+    });
+
+    it("falls back to inequality for non-semver input", () => {
+        expect(isNewerVersion("abc", "abd")).toBe(true);
+        expect(isNewerVersion("abc", "abc")).toBe(false);
     });
 });
 

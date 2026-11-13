@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 
 import envPaths from "env-paths";
 import latestVersion from "latest-version";
+import semver from "semver";
 
 import { loadConfig, type Config } from "@/lib/util/config";
 
@@ -42,86 +43,16 @@ export interface UpdateCheckOptions {
     timeoutMs?: number;
 }
 
-interface ParsedVersion {
-    core: [number, number, number];
-    prerelease: string[];
-}
-
-function parseVersion(version: string): ParsedVersion | undefined {
-    const match = /^v?(\d+)\.(\d+)\.(\d+)(?:-((?:[0-9A-Za-z-]+)(?:\.[0-9A-Za-z-]+)*))?$/.exec(
-        version.trim(),
-    );
-    if (match === null) {
-        return undefined;
-    }
-
-    const core = [match[1], match[2], match[3]].map((part) => Number(part)) as [
-        number,
-        number,
-        number,
-    ];
-    const prerelease = match[4] === undefined ? [] : match[4].split(".");
-
-    return { core, prerelease };
-}
-
-function compareIdentifiers(a: string, b: string): number {
-    const aNumber = /^\d+$/.test(a) ? Number(a) : undefined;
-    const bNumber = /^\d+$/.test(b) ? Number(b) : undefined;
-    if (aNumber !== undefined && bNumber !== undefined) {
-        return Math.sign(aNumber - bNumber);
-    }
-    if (aNumber !== undefined) {
-        return -1;
-    }
-    if (bNumber !== undefined) {
-        return 1;
-    }
-
-    return a < b ? -1 : a > b ? 1 : 0;
-}
-
-/** Semver-style comparison: negative when `a` < `b`, zero when equal, positive when `a` > `b`. */
-export function compareVersions(a: string, b: string): number {
-    const parsedA = parseVersion(a);
-    const parsedB = parseVersion(b);
-    if (parsedA === undefined || parsedB === undefined) {
-        return a === b ? 0 : a < b ? -1 : 1;
-    }
-
-    for (let index = 0; index < 3; index += 1) {
-        const difference = Math.sign((parsedA.core[index] ?? 0) - (parsedB.core[index] ?? 0));
-        if (difference !== 0) {
-            return difference;
-        }
-    }
-
-    if (parsedA.prerelease.length !== parsedB.prerelease.length) {
-        if (parsedA.prerelease.length === 0) {
-            return 1;
-        }
-        if (parsedB.prerelease.length === 0) {
-            return -1;
-        }
-    }
-
-    const length = Math.min(parsedA.prerelease.length, parsedB.prerelease.length);
-    for (let index = 0; index < length; index += 1) {
-        const difference = compareIdentifiers(
-            parsedA.prerelease[index] ?? "",
-            parsedB.prerelease[index] ?? "",
-        );
-        if (difference !== 0) {
-            return difference;
-        }
-    }
-
-    return 0;
-}
-
 /** Whether `candidate` is strictly newer than `current`. */
 export function isNewerVersion(current: string, candidate: string): boolean {
-    return compareVersions(candidate, current) > 0;
+    const parsedCurrent = semver.coerce(current, { includePrerelease: true });
+    const parsedCandidate = semver.coerce(candidate, { includePrerelease: true });
+    if (parsedCurrent === null || parsedCandidate === null) {
+        // Unparseable versions cannot be ordered; notify on any difference.
+        return candidate !== current;
+    }
+
+    return semver.gt(parsedCandidate, parsedCurrent);
 }
 
 /** One-line notification shown by `consola.info` when an update is available. */
