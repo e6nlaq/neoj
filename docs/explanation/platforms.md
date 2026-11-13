@@ -61,9 +61,10 @@ touching it.
 The platform code lives in [`packages/api`](https://github.com/e6nlaq/neoj/tree/main/packages/api)
 and is published as `@neoj/api`, so other tools can use the same clients without
 installing the CLI. The package never reads or writes credential files; the CLI
-loads a saved session, passes it to a client, and decides what to store. See
+loads a saved session, passes it to a client, and decides what to store. See the
+[API reference](../reference/api.md) for every entry point and
 [`packages/api/README.md`](https://github.com/e6nlaq/neoj/blob/main/packages/api/README.md)
-for the public entry points.
+for the package overview.
 
 ## Related
 

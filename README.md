@@ -59,7 +59,10 @@ import { YukicoderClient } from "@neoj/api/yukicoder";
 const problem = await new YukicoderClient().getProblem("https://yukicoder.me/problems/no/480");
 ```
 
-See [`packages/api/README.md`](packages/api/README.md) for the full surface.
+See the [API reference](https://github.com/e6nlaq/neoj/blob/main/docs/reference/api.md)
+for the full surface, and [`packages/api/README.md`](packages/api/README.md) for
+the package overview. The package is unofficial and is not affiliated with the
+platforms it talks to; use it at your own risk.
 
 ## Documentation
 
@@ -87,6 +90,7 @@ See [`packages/api/README.md`](packages/api/README.md) for the full surface.
 ### Look up
 
 - [CLI reference](https://github.com/e6nlaq/neoj/blob/main/docs/reference/cli.md)
+- [API reference](https://github.com/e6nlaq/neoj/blob/main/docs/reference/api.md)
 - [Configuration reference](https://github.com/e6nlaq/neoj/blob/main/docs/reference/configuration.md)
 - [Credential storage](https://github.com/e6nlaq/neoj/blob/main/docs/reference/credentials.md)
 

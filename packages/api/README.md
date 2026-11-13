@@ -5,6 +5,10 @@ API clients for the competitive programming platforms supported by
 requests, URL validation, and HTML/JSON parsing of the CLI; it does not read or
 write credentials and has no CLI dependencies.
 
+This is an unofficial client. It is not affiliated with or endorsed by AtCoder,
+yukicoder, ShareOJ, Aizu Online Judge, or Codeforces. Use it at your own risk,
+and follow each platform's terms of service and rate limits.
+
 ## Install
 
 ```bash
@@ -48,6 +52,11 @@ Every platform has its own subpath:
 | `@neoj/api/user-agent`  | The `User-Agent` string sent by the clients                  |
 
 The root import re-exports every module.
+
+## Documentation
+
+The [API reference](https://github.com/e6nlaq/neoj/blob/main/docs/reference/api.md)
+documents every client, helper function, type, and error class.
 
 ## Authentication
 

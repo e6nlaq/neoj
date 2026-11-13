@@ -12,10 +12,13 @@ const REQUEST_TIMEOUT_MS = 15_000;
 const CONTEST_ID_PATTERN = /^\d+$/u;
 const PROBLEM_INDEX_PATTERN = /^[A-Za-z][A-Za-z0-9]*$/u;
 
+/** One input/output pair from a Codeforces statement. */
 export type CodeforcesSample = ProblemSample;
 
+/** A Codeforces problem, with the URL that was passed to the client. */
 export type CodeforcesProblem = Problem;
 
+/** A non-2xx response from a Codeforces problem page. */
 export class CodeforcesProblemRequestError extends Error {
     constructor(readonly status: number) {
         super(`Codeforces problem request failed (${status}).`);
@@ -121,6 +124,7 @@ export function stripCodeforcesTitleIndex(title: string): string {
     return match === null ? title.trim() : (match[1] ?? "").trim();
 }
 
+/** Parse a problem page into a title and its samples. */
 export function parseCodeforcesProblem(html: string, url: string): CodeforcesProblem {
     // Codeforces wraps sample input lines in `div.test-example-line` elements
     // inside the `<pre>`, but node-html-parser keeps `<pre>` content as raw
@@ -185,6 +189,7 @@ async function request(url: URL, init: RequestInit): Promise<Response> {
     }
 }
 
+/** Fetch Codeforces problems from the public contest page. */
 export class CodeforcesClient {
     /**
      * Fetch the problem page and parse the samples.
