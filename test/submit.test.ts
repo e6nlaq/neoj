@@ -106,6 +106,7 @@ function createConfig(overrides: Partial<Config["submit"]> = {}): Config {
                 run: ["{outfile}"],
             },
         },
+        update: { enabled: true, interval: 259_200 },
         download: { show_sample: false },
         stash: { auto_stash: false, auto_apply: false, force: true },
         template: { enable: false, exclude: [], mode: "overlay" },

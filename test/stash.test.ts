@@ -86,6 +86,7 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
             show_line_numbers: true,
         },
         languages: {},
+        update: { enabled: true, interval: 259_200 },
         download: { show_sample: false },
         stash: { auto_stash: false, auto_apply: false, force: true },
         template: { enable: false, exclude: [], mode: "overlay" },

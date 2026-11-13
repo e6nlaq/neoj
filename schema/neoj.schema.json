@@ -366,6 +366,29 @@
                 "check_limit": true
             }
         },
+        "update": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean",
+                    "description": "Show an update notification at the end of each command when a newer version is available.",
+                    "default": true
+                },
+                "interval": {
+                    "type": "number",
+                    "minimum": 0,
+                    "description": "Minimum seconds between update checks against the npm registry. The cached result is reused in between. 0 checks on every command.",
+                    "default": 259200
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "How neoj checks for and reports its own updates.",
+            "default": {
+                "enabled": true,
+                "interval": 259200
+            }
+        },
         "languages": {
             "type": "object",
             "propertyNames": {
