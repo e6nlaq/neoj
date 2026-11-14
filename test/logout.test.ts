@@ -13,6 +13,7 @@ const confirmPrompt = mock(async () => false);
 
 mock.module("@inquirer/prompts", () => ({
     confirm: confirmPrompt,
+    input: mock(async () => ""),
     password: mock(async () => ""),
 }));
 

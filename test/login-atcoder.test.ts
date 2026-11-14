@@ -15,6 +15,7 @@ const passwordPrompt = mock(async () => "new-session");
 
 mock.module("@inquirer/prompts", () => ({
     confirm: confirmPrompt,
+    input: mock(async () => ""),
     password: passwordPrompt,
 }));
 
