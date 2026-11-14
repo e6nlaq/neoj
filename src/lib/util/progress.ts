@@ -13,6 +13,8 @@ export interface ProgressBarOptions {
     stream?: ProgressStream;
     /** Draw the bar even though `--no-progress` was passed. */
     enabled?: boolean;
+    /** Monotonic clock in milliseconds; injectable for deterministic tests. */
+    now?: () => number;
 }
 
 export interface ProgressBar {
@@ -30,6 +32,20 @@ export interface ProgressBar {
 const minimumBarWidth = 10;
 const maximumBarWidth = 30;
 
+/** Render a remaining duration as `42s`, `1m23s`, or `1h02m`. */
+export function formatEta(remainingMs: number): string {
+    const totalSeconds = Math.max(0, Math.round(remainingMs / 1000));
+    if (totalSeconds < 60) {
+        return `${totalSeconds}s`;
+    }
+    const minutes = Math.floor(totalSeconds / 60);
+    if (minutes < 60) {
+        return `${minutes}m${String(totalSeconds % 60).padStart(2, "0")}s`;
+    }
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h${String(minutes % 60).padStart(2, "0")}m`;
+}
+
 /**
  * A single-line progress bar on stderr. Callers keep their own counters and
  * pass them through `detail`; this helper only knows about `done` and `total`.
@@ -40,6 +56,8 @@ export function createProgressBar(options: ProgressBarOptions): ProgressBar {
     const total = Math.max(0, options.total);
     const enabled = options.enabled !== false && stream.isTTY === true;
     const styles = createAnsiStyles(enabled);
+    const now = options.now ?? (() => performance.now());
+    const startedAtMs = now();
     let done = 0;
     let drawn = false;
 
@@ -47,7 +65,18 @@ export function createProgressBar(options: ProgressBarOptions): ProgressBar {
         const columns = stream.columns === undefined ? 80 : Math.max(20, stream.columns);
         const ratio = total === 0 ? 1 : Math.min(1, done / total);
         const counter = `${done}/${total}`;
-        const suffix = detail === undefined || detail === "" ? "" : ` ${detail}`;
+        const parts: string[] = [];
+        if (detail !== undefined && detail !== "") {
+            parts.push(detail);
+        }
+        // The rate estimate needs at least one finished item, and nothing is
+        // left to estimate once every item is done.
+        if (done > 0 && done < total) {
+            const elapsedMs = now() - startedAtMs;
+            const remainingMs = (elapsedMs / done) * (total - done);
+            parts.push(`eta ${formatEta(remainingMs)}`);
+        }
+        const suffix = parts.length === 0 ? "" : ` ${parts.join(" ")}`;
         const fixedWidth = label.length + counter.length + suffix.length + 6;
         const barWidth = Math.max(minimumBarWidth, Math.min(maximumBarWidth, columns - fixedWidth));
         const filled = Math.round(ratio * barWidth);

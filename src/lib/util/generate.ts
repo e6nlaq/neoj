@@ -311,6 +311,8 @@ export async function runGenerate(options: RunGenerateOptions): Promise<RunGener
             stream: stderr,
             enabled: (options.progress ?? true) && stderr.isTTY === true,
         });
+        // Show the bar before the first case finishes, not only on advances.
+        progress.update(0);
 
         const context: ToolContext = {
             projectRoot,
