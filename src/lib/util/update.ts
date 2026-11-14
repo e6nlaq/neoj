@@ -1,8 +1,8 @@
 import { mkdir, rename, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import { USER_AGENT } from "@neoj/api";
 import envPaths from "env-paths";
-import latestVersion from "latest-version";
 import semver from "semver";
 
 import { loadConfig, type Config } from "@/lib/util/config";
@@ -100,6 +100,47 @@ async function writeUpdateCache(cache: UpdateCheckCache, path: string): Promise<
     }
 }
 
+/**
+ * Read `dist-tags.latest` from the npm registry with an abortable timeout.
+ *
+ * The previous implementation raced the request against a timer without
+ * cancelling it, so the HTTP request kept running after the notification was
+ * skipped. The signal makes the timeout stop the request itself.
+ */
+export async function fetchLatestVersionFromRegistry(
+    packageName: string,
+    timeoutMs: number = updateCheckTimeoutMs,
+): Promise<string> {
+    const encodedPackageName = encodeURIComponent(packageName).replace(/^%40/u, "@");
+    const response = await fetch(`https://registry.npmjs.org/${encodedPackageName}`, {
+        headers: {
+            Accept: "application/vnd.npm.install-v1+json; q=1.0, application/json; q=0.8, */*",
+            "User-Agent": USER_AGENT,
+        },
+        signal: AbortSignal.timeout(timeoutMs),
+    });
+    if (!response.ok) {
+        throw new Error(`npm registry request failed with status ${response.status}.`);
+    }
+
+    const body = (await response.json()) as unknown;
+    if (typeof body !== "object" || body === null) {
+        throw new Error("npm registry response was not an object.");
+    }
+
+    const distTags = (body as Record<string, unknown>)["dist-tags"];
+    if (typeof distTags !== "object" || distTags === null) {
+        throw new Error("npm registry response did not contain dist-tags.");
+    }
+
+    const latest = (distTags as Record<string, unknown>).latest;
+    if (typeof latest !== "string" || latest.length === 0) {
+        throw new Error("npm registry response did not contain dist-tags.latest.");
+    }
+
+    return latest;
+}
+
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     return Promise.race([
@@ -146,10 +187,12 @@ export async function getPendingUpdateNotification(
         ) {
             latest = cache.latestVersion;
         } else {
+            const timeoutMs = options.timeoutMs ?? updateCheckTimeoutMs;
             try {
                 latest = await withTimeout(
-                    options.fetchLatest?.(updatePackageName) ?? latestVersion(updatePackageName),
-                    options.timeoutMs ?? updateCheckTimeoutMs,
+                    options.fetchLatest?.(updatePackageName) ??
+                        fetchLatestVersionFromRegistry(updatePackageName, timeoutMs),
+                    timeoutMs,
                 );
             } catch {
                 return undefined;

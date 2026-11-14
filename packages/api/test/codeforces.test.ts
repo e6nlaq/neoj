@@ -270,6 +270,17 @@ describe("CodeforcesClient", () => {
                 new CodeforcesClient().getProblem("https://codeforces.com/contest/1900/problem/B"),
             ).rejects.toThrow("Codeforces redirected the problem request (302).");
         });
+
+        it("reports a browser check instead of a missing problem statement", async () => {
+            setFetch(() => Promise.resolve(htmlResponse("<title>Just a moment...</title>", 403)));
+
+            const error = await new CodeforcesClient()
+                .getProblem("https://codeforces.com/contest/1900/problem/B")
+                .catch((caught: unknown) => caught);
+
+            expect(error instanceof CodeforcesBlockedError).toBe(true);
+            expect((error as Error).message).toContain("returned a browser check");
+        });
     });
 });
 

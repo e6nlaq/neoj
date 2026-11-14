@@ -86,3 +86,33 @@ export function assertDirectoriesDoNotOverlap(
         throw new Error(`${left.name} and ${right.name} must not overlap.`);
     }
 }
+
+export interface ProjectDirectorySpec {
+    /** Configured value, relative to the project root. */
+    folder: string;
+    /** Configuration key used in error messages. */
+    name: string;
+}
+
+/**
+ * Resolve several configured directories and reject any pair that overlaps.
+ *
+ * `src`, `template.folder`, and `testcase.folder` are replaced independently,
+ * so allowing one to contain another would let one operation destroy a
+ * directory another operation is about to use.
+ */
+export async function resolveProjectDirectories(
+    projectRoot: string,
+    specs: readonly ProjectDirectorySpec[],
+): Promise<Map<string, string>> {
+    const resolved: Array<{ path: string; name: string }> = [];
+    for (const spec of specs) {
+        const path = await resolveProjectDirectory(projectRoot, spec.folder, spec.name);
+        for (const other of resolved) {
+            assertDirectoriesDoNotOverlap(other, { path, name: spec.name });
+        }
+        resolved.push({ path, name: spec.name });
+    }
+
+    return new Map(resolved.map(({ name, path }) => [name, path]));
+}

@@ -294,6 +294,28 @@ describe("applyStash", () => {
         );
     });
 
+    it("rejects a configuration where both slots resolve to the same directory", async () => {
+        const projectRoot = await createProject();
+        await writeProblemFiles(projectRoot);
+        await saveStash(
+            projectRoot,
+            createConfig({ src: "src", folder: "test" }),
+            { url, key },
+            { force: true },
+        );
+
+        await expect(
+            applyStash(projectRoot, createConfig({ src: "test", folder: "test" }), key),
+        ).rejects.toThrow("src and testcase.folder must not overlap");
+
+        await expect(Bun.file(join(projectRoot, "test", "sample-1.in")).text()).resolves.toBe(
+            "1 2",
+        );
+        await expect(Bun.file(join(projectRoot, "src", "main.cpp")).text()).resolves.toBe(
+            "solution",
+        );
+    });
+
     it("fails when the problem has no stash", async () => {
         const projectRoot = await createProject();
 

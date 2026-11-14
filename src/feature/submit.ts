@@ -659,7 +659,9 @@ async function createShareOjTarget(
                 if (!(error instanceof ShareOjApiError) || error.status !== 401) {
                     throw error;
                 }
-                const renewed = await getShareOjAccessToken((await readAuth()).shareoj, client);
+                const renewed = await getShareOjAccessToken((await readAuth()).shareoj, client, {
+                    forceRefresh: true,
+                });
                 if (renewed === undefined) {
                     throw new Error(
                         'The ShareOJ session has expired. Run "neoj login shareoj" and try again.',

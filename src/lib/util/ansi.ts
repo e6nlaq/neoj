@@ -19,13 +19,28 @@ function wrap(enabled: boolean, codes: readonly number[], text: string): string 
     return `${escape}${codes.join(";")}m${text}${escape}0m`;
 }
 
-/** True when the stream is a terminal and `NO_COLOR` is not set. */
+/**
+ * Whether ANSI styling should be enabled for a stream.
+ *
+ * `FORCE_COLOR` wins over the terminal check, and `NO_COLOR` is honored by
+ * presence even when it is set to an empty string. `FORCE_COLOR=0` and
+ * `FORCE_COLOR=false` explicitly disable styling.
+ */
 export function supportsColor(stream: { isTTY?: boolean } | undefined): boolean {
-    if (stream?.isTTY !== true) {
+    const forceColor = process.env.FORCE_COLOR;
+    if (forceColor !== undefined) {
+        const normalized = forceColor.trim().toLowerCase();
+        if (normalized === "0" || normalized === "false") {
+            return false;
+        }
+        return true;
+    }
+
+    if ("NO_COLOR" in process.env) {
         return false;
     }
 
-    return !process.env.NO_COLOR;
+    return stream?.isTTY === true;
 }
 
 export function createAnsiStyles(enabled: boolean): AnsiStyles {

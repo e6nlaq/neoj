@@ -105,10 +105,11 @@ export function createHandmadeCommand(): Command {
                     // EOF leaves the cursor after the last prompt, without a newline.
                     process.stdout.write("\n");
                     consola.info(error.message);
+                    // Cancelling is a normal exit, matching login and submit.
                 } else {
                     consola.error(error instanceof Error ? error.message : String(error));
+                    process.exitCode = 1;
                 }
-                process.exitCode = 1;
             } finally {
                 close();
             }

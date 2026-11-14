@@ -474,11 +474,16 @@ export class CodeforcesClient {
         if (response.status >= 300 && response.status < 400) {
             throw new Error(`Codeforces redirected the problem request (${response.status}).`);
         }
+
+        const html = await response.text();
+        if (isCodeforcesBlockedPage(html)) {
+            throw new CodeforcesBlockedError(problemUrl.href);
+        }
         if (!response.ok) {
             throw new CodeforcesProblemRequestError(response.status);
         }
 
-        return parseCodeforcesProblem(await response.text(), problemUrl.href);
+        return parseCodeforcesProblem(html, problemUrl.href);
     }
 
     /**

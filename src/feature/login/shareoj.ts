@@ -76,13 +76,14 @@ export function hasShareOjCredentials(auth: unknown): boolean {
 export async function getShareOjAccessToken(
     auth: unknown,
     client: Pick<ShareOjClient, "refresh"> = new ShareOjClient(),
+    options: { forceRefresh?: boolean } = {},
 ): Promise<string | undefined> {
     const saved = getShareOjAuth(auth);
     if (saved === undefined) {
         return undefined;
     }
 
-    if (!isShareOjAccessTokenExpired(saved)) {
+    if (!options.forceRefresh && !isShareOjAccessTokenExpired(saved)) {
         return saved.accessToken;
     }
     if (saved.refreshToken === undefined) {

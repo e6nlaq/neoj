@@ -314,7 +314,8 @@ in `neoj.toml`, sends it anyway for when a platform changes its limit.
 The preview shows the first and last `submit.preview_lines` lines with their real
 line numbers and `...` between them; a file with at most `2 * preview_lines`
 lines is shown in full. The line numbers are dimmed when standard output is a
-terminal and `NO_COLOR` is unset, like `neoj test`. The preview and the size are
+terminal and `NO_COLOR` is unset, like `neoj test`; `FORCE_COLOR` overrides the
+terminal check. The preview and the size are
 printed for `--yes` and `--dry-run` too, so a script can still inspect what
 would be sent.
 
