@@ -17,6 +17,24 @@ neoj login atcoder
    Paste only that cookie, not a full cookie header that contains `;`.
 3. `neoj` checks the session against AtCoder before saving it.
 
+## Log in to Codeforces
+
+```bash
+neoj login codeforces
+```
+
+1. Open Codeforces in your browser, sign in, and copy two cookies from DevTools
+   (Application → Cookies): `JSESSIONID` and `70a7c28f3de`.
+2. Paste each value at its prompt. Either the value alone or the whole
+   `name=value` pair is accepted, and surrounding whitespace is ignored.
+3. `neoj` checks the session against `/settings/general` before saving it.
+
+Codeforces does not offer a login API, so `neoj` reuses these browser cookies.
+It never asks for or stores your password. If Codeforces answers with a
+Cloudflare or RCPC browser check, `neoj` stops and asks you to finish the check
+in your browser, then paste fresh cookies; it does not run a headless browser.
+When the check keeps appearing, submit from the browser.
+
 ## Log in to ShareOJ
 
 ```bash

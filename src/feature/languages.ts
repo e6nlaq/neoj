@@ -2,11 +2,17 @@ import { dirname, resolve } from "node:path";
 
 import { Command } from "@commander-js/extra-typings";
 import { AtCoderClient, parseAtCoderTask } from "@neoj/api/atcoder";
+import { CodeforcesClient, extractCodeforcesProblemRoute } from "@neoj/api/codeforces";
 import { ShareOjClient } from "@neoj/api/shareoj";
 import { YukicoderClient } from "@neoj/api/yukicoder";
 import { consola } from "consola";
 
 import { getAtCoderSession, loginToAtCoder } from "@/feature/login/atcoder";
+import {
+    getCodeforcesSession,
+    loginToCodeforces,
+    persistCodeforcesSession,
+} from "@/feature/login/codeforces";
 import { findProblemSource } from "@/feature/problem-sources";
 import { readAuth } from "@/lib/util/auth";
 import { loadConfig, type Config } from "@/lib/util/config";
@@ -17,8 +23,9 @@ import { findProjectConfig } from "@/lib/util/project";
 import { formatSourceLimit } from "@/lib/util/source-limit";
 
 export const fallbackAtCoderContestId = "abc100";
+export const fallbackCodeforcesContestId = "1";
 
-export type LanguagePlatform = "atcoder" | "yukicoder" | "shareoj";
+export type LanguagePlatform = "atcoder" | "yukicoder" | "shareoj" | "codeforces";
 
 /** One selectable language on a platform. */
 export interface PlatformLanguage {
@@ -76,12 +83,12 @@ export interface LanguageListing {
 
 export function parseLanguagePlatform(value: string): LanguagePlatform {
     const name = value.trim();
-    if (name === "atcoder" || name === "yukicoder" || name === "shareoj") {
+    if (name === "atcoder" || name === "yukicoder" || name === "shareoj" || name === "codeforces") {
         return name;
     }
 
     throw new Error(
-        `Unsupported platform "${value}". Supported platforms: atcoder, yukicoder, shareoj.`,
+        `Unsupported platform "${value}". Supported platforms: atcoder, yukicoder, shareoj, codeforces.`,
     );
 }
 
@@ -94,7 +101,7 @@ export function resolveLanguagesPlatform(
     }
     if (metadata === undefined) {
         throw new Error(
-            'No problem is recorded. Pass a platform: "neoj languages atcoder", "neoj languages yukicoder", or "neoj languages shareoj".',
+            'No problem is recorded. Pass a platform: "neoj languages atcoder", "neoj languages yukicoder", "neoj languages shareoj", or "neoj languages codeforces".',
         );
     }
 
@@ -205,6 +212,18 @@ function atCoderContestId(metadata: ProblemMetadata | undefined): string | undef
     }
 }
 
+function codeforcesContestId(metadata: ProblemMetadata | undefined): string | undefined {
+    if (metadata === undefined) {
+        return undefined;
+    }
+
+    try {
+        return extractCodeforcesProblemRoute(metadata.url).contestId;
+    } catch {
+        return undefined;
+    }
+}
+
 async function createAtCoderLanguageTarget(
     input: CreateLanguageTargetInput,
 ): Promise<LanguageTarget | undefined> {
@@ -279,6 +298,56 @@ async function createShareOjLanguageTarget(): Promise<LanguageTarget> {
     };
 }
 
+async function createCodeforcesLanguageTarget(
+    input: CreateLanguageTargetInput,
+): Promise<LanguageTarget | undefined> {
+    const client = new CodeforcesClient();
+    const auth = await readAuth();
+    const savedSession = getCodeforcesSession(auth.codeforces);
+    let loggedIn = savedSession === undefined ? false : await client.login(savedSession);
+
+    if (!loggedIn) {
+        if (!input.config.login.auto_login) {
+            throw new Error(
+                'Not logged in to Codeforces. Run "neoj login codeforces" or set login.auto_login = true.',
+            );
+        }
+
+        const accepted = await loginToCodeforces();
+        if (!accepted) {
+            return undefined;
+        }
+
+        const newSession = getCodeforcesSession((await readAuth()).codeforces);
+        if (newSession === undefined || !(await client.login(newSession))) {
+            throw new Error(
+                'Codeforces login did not produce a valid session. Run "neoj login codeforces" and try again.',
+            );
+        }
+    }
+
+    // Validation itself may rotate the cookies; keep the new pair for the next
+    // command. A listing still succeeds when the write fails.
+    await persistCodeforcesSession(client, savedSession);
+    const contestId = input.contestId ?? fallbackCodeforcesContestId;
+    return {
+        platform: "codeforces",
+        displayName: "Codeforces",
+        context: input.fallback
+            ? `${contestId}, fallback contest because no Codeforces problem is recorded`
+            : contestId,
+        async list() {
+            const previous = client.session;
+            const languages = await client.getLanguagesForContest(contestId);
+            await persistCodeforcesSession(client, previous);
+            return languages.map((language) => ({
+                id: language.id,
+                name: language.name,
+            }));
+        },
+    };
+}
+
 async function createDefaultLanguageTarget(
     input: CreateLanguageTargetInput,
 ): Promise<LanguageTarget | undefined> {
@@ -287,6 +356,9 @@ async function createDefaultLanguageTarget(
     }
     if (input.platform === "shareoj") {
         return await createShareOjLanguageTarget();
+    }
+    if (input.platform === "codeforces") {
+        return await createCodeforcesLanguageTarget(input);
     }
 
     return await createYukicoderLanguageTarget();
@@ -301,8 +373,14 @@ export async function runLanguages(options: RunLanguagesOptions): Promise<RunLan
     const projectRoot = configPath === undefined ? resolve(options.cwd) : dirname(configPath);
     const metadata = await readProblemMetadata(projectRoot);
     const platform = resolveLanguagesPlatform(options.platform, metadata);
-    const contestId = platform === "atcoder" ? atCoderContestId(metadata) : undefined;
-    const fallback = platform === "atcoder" && contestId === undefined;
+    const contestId =
+        platform === "atcoder"
+            ? atCoderContestId(metadata)
+            : platform === "codeforces"
+              ? codeforcesContestId(metadata)
+              : undefined;
+    const fallback =
+        (platform === "atcoder" || platform === "codeforces") && contestId === undefined;
 
     const target = await (dependencies.createTarget ?? createDefaultLanguageTarget)({
         platform,
@@ -335,7 +413,7 @@ export function createLanguagesCommand(): Command<[string | undefined]> {
     return new Command("languages")
         .alias("langs")
         .description("List the language IDs a platform accepts")
-        .argument("[platform]", "Platform name: atcoder or yukicoder")
+        .argument("[platform]", "Platform name: atcoder, codeforces, shareoj, or yukicoder")
         .option("--filter <text>", "Show only languages matching this text")
         .action(async (platform, options) => {
             try {

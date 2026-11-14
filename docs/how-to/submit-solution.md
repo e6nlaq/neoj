@@ -8,7 +8,8 @@ neoj submits                  # alias
 ```
 
 `neoj submit` sends the solution to the problem recorded by `.neoj/problem.json`,
-so download the problem first. It works with AtCoder, yukicoder, and ShareOJ.
+so download the problem first. It works with AtCoder, Codeforces, yukicoder, and
+ShareOJ.
 
 ## Before you submit
 
@@ -87,10 +88,10 @@ or the wait exits with `0` without submitting.
 ## Source size limits
 
 `neoj submit` compares the UTF-8 size of the text it would send (after
-`presubmit`) with the platform's documented limit: 512 KiB for AtCoder, and
-128 KiB for yukicoder and ShareOJ. An oversized source stops the command before
-the preview and before any network request, and reports how many bytes are over
-the limit:
+`presubmit`) with the platform's documented limit: 512 KiB for AtCoder, 256 KiB
+for Codeforces, and 128 KiB for yukicoder and ShareOJ. An oversized source stops
+the command before the preview and before any network request, and reports how
+many bytes are over the limit:
 
 ```text
 The source is 140.0 KiB (143,360 bytes), over the yukicoder limit of 128 KiB (131,072 bytes). Shorten it by at least 12.0 KiB, or pass --ignore-limit to submit anyway.
@@ -193,6 +194,15 @@ there. In that case set `submit.clip = "fail"` to have the text ready to paste.
 
 yukicoder accepts submissions through the same API as its web form, so no contest
 window is recorded or required.
+
+Codeforces applies a Cloudflare or RCPC browser check to some automated requests.
+When `neoj` detects that check, it stops with an error instead of retrying: open
+the submission page in your browser, finish the check, then run the command again
+with fresh cookies from `neoj login codeforces`. If the check keeps appearing,
+submit from the browser; set `submit.clip = "fail"` to have the text ready to
+paste. `neoj` never starts a headless browser. After a successful submission it
+prints the submission URL and opens it; a problem in a Gym or group is not
+supported.
 
 ShareOJ submissions use the official API with the login from
 `neoj login shareoj`. A problem downloaded from a contest URL is submitted

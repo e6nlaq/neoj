@@ -112,10 +112,26 @@ const atCoderLanguages: PlatformLanguage[] = [
 ];
 
 function createFakeTarget(input: CreateLanguageTargetInput): LanguageTarget {
+    const displayName =
+        input.platform === "atcoder"
+            ? "AtCoder"
+            : input.platform === "codeforces"
+              ? "Codeforces"
+              : input.platform === "shareoj"
+                ? "ShareOJ"
+                : "yukicoder";
+    const context =
+        input.platform === "atcoder"
+            ? (input.contestId ?? "abc100")
+            : input.platform === "codeforces"
+              ? input.fallback
+                  ? `${input.contestId ?? "1"}, fallback contest because no Codeforces problem is recorded`
+                  : (input.contestId ?? "1")
+              : undefined;
     return {
         platform: input.platform,
-        displayName: input.platform === "atcoder" ? "AtCoder" : "yukicoder",
-        context: input.platform === "atcoder" ? (input.contestId ?? "abc100") : undefined,
+        displayName,
+        context,
         async list() {
             return atCoderLanguages;
         },
@@ -143,7 +159,10 @@ describe("formatLanguageListing", () => {
     });
 
     it("names the source limit of every platform", () => {
-        const listing = (platform: "atcoder" | "yukicoder" | "shareoj", displayName: string) =>
+        const listing = (
+            platform: "atcoder" | "yukicoder" | "shareoj" | "codeforces",
+            displayName: string,
+        ) =>
             formatLanguageListing({
                 displayName,
                 context: undefined,
@@ -156,6 +175,7 @@ describe("formatLanguageListing", () => {
 
         expect(listing("yukicoder", "yukicoder")).toBe("yukicoder — 128 KiB source limit");
         expect(listing("shareoj", "ShareOJ")).toBe("ShareOJ — 128 KiB source limit");
+        expect(listing("codeforces", "Codeforces")).toBe("Codeforces — 256 KiB source limit");
     });
 
     it("explains how to configure an ID when none is set", () => {
@@ -249,14 +269,19 @@ describe("resolveLanguagesPlatform", () => {
                 url: "https://atcoder.jp/contests/abc300/tasks/abc300_a",
             }),
         ).toBe("yukicoder");
-        expect(() => resolveLanguagesPlatform("codeforces", undefined)).toThrow(
-            'Unsupported platform "codeforces". Supported platforms: atcoder, yukicoder, shareoj.',
+        expect(
+            resolveLanguagesPlatform("codeforces", {
+                url: "https://atcoder.jp/contests/abc300/tasks/abc300_a",
+            }),
+        ).toBe("codeforces");
+        expect(() => resolveLanguagesPlatform("aoj", undefined)).toThrow(
+            'Unsupported platform "aoj". Supported platforms: atcoder, yukicoder, shareoj, codeforces.',
         );
     });
 
     it("asks for a platform when no problem is recorded", () => {
         expect(() => resolveLanguagesPlatform(undefined, undefined)).toThrow(
-            'No problem is recorded. Pass a platform: "neoj languages atcoder", "neoj languages yukicoder", or "neoj languages shareoj".',
+            'No problem is recorded. Pass a platform: "neoj languages atcoder", "neoj languages yukicoder", "neoj languages shareoj", or "neoj languages codeforces".',
         );
     });
 });
@@ -341,6 +366,64 @@ describe("runLanguages", () => {
             contestId: undefined,
             fallback: true,
         });
+    });
+
+    it("uses the Codeforces contest of the recorded problem", async () => {
+        const root = await createProject({
+            problemUrl: "https://codeforces.com/problemset/problem/1900/B",
+        });
+        const stdout = createCapture();
+        let captured: CreateLanguageTargetInput | undefined;
+
+        const result = await runLanguages({
+            config: createConfig(),
+            cwd: root,
+            platform: "codeforces",
+            stdout: stdout.stream,
+            dependencies: {
+                createTarget: async (input) => {
+                    captured = input;
+                    return createFakeTarget(input);
+                },
+            },
+        });
+
+        expect(result).toEqual({ status: "listed", platform: "codeforces", count: 2 });
+        expect(captured).toMatchObject({
+            platform: "codeforces",
+            contestId: "1900",
+            fallback: false,
+        });
+        expect(stdout.text()).toContain("Codeforces (1900) — 256 KiB source limit");
+    });
+
+    it("falls back to contest 1 for Codeforces without a recorded problem", async () => {
+        const root = await createProject();
+        const stdout = createCapture();
+        let captured: CreateLanguageTargetInput | undefined;
+
+        const result = await runLanguages({
+            config: createConfig(),
+            cwd: root,
+            platform: "codeforces",
+            stdout: stdout.stream,
+            dependencies: {
+                createTarget: async (input) => {
+                    captured = input;
+                    return createFakeTarget(input);
+                },
+            },
+        });
+
+        expect(result.status).toBe("listed");
+        expect(captured).toMatchObject({
+            platform: "codeforces",
+            contestId: undefined,
+            fallback: true,
+        });
+        expect(stdout.text()).toContain(
+            "Codeforces (1, fallback contest because no Codeforces problem is recorded)",
+        );
     });
 
     it("treats a cancelled login as a normal exit", async () => {

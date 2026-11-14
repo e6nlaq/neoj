@@ -57,7 +57,7 @@ describe("buildCompletionModel", () => {
             model.commands
                 .find((command) => command.name === "login")
                 ?.commands.map((command) => command.name),
-        ).toEqual(["atcoder", "yukicoder", "shareoj"]);
+        ).toEqual(["atcoder", "yukicoder", "shareoj", "codeforces"]);
         expect(
             model.commands
                 .find((command) => command.name === "stash")
@@ -76,6 +76,7 @@ describe("buildCompletionModel", () => {
             "atcoder",
             "yukicoder",
             "shareoj",
+            "codeforces",
         ]);
 
         const yukicoder = entries.find((entry) => commandPathKey(entry.path) === "login yukicoder");
@@ -144,6 +145,7 @@ describe("buildCompletionModel", () => {
             "atcoder",
             "yukicoder",
             "shareoj",
+            "codeforces",
         ]);
     });
 
@@ -170,7 +172,7 @@ describe("renderCompletion", () => {
         expect(script).toContain('"login atcoder"');
         expect(script).toContain('"login yukicoder"');
         expect(script).toContain("token api-key");
-        expect(script).toContain("atcoder yukicoder");
+        expect(script).toContain("atcoder yukicoder shareoj codeforces");
         expect(script).not.toContain("\u001b");
     });
 

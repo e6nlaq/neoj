@@ -24,19 +24,20 @@ stay the same and only the registry grows.
 the URL parser decides which integration handles it. The parser rejects URLs that
 do not belong to a supported platform rather than attempting a best-effort fetch.
 
-AtCoder and yukicoder are the registered platforms. They authenticate
-differently:
+The registered platforms are AtCoder, yukicoder, ShareOJ, and Codeforces. They
+authenticate differently:
 
 - AtCoder reuses a browser session cookie (`REVEL_SESSION`).
+- Codeforces reuses two browser cookies: `JSESSIONID` and `70a7c28f3de`.
 - yukicoder uses either a submit-only CLI token obtained through the browser
   device flow, or an account API key stored as a `Bearer` credential.
 
 Every credential is verified before `neoj` saves it.
 
-Aizu Online Judge (AOJ) and Codeforces are download-only problem sources. Their
-URLs are accepted by `download` and the other URL-driven commands, but neither
-is part of the login registry above: there is no session to check, and
-submissions are not automated yet.
+Aizu Online Judge (AOJ) is a download-only problem source. Its URLs are accepted
+by `download` and the other URL-driven commands, but it is not part of the login
+registry above: there is no session to check, and submissions are not automated
+yet.
 
 ShareOJ is in the login registry: `neoj login shareoj` performs the same
 headless email + password login as the platform's own CLI, including the MFA
@@ -44,6 +45,14 @@ and new-password challenges, and stores the access and refresh tokens it
 issues. Submissions go through the official API, so no session cookies are
 involved. Accounts that were created through Google must set a password on the
 website before the CLI can log in.
+
+Codeforces does not have a login API, so `neoj login codeforces` asks for the two
+cookies the website sets after you sign in and reuses them for submissions. The
+site answers some automated requests with a Cloudflare or RCPC browser check;
+`neoj` detects that response and stops with instructions instead of retrying,
+and it never runs a headless browser. Submissions therefore work while the
+cookies are accepted, and you may need to submit from the browser when the check
+keeps appearing.
 
 ## Terminology
 

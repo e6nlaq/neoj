@@ -477,7 +477,7 @@
                             "type": "string",
                             "minLength": 1
                         },
-                        "description": "Platform language ID used by neoj submit, keyed by platform name such as atcoder or yukicoder."
+                        "description": "Platform language ID used by neoj submit, keyed by platform name such as atcoder, codeforces, or yukicoder."
                     }
                 },
                 "required": ["source", "run"],
