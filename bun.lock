@@ -37,7 +37,7 @@
       "name": "@neoj/api",
       "version": "0.0.8",
       "dependencies": {
-        "node-html-parser": "^9.0.6",
+        "node-html-parser": "^9.0.7",
         "valibot": "^1.5.0",
       },
       "devDependencies": {
