@@ -1,6 +1,6 @@
 {
     "name": "@neoj/cli-darwin-x64",
-    "version": "0.0.8",
+    "version": "0.0.9",
     "description": "The neoj binary for macOS x64",
     "license": "MIT",
     "author": {
