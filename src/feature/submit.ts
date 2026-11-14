@@ -29,7 +29,7 @@ import { openInBrowser } from "@/lib/util/browser";
 import { formatBytes } from "@/lib/util/bytes";
 import { copyToClipboard } from "@/lib/util/clipboard";
 import { runCommand } from "@/lib/util/command-runner";
-import { loadConfig, type Config } from "@/lib/util/config";
+import { loadConfig, type Config, type SubmitClipMode } from "@/lib/util/config";
 import { hasErrorCode } from "@/lib/util/errors";
 import type { ProblemMetadata } from "@/lib/util/problem-metadata";
 import { readProblemMetadata } from "@/lib/util/problem-metadata";
@@ -411,6 +411,92 @@ export function getOfflineSubmitWarnings(context: {
     return warnings;
 }
 
+/** Why `neoj submit` refuses to post to AtCoder before sending a request. */
+export type AtCoderFallbackReason =
+    | { kind: "ended"; endTime: string }
+    | { kind: "permanent" }
+    | { kind: "not-started"; startTime: string }
+    | { kind: "daily-training" };
+
+/**
+ * AtCoder marks its permanent contests with a year-3000 end date. At or after
+ * this instant, the contest never closes, so the submit form sits behind
+ * Cloudflare and an automated POST is almost certainly rejected.
+ */
+const permanentContestInstant = Temporal.Instant.from("3000-01-01T00:00:00Z");
+
+/**
+ * Why automatic AtCoder submission should be skipped without a request.
+ *
+ * Everything is decided offline from the problem URL and the contest window
+ * recorded by `neoj download`; a malformed window is ignored so it cannot stop
+ * a submission attempt.
+ */
+export function getAtCoderFallbackReason(context: {
+    problemUrl: string;
+    metadata: ProblemMetadata;
+    now?: Temporal.Instant;
+}): AtCoderFallbackReason | undefined {
+    const range = context.metadata.contestrange;
+    if (range !== undefined) {
+        try {
+            const now = context.now ?? Temporal.Now.instant();
+            const end = Temporal.Instant.from(range.end);
+            if (Temporal.Instant.compare(end, now) < 0) {
+                return { kind: "ended", endTime: range.end };
+            }
+            if (Temporal.Instant.compare(end, permanentContestInstant) >= 0) {
+                return { kind: "permanent" };
+            }
+            const start = Temporal.Instant.from(range.start);
+            if (Temporal.Instant.compare(start, now) > 0) {
+                return { kind: "not-started", startTime: range.start };
+            }
+        } catch {
+            // Malformed metadata should not prevent a submission attempt.
+        }
+    }
+
+    if (parseAtCoderTask(context.problemUrl).contestId.startsWith("adt_")) {
+        return { kind: "daily-training" };
+    }
+
+    return undefined;
+}
+
+/** The one-line reason the automated AtCoder submission is skipped. */
+export function describeAtCoderFallback(reason: AtCoderFallbackReason): string {
+    switch (reason.kind) {
+        case "ended":
+            return `The AtCoder contest ended at ${reason.endTime}, so automatic submission is likely blocked by Cloudflare. Submit from the browser.`;
+        case "permanent":
+            return "This is a permanent AtCoder contest (it ends in 3000), so automatic submission is likely blocked by Cloudflare. Submit from the browser.";
+        case "not-started":
+            return `The AtCoder contest has not started yet (it starts at ${reason.startTime}), so automatic submission cannot work. Submit from the browser after it starts.`;
+        case "daily-training":
+            return "This is an AtCoder Daily Training contest, where automatic submission is likely blocked by Turnstile/Cloudflare. Submit from the browser.";
+    }
+}
+
+/** Copy the text to submit to the clipboard, following `submit.clip`. */
+async function copyForBrowserSubmission(
+    content: string,
+    clip: SubmitClipMode,
+    warn: (message: string) => void,
+    dependencies: SubmitDependencies,
+): Promise<void> {
+    if (clip === "never") {
+        return;
+    }
+
+    const copied = await (dependencies.copyToClipboard ?? copyToClipboard)(content);
+    if (copied) {
+        warn("Copied the source to the clipboard so you can submit it in the browser.");
+    } else {
+        warn("Could not copy the source to the clipboard.");
+    }
+}
+
 async function createDefaultTarget(
     input: CreateTargetInput,
 ): Promise<SubmissionTarget | undefined> {
@@ -781,6 +867,22 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
 
     if (options.dryRun === true) {
         return { status: "dry-run" };
+    }
+
+    // Fail before the confirmation prompt, the wait, and the login: AtCoder
+    // keeps these submit forms behind Cloudflare, so the POST would be
+    // rejected. The preview above stays visible, and `submit.clip` decides
+    // whether the text is copied for a browser submission.
+    if (platform === "atcoder" && options.config.submit.atcoder_fallback) {
+        const reason = getAtCoderFallbackReason({
+            problemUrl: metadata.url,
+            metadata,
+            now: options.now,
+        });
+        if (reason !== undefined) {
+            await copyForBrowserSubmission(content, options.config.submit.clip, warn, dependencies);
+            throw new Error(describeAtCoderFallback(reason));
+        }
     }
 
     // Fail before the confirmation prompt and the wait: this platform cannot be

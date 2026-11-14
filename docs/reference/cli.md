@@ -345,14 +345,20 @@ copy; it runs the presubmit command and prints the preview and size. It cannot b
 combined with `--platform-language`, and it ignores `--wait`, `--no-wait`,
 `--open`, `--no-open`, and `--yes`.
 
-Submission automation depends on the platform. AtCoder shows warnings for Daily
-Training contests (`adt_...`), outside the contest window recorded by `neoj
-download`, and when the submit page contains a Turnstile challenge. If AtCoder
-rejects the request, the error tells you to open the submit page in your browser.
-yukicoder submissions use the same API as the web form. Codeforces answers every
-automated POST with a redirect to `/` behind a Cloudflare check, so `neoj submit`
-does not post to Codeforces at all: it prints the submission page and exits with
-`1` before the confirmation prompt and the wait. See
+Submission automation depends on the platform. AtCoder keeps the submit form
+behind Cloudflare outside contest windows: by default
+(`submit.atcoder_fallback = true`) the command skips the submission — after the
+presubmit command and the preview, but before the confirmation prompt and the
+wait — and exits with `1` when the recorded contest window has ended or has not
+started yet, the contest is permanent (ends in 3000), or the contest is a Daily
+Training contest (`adt_...`). `submit.clip` decides whether the text is copied
+for a browser submission. Otherwise AtCoder shows warnings outside the contest
+window recorded by `neoj download` and when the submit page contains a
+Turnstile challenge. yukicoder submissions use the same API as the web form.
+Codeforces answers every automated POST with a redirect to `/` behind a
+Cloudflare check, so `neoj submit` does not post to Codeforces at all: it
+prints the submission page and exits with `1` before the confirmation prompt and
+the wait. See
 [Submit a solution](../how-to/submit-solution.md).
 
 ### `languages`

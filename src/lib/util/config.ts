@@ -562,6 +562,15 @@ export const configSchema = v.pipe(
                         ),
                         true,
                     ),
+                    atcoder_fallback: v.optional(
+                        v.pipe(
+                            v.boolean(),
+                            v.description(
+                                "Skip the automated submission to AtCoder and copy the text for a browser submission instead (following submit.clip) when the recorded contest window has ended or has not started yet, the contest is permanent (ends in 3000), or the contest is an AtCoder Daily Training contest. Set it to false to attempt the submission anyway.",
+                            ),
+                        ),
+                        true,
+                    ),
                 }),
                 v.description("How neoj submits a solution."),
             ),
@@ -573,6 +582,7 @@ export const configSchema = v.pipe(
                 preview_lines: 5,
                 presubmit_timeout: 30,
                 check_limit: true,
+                atcoder_fallback: true,
             },
         ),
         update: v.optional(

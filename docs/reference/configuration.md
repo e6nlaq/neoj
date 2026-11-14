@@ -498,6 +498,24 @@ UTF-8 size of the text that would be sent, after `presubmit`. Set it to `false`
 to keep working when a platform changes its limit before `neoj` does;
 `neoj submit --ignore-limit` does the same for one run.
 
+### `submit.atcoder_fallback`
+
+| Type    | Default | Scope             |
+| ------- | ------- | ----------------- |
+| boolean | `true`  | global or project |
+
+Skip the automated submission to AtCoder when it is almost certainly blocked by
+Cloudflare. The check is decided offline from the problem URL and the contest
+window recorded by `neoj download`, and it applies when the window has ended,
+has not started yet, is permanent (its end year is 3000), or the contest is an
+AtCoder Daily Training contest (`adt_...`).
+
+When it applies, `neoj submit` still runs the presubmit command and prints the
+preview, then skips the confirmation prompt, the wait, and the login, and exits
+with `1` after copying the text for a browser submission when `submit.clip` is
+not `"never"`. Set it to `false` to attempt the submission anyway (the behavior
+before this setting existed).
+
 ### `languages.<key>.source`
 
 | Type                  | Default  | Scope             |
@@ -770,6 +788,7 @@ clip = "never"
 preview_lines = 5
 presubmit_timeout = 30
 check_limit = true
+atcoder_fallback = true
 
 [languages.cpp]
 source = "src/**/*.cpp"
