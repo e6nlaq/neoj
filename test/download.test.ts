@@ -164,10 +164,24 @@ describe("downloadSamples", () => {
             "sample-2.in",
             "sample-2.out",
         ]);
-        expect(await Bun.file(join(target, "sample-1.in")).text()).toBe("1 2\n\n");
-        expect(await Bun.file(join(target, "sample-1.out")).text()).toBe("3\n\n");
+        expect(await Bun.file(join(target, "sample-1.in")).text()).toBe("1 2\n");
+        expect(await Bun.file(join(target, "sample-1.out")).text()).toBe("3\n");
         expect(await Bun.file(join(target, "sample-2.in")).text()).toBe("4 5\n");
         expect(await Bun.file(join(target, "sample-2.out")).text()).toBe("9\n");
+    });
+
+    it("keeps an empty sample side empty instead of adding a blank line", async () => {
+        const projectRoot = await createProject();
+        const problem = createProblem([{ input: "1 2\n", output: "" }]);
+
+        await downloadSamples(problem.url, projectRoot, config, {
+            getProblem: async () => problem,
+        });
+
+        expect(await Bun.file(join(projectRoot, config.folder, "sample-1.in")).text()).toBe(
+            "1 2\n",
+        );
+        expect(await Bun.file(join(projectRoot, config.folder, "sample-1.out")).text()).toBe("");
     });
 
     it("clears the folder and succeeds when the problem has no samples", async () => {
@@ -590,6 +604,102 @@ describe("downloadProblem", () => {
 
         expect(fetched).toBe(false);
         await expect(Bun.file(join(projectRoot, "src", "main.cpp")).text()).resolves.toBe("keep");
+    });
+
+    it("rejects template folders that overlap the test-case folder", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+        await Bun.write(
+            join(projectRoot, "neoj.toml"),
+            'src = "src"\n[testcase]\nfolder = "test"\n[template]\nenable = true\nfolder = "test/templates"\n',
+        );
+
+        let fetched = false;
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async () => {
+                fetched = true;
+                return new Response(createAtCoderHtml("1 2", "3"), { status: 200 });
+            },
+        });
+        try {
+            await expect(
+                downloadProblem("https://atcoder.jp/contests/abc300/tasks/abc300_a"),
+            ).rejects.toThrow("testcase.folder and template.folder must not overlap");
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
+
+        expect(fetched).toBe(false);
+    });
+
+    it("restores samples and metadata when applying the template fails", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await Bun.write(join(projectRoot, "neoj.toml"), "");
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        const problemA = "https://atcoder.jp/contests/abc300/tasks/abc300_a";
+        const problemB = "https://atcoder.jp/contests/abc300/tasks/abc300_b";
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async (input: string | URL | Request) => {
+                const target =
+                    typeof input === "string"
+                        ? input
+                        : input instanceof URL
+                          ? input.href
+                          : input.url;
+                if (target.includes("abc300_a")) {
+                    return new Response(createAtCoderHtml("1 2", "3"), { status: 200 });
+                }
+                if (target.includes("abc300_b")) {
+                    return new Response(createAtCoderHtml("4 5", "9"), { status: 200 });
+                }
+                throw new Error(`Unexpected request: ${target}`);
+            },
+        });
+
+        try {
+            await downloadProblem(problemA);
+            const previousMetadata = await readProblemMetadata(projectRoot);
+            const previousSample = await Bun.file(join(projectRoot, "test", "sample-1.in")).text();
+
+            await Bun.write(
+                join(projectRoot, "neoj.toml"),
+                'src = "src"\n[template]\nenable = true\nfolder = "missing-template"\n',
+            );
+
+            await expect(downloadProblem(problemB)).rejects.toThrow("does not exist");
+
+            await expect(Bun.file(join(projectRoot, "test", "sample-1.in")).text()).resolves.toBe(
+                previousSample,
+            );
+            await expect(readProblemMetadata(projectRoot)).resolves.toEqual(previousMetadata);
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
     });
 
     it("rejects unsupported problem URLs", async () => {

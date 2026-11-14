@@ -53,6 +53,18 @@ function getSampleFiles(problem: Problem, filenamePattern: string) {
     });
 }
 
+/**
+ * Keep an empty sample side empty instead of turning it into one blank line.
+ * Non-empty samples end with exactly one newline.
+ */
+function formatSampleFileContents(contents: string): string {
+    if (contents === "") {
+        return "";
+    }
+
+    return contents.endsWith("\n") ? contents : `${contents}\n`;
+}
+
 async function replaceDirectory(
     targetDirectory: string,
     files: ReturnType<typeof getSampleFiles>,
@@ -65,10 +77,14 @@ async function replaceDirectory(
     );
     try {
         for (const file of files) {
-            await writeFile(join(stagingDirectory, file.name), file.contents + "\n", {
-                encoding: "utf8",
-                flag: "wx",
-            });
+            await writeFile(
+                join(stagingDirectory, file.name),
+                formatSampleFileContents(file.contents),
+                {
+                    encoding: "utf8",
+                    flag: "wx",
+                },
+            );
         }
 
         let existing;

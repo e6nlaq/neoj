@@ -2,11 +2,13 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
+import { USER_AGENT } from "@neoj/api";
 import * as v from "valibot";
 
 import type { Config } from "@/lib/util/config";
 import {
     defaultUpdateIntervalSeconds,
+    fetchLatestVersionFromRegistry,
     formatUpdateMessage,
     getPendingUpdateNotification,
     isUpdateNotificationSuppressed,
@@ -17,10 +19,12 @@ import {
 import { version as currentVersion } from "../package.json";
 
 const originalCwd = process.cwd();
+const originalFetch = globalThis.fetch;
 let testRoot: string | undefined;
 
 afterEach(async () => {
     process.chdir(originalCwd);
+    globalThis.fetch = originalFetch;
     if (testRoot !== undefined) {
         await rm(testRoot, { recursive: true, force: true, maxRetries: 5 });
         testRoot = undefined;
@@ -90,6 +94,60 @@ describe("isUpdateNotificationSuppressed", () => {
         expect(isUpdateNotificationSuppressed("completion")).toBe(true);
         expect(isUpdateNotificationSuppressed("test")).toBe(false);
         expect(isUpdateNotificationSuppressed(undefined)).toBe(false);
+    });
+});
+
+describe("fetchLatestVersionFromRegistry", () => {
+    it("reads dist-tags.latest from the npm registry", async () => {
+        let requestedUrl: string | undefined;
+        let accept = "";
+        let userAgent = "";
+        let signal: AbortSignal | null | undefined;
+        globalThis.fetch = Object.assign(
+            async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+                requestedUrl = String(input);
+                const headers = new Headers(init?.headers);
+                accept = headers.get("Accept") ?? "";
+                userAgent = headers.get("User-Agent") ?? "";
+                signal = init?.signal;
+                return new Response(JSON.stringify({ "dist-tags": { latest: "1.2.3" } }), {
+                    status: 200,
+                    headers: { "Content-Type": "application/json" },
+                });
+            },
+            { preconnect: originalFetch.preconnect },
+        ) as typeof fetch;
+
+        await expect(fetchLatestVersionFromRegistry("@neoj/cli")).resolves.toBe("1.2.3");
+        expect(requestedUrl).toBe("https://registry.npmjs.org/@neoj%2Fcli");
+        expect(accept).toContain("application/vnd.npm.install-v1+json");
+        expect(userAgent).toBe(USER_AGENT);
+        expect(signal).toBeInstanceOf(AbortSignal);
+    });
+
+    it("aborts the registry request when the timeout expires", async () => {
+        let requestSignal: AbortSignal | undefined;
+        globalThis.fetch = Object.assign(
+            async (_input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+                const signal = init?.signal;
+                if (signal === undefined || signal === null) {
+                    throw new Error("Expected an abort signal.");
+                }
+                requestSignal = signal;
+                return await new Promise<Response>((_resolve, reject) => {
+                    const abort = () => reject(signal.reason);
+                    if (signal.aborted) {
+                        abort();
+                        return;
+                    }
+                    signal.addEventListener("abort", abort, { once: true });
+                });
+            },
+            { preconnect: originalFetch.preconnect },
+        ) as typeof fetch;
+
+        await expect(fetchLatestVersionFromRegistry("@neoj/cli", 10)).rejects.toBeDefined();
+        expect(requestSignal?.aborted).toBe(true);
     });
 });
 

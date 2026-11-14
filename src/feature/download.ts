@@ -6,11 +6,13 @@ import { consola } from "consola";
 import { findProblemSource } from "@/feature/problem-sources";
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
 import { loadConfig } from "@/lib/util/config";
+import { snapshotDirectories } from "@/lib/util/directory-snapshot";
 import { readProblemMetadata, saveProblemMetadata } from "@/lib/util/problem-metadata";
 import { requireInitializedProject } from "@/lib/util/project";
+import { resolveProjectDirectories } from "@/lib/util/project-path";
 import { applyStash, EmptyStashError, findStash, saveStash } from "@/lib/util/stash";
 import { applyProjectTemplate } from "@/lib/util/template-apply";
-import { fetchSamples, writeSamples } from "@/lib/util/testcase";
+import { fetchSamples, writeSamples, type DownloadedSamples } from "@/lib/util/testcase";
 
 export { getProblemWithLoginHint } from "@/feature/problem-sources";
 
@@ -60,6 +62,16 @@ export async function downloadProblem(url: string): Promise<void> {
     const projectRoot = await requireInitializedProject(process.cwd());
     const config = await loadConfig();
 
+    // Reject unsafe or overlapping destinations before the network request or
+    // any file replacement.
+    const projectDirectories = await resolveProjectDirectories(projectRoot, [
+        { folder: config.testcase.folder, name: "testcase.folder" },
+        ...(config.src === undefined ? [] : [{ folder: config.src, name: "src" }]),
+        ...(config.template.folder === undefined
+            ? []
+            : [{ folder: config.template.folder, name: "template.folder" }]),
+    ]);
+
     const previous = await readProblemMetadata(projectRoot);
     const fetched = await fetchSamples(
         url,
@@ -103,39 +115,64 @@ export async function downloadProblem(url: string): Promise<void> {
         }
     }
 
-    const result = await writeSamples(fetched.directory, fetched.problem, config.testcase);
+    const sourceDirectory = projectDirectories.get("src");
+    const snapshot = await snapshotDirectories([
+        { path: fetched.directory, name: "testcase.folder" },
+        ...(sourceDirectory !== undefined && (config.template.enable || config.stash.auto_apply)
+            ? [{ path: sourceDirectory, name: "src" }]
+            : []),
+    ]);
 
-    if (problemChanged && config.template.enable) {
-        const templateFolder = config.template.folder;
-        const sourcePath = config.src;
-        if (templateFolder === undefined || sourcePath === undefined) {
-            throw new Error(
-                "Configuration requires src and template.folder when template.enable is true.",
-            );
-        }
-        await applyProjectTemplate(
-            projectRoot,
-            templateFolder,
-            sourcePath,
-            config.template.mode,
-            config.template.exclude,
-        );
-    }
+    let result: DownloadedSamples;
+    try {
+        result = await writeSamples(fetched.directory, fetched.problem, config.testcase);
 
-    if (config.stash.auto_apply && problemChanged) {
-        const entry = await findStash(projectRoot, currentKey);
-        if (entry !== undefined) {
-            const applied = await applyStash(projectRoot, config, currentKey);
-            for (const warning of applied.warnings) {
-                consola.warn(warning);
+        if (problemChanged && config.template.enable) {
+            const templateFolder = config.template.folder;
+            const sourcePath = config.src;
+            if (templateFolder === undefined || sourcePath === undefined) {
+                throw new Error(
+                    "Configuration requires src and template.folder when template.enable is true.",
+                );
             }
-            consola.info(
-                `Applied the stash for "${formatKey(currentKey)}" (${applied.written} file(s) written, ${applied.removed} removed).`,
+            await applyProjectTemplate(
+                projectRoot,
+                templateFolder,
+                sourcePath,
+                config.template.mode,
+                config.template.exclude,
             );
         }
-    }
 
-    await saveProblemMetadata(projectRoot, result.problem);
+        if (config.stash.auto_apply && problemChanged) {
+            const entry = await findStash(projectRoot, currentKey);
+            if (entry !== undefined) {
+                const applied = await applyStash(projectRoot, config, currentKey);
+                for (const warning of applied.warnings) {
+                    consola.warn(warning);
+                }
+                consola.info(
+                    `Applied the stash for "${formatKey(currentKey)}" (${applied.written} file(s) written, ${applied.removed} removed).`,
+                );
+            }
+        }
+
+        // Save the metadata only after every file operation succeeded, so a
+        // failure cannot leave new samples paired with the previous problem.
+        await saveProblemMetadata(projectRoot, result.problem);
+    } catch (error) {
+        try {
+            await snapshot.restore();
+        } catch (restoreError) {
+            throw new AggregateError(
+                [error, restoreError],
+                "The download failed and the previous files could not be restored.",
+            );
+        }
+        throw error;
+    } finally {
+        await snapshot.dispose();
+    }
 
     if (result.count === 0) {
         consola.info(`No samples found. Recreated "${result.directory}" as an empty directory.`);

@@ -17,6 +17,7 @@ import * as v from "valibot";
 
 import type { Config } from "@/lib/util/config";
 import { commitStagedDirectory } from "@/lib/util/directory-replace";
+import { snapshotDirectories } from "@/lib/util/directory-snapshot";
 import { hasErrorCode } from "@/lib/util/errors";
 import { assertDirectoriesDoNotOverlap, resolveProjectDirectory } from "@/lib/util/project-path";
 
@@ -450,6 +451,18 @@ export async function applyStash(
     let written = 0;
     let removed = 0;
 
+    interface ApplyOperation {
+        slot: StashSlot;
+        name: string;
+        sourceDirectory: string;
+        targetDirectory: string;
+        files: string[][];
+        existing: boolean;
+        existingFiles: Set<string>;
+        stashFiles: Set<string>;
+    }
+
+    const operations: ApplyOperation[] = [];
     for (const slot of stashSlots) {
         const savedFolder = entry.meta.slots[slot];
         if (savedFolder === undefined) {
@@ -491,30 +504,77 @@ export async function applyStash(
             }
         }
 
-        const stashFiles = new Set(files.map((file) => fileKey(file)));
-        const parentDirectory = dirname(targetDirectory);
-        await mkdir(parentDirectory, { recursive: true });
-        const stagingDirectory = await mkdtemp(
-            join(parentDirectory, `.${basename(targetDirectory)}-stash-`),
-        );
-        try {
-            for (const segments of files) {
-                const destination = join(stagingDirectory, ...segments);
-                await mkdir(dirname(destination), { recursive: true });
-                await copyFile(join(sourceDirectory, ...segments), destination);
+        operations.push({
+            slot,
+            name,
+            sourceDirectory,
+            targetDirectory,
+            files,
+            existing: existingStats !== undefined,
+            existingFiles,
+            stashFiles: new Set(files.map((file) => fileKey(file))),
+        });
+    }
+
+    // A configuration change can make two slots resolve to the same directory.
+    // Reject that before the first commit instead of restoring twice.
+    for (let index = 0; index < operations.length; index += 1) {
+        const left = operations[index]!;
+        for (const right of operations.slice(index + 1)) {
+            assertDirectoriesDoNotOverlap(
+                { path: left.targetDirectory, name: left.name },
+                { path: right.targetDirectory, name: right.name },
+            );
+        }
+    }
+
+    const snapshot = await snapshotDirectories(
+        operations.map((operation) => ({
+            path: operation.targetDirectory,
+            name: operation.name,
+        })),
+    );
+
+    try {
+        for (const operation of operations) {
+            const parentDirectory = dirname(operation.targetDirectory);
+            await mkdir(parentDirectory, { recursive: true });
+            const stagingDirectory = await mkdtemp(
+                join(parentDirectory, `.${basename(operation.targetDirectory)}-stash-`),
+            );
+            try {
+                for (const segments of operation.files) {
+                    const destination = join(stagingDirectory, ...segments);
+                    await mkdir(dirname(destination), { recursive: true });
+                    await copyFile(join(operation.sourceDirectory, ...segments), destination);
+                }
+
+                await commitStagedDirectory(
+                    stagingDirectory,
+                    operation.targetDirectory,
+                    operation.existing,
+                );
+            } finally {
+                await rm(stagingDirectory, { recursive: true, force: true });
             }
 
-            await commitStagedDirectory(
-                stagingDirectory,
-                targetDirectory,
-                existingStats !== undefined,
-            );
-        } finally {
-            await rm(stagingDirectory, { recursive: true, force: true });
+            written += operation.files.length;
+            removed += [...operation.existingFiles].filter(
+                (path) => !operation.stashFiles.has(path),
+            ).length;
         }
-
-        written += files.length;
-        removed += [...existingFiles].filter((path) => !stashFiles.has(path)).length;
+    } catch (error) {
+        try {
+            await snapshot.restore();
+        } catch (restoreError) {
+            throw new AggregateError(
+                [error, restoreError],
+                "Applying the stash failed and the previous files could not be restored.",
+            );
+        }
+        throw error;
+    } finally {
+        await snapshot.dispose();
     }
 
     return { key, savedAt: entry.meta.saved_at, written, removed, warnings };

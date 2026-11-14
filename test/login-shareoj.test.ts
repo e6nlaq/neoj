@@ -180,4 +180,28 @@ describe("ShareOJ login state", () => {
             }),
         ).resolves.toBeUndefined();
     });
+
+    it("refreshes on demand when the expiration is unknown", async () => {
+        await setTemporaryDataDirectory();
+        setFetch(async (input, init) => {
+            const url = String(input);
+            expect(url).toBe("https://api.share-oj.net/auth/refresh");
+            expect(JSON.parse(String(init?.body))).toEqual({ refresh_token: "ref" });
+            return jsonResponse({ access_token: "tok2", expires_in: 3600 }, 200);
+        });
+
+        await replaceAuth("shareoj", {
+            method: "password",
+            accessToken: "tok",
+            refreshToken: "ref",
+        });
+
+        await expect(
+            getShareOjAccessToken((await readAuth()).shareoj, undefined, { forceRefresh: true }),
+        ).resolves.toBe("tok2");
+
+        const saved = getShareOjAuth((await readAuth()).shareoj);
+        expect(saved?.accessToken).toBe("tok2");
+        expect(saved?.refreshToken).toBe("ref");
+    });
 });
