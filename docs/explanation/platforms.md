@@ -47,12 +47,12 @@ involved. Accounts that were created through Google must set a password on the
 website before the CLI can log in.
 
 Codeforces does not have a login API, so `neoj login codeforces` asks for the two
-cookies the website sets after you sign in and reuses them for submissions. The
-site answers some automated requests with a Cloudflare or RCPC browser check;
-`neoj` detects that response and stops with instructions instead of retrying,
-and it never runs a headless browser. Submissions therefore work while the
-cookies are accepted, and you may need to submit from the browser when the check
-keeps appearing.
+cookies the website sets after you sign in. Downloads, samples, `status`, and
+`languages` reuse them. The site answers some automated requests with a
+Cloudflare or RCPC browser check; `neoj` detects that response and stops with
+instructions instead of retrying, and it never runs a headless browser.
+Cloudflare also redirects every automated POST to `/`, so submissions stay in
+the browser: `neoj submit` prints the submission page instead of posting.
 
 ## Terminology
 

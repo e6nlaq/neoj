@@ -282,6 +282,10 @@ Submits the solution to the problem recorded in `.neoj/problem.json`, so run
 name, a path, or `test.source`; `-l`, `--language <key>` chooses among several
 matching `[languages.<key>]` entries. The file is not compiled before submission.
 
+AtCoder, yukicoder, and ShareOJ accept automated submissions. Codeforces does not:
+the command prints the submission page and asks you to submit in the browser
+(`--dry-run` still shows the preview).
+
 | Option                           | Description                                                  |
 | -------------------------------- | ------------------------------------------------------------ |
 | `-l`, `--language <key>`         | Use this `[languages.<key>]` entry instead of detecting one. |
@@ -345,9 +349,10 @@ Submission automation depends on the platform. AtCoder shows warnings for Daily
 Training contests (`adt_...`), outside the contest window recorded by `neoj
 download`, and when the submit page contains a Turnstile challenge. If AtCoder
 rejects the request, the error tells you to open the submit page in your browser.
-yukicoder submissions use the same API as the web form. Codeforces reuses the
-cookies saved by `neoj login codeforces`; when it answers with a Cloudflare or
-RCPC browser check, the command stops with instructions and does not retry. See
+yukicoder submissions use the same API as the web form. Codeforces answers every
+automated POST with a redirect to `/` behind a Cloudflare check, so `neoj submit`
+does not post to Codeforces at all: it prints the submission page and exits with
+`1` before the confirmation prompt and the wait. See
 [Submit a solution](../how-to/submit-solution.md).
 
 ### `languages`
@@ -362,7 +367,8 @@ source size limit (512 KiB for AtCoder, 256 KiB for Codeforces, and 128 KiB for
 yukicoder and ShareOJ), the table lists each ID with the language name, and a
 `*` marks every ID already configured for that platform.
 The closing line names the `neoj.toml` keys that set those IDs, or explains how
-to configure one when none is set.
+to configure one when none is set. For Codeforces the table describes the web
+form, because `neoj submit` does not post there.
 
 | Option            | Description                                                                      |
 | ----------------- | -------------------------------------------------------------------------------- |

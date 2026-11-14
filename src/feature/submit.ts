@@ -5,11 +5,7 @@ import { extname, join } from "node:path";
 import { Command, InvalidArgumentError } from "@commander-js/extra-typings";
 import { confirm } from "@inquirer/prompts";
 import { AtCoderClient, parseAtCoderTask, type AtCoderSubmitPage } from "@neoj/api/atcoder";
-import {
-    CodeforcesClient,
-    extractCodeforcesProblemRoute,
-    type CodeforcesSubmitPage,
-} from "@neoj/api/codeforces";
+import { buildCodeforcesSubmitUrl, extractCodeforcesProblemRoute } from "@neoj/api/codeforces";
 import type { ProblemKey } from "@neoj/api/problem";
 import {
     buildShareOjSubmissionUrl,
@@ -24,11 +20,6 @@ import { YukicoderClient } from "@neoj/api/yukicoder";
 import { consola } from "consola";
 
 import { getAtCoderSession, loginToAtCoder } from "@/feature/login/atcoder";
-import {
-    getCodeforcesSession,
-    loginToCodeforces,
-    persistCodeforcesSession,
-} from "@/feature/login/codeforces";
 import { getShareOjAccessToken, loginToShareOj } from "@/feature/login/shareoj";
 import { getYukicoderAuth, isYukicoderLoggedIn, loginToYukicoder } from "@/feature/login/yukicoder";
 import { findProblemSource } from "@/feature/problem-sources";
@@ -427,7 +418,7 @@ async function createDefaultTarget(
         return await createAtCoderTarget(input);
     }
     if (input.platform === "codeforces") {
-        return await createCodeforcesTarget(input);
+        throw new Error(describeCodeforcesSubmitUnavailable(input.problemUrl));
     }
     if (input.platform === "shareoj") {
         return await createShareOjTarget(input);
@@ -436,70 +427,17 @@ async function createDefaultTarget(
     return await createYukicoderTarget(input);
 }
 
-async function createCodeforcesTarget(
-    input: CreateTargetInput,
-): Promise<SubmissionTarget | undefined> {
-    const client = new CodeforcesClient();
-    let savedSession = getCodeforcesSession((await readAuth()).codeforces);
-    // Keep the cookies that were on disk before this run so a rotation during
-    // validation is saved too.
-    const initialSession = savedSession;
-    let loggedIn = savedSession === undefined ? false : await client.login(savedSession);
-
-    if (!loggedIn) {
-        if (!input.config.login.auto_login) {
-            throw new Error(
-                'Not logged in to Codeforces. Run "neoj login codeforces" or set login.auto_login = true.',
-            );
-        }
-
-        const accepted = await loginToCodeforces();
-        if (!accepted) {
-            return undefined;
-        }
-
-        savedSession = getCodeforcesSession((await readAuth()).codeforces);
-        if (savedSession === undefined || !(await client.login(savedSession))) {
-            throw new Error(
-                'Codeforces login did not produce a valid session. Run "neoj login codeforces" and try again.',
-            );
-        }
-    }
-
-    // Codeforces rotates its session cookies. Persist the current values so the
-    // next command does not need a new login; failing to save must not turn a
-    // successful submission into an error.
-    const persistSession = async (): Promise<void> => {
-        await persistCodeforcesSession(client, initialSession);
-    };
-    await persistSession();
-
-    // Reject a problem URL that cannot be mapped to a contest before asking
-    // the user for anything else.
-    extractCodeforcesProblemRoute(input.problemUrl);
-    let page: CodeforcesSubmitPage | undefined;
-    return {
-        platform: "codeforces",
-        displayName: input.displayName,
-        async prepare() {
-            page = await client.getSubmitPage(input.problemUrl);
-            await persistSession();
-            return [];
-        },
-        async getLanguages() {
-            return (await (page ?? client.getSubmitPage(input.problemUrl))).languages.map(
-                (language) => ({
-                    id: language.id,
-                    name: language.name,
-                }),
-            );
-        },
-        async submit(source, languageId) {
-            const result = await client.submit(input.problemUrl, languageId, source, page);
-            await persistSession();
-            return result;
-        },
-    };
+/**
+ * Why `neoj submit` cannot post to Codeforces.
+ *
+ * Codeforces answers every automated POST with a redirect to `/`: the form is
+ * gated by Cloudflare, which also rejects a browser `User-Agent` from clients
+ * it does not trust. Submitting therefore stays in the browser, and the command
+ * only names the page to open.
+ */
+export function describeCodeforcesSubmitUnavailable(problemUrl: string): string {
+    const submitUrl = buildCodeforcesSubmitUrl(extractCodeforcesProblemRoute(problemUrl)).href;
+    return `Codeforces rejects automated submissions, so "neoj submit" cannot post to it. Open ${submitUrl} in your browser and submit from there.`;
 }
 
 async function createAtCoderTarget(
@@ -843,6 +781,12 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
 
     if (options.dryRun === true) {
         return { status: "dry-run" };
+    }
+
+    // Fail before the confirmation prompt and the wait: this platform cannot be
+    // submitted to automatically.
+    if (platform === "codeforces") {
+        throw new Error(describeCodeforcesSubmitUnavailable(metadata.url));
     }
 
     if (options.yes !== true && options.config.submit.confirm) {

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+    describeCodeforcesSubmitUnavailable,
     describeSubmissionSize,
     formatSubmitPreview,
     getOfflineSubmitWarnings,
@@ -534,6 +535,73 @@ describe("runSubmit", () => {
         expect(stderr.text()).toBe("");
         expect(stdout.text()).toContain("Submitting src/main.cpp (languages.cpp, AtCoder)");
         expect(stdout.text()).toContain("1 │ int main() { return 0; }");
+    });
+
+    it("supports dry-run for a Codeforces problem without contacting the platform", async () => {
+        const root = await createProject({
+            problemUrl: "https://codeforces.com/contest/1900/problem/B",
+        });
+        const stdout = createCapture();
+        const warnings: string[] = [];
+
+        const result = await runSubmit({
+            projectRoot: root,
+            config: createConfig(),
+            cwd: root,
+            dryRun: true,
+            waitSeconds: 30,
+            yes: true,
+            stdout: stdout.stream,
+            stderr: createCapture().stream,
+            dependencies: { warn: (message) => warnings.push(message) },
+        });
+
+        expect(result).toEqual({ status: "dry-run" });
+        expect(stdout.text()).toContain("Submitting src/main.cpp (languages.cpp, Codeforces)");
+        expect(warnings).toEqual([]);
+    });
+
+    it("refuses to submit to Codeforces and names the browser page instead", async () => {
+        const root = await createProject({
+            problemUrl: "https://codeforces.com/contest/1900/problem/B",
+        });
+        const config = createConfig({ wait: 0, open: false });
+        let targetCreated = false;
+        let confirmed = false;
+
+        await expect(
+            runSubmit({
+                projectRoot: root,
+                config,
+                cwd: root,
+                waitSeconds: 0,
+                yes: false,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+                dependencies: {
+                    createTarget: async () => {
+                        targetCreated = true;
+                        return createFakeTarget();
+                    },
+                    confirm: async () => {
+                        confirmed = true;
+                        return true;
+                    },
+                },
+            }),
+        ).rejects.toThrow(
+            'Codeforces rejects automated submissions, so "neoj submit" cannot post to it. Open https://codeforces.com/contest/1900/submit in your browser and submit from there.',
+        );
+        expect(targetCreated).toBe(false);
+        expect(confirmed).toBe(false);
+    });
+
+    it("builds the Codeforces guidance message from the problem URL", () => {
+        expect(
+            describeCodeforcesSubmitUnavailable("https://codeforces.com/problemset/problem/1900/B"),
+        ).toBe(
+            'Codeforces rejects automated submissions, so "neoj submit" cannot post to it. Open https://codeforces.com/contest/1900/submit in your browser and submit from there.',
+        );
     });
 
     it("rejects --platform-language together with --dry-run", async () => {

@@ -12,9 +12,6 @@ const REQUEST_TIMEOUT_MS = 15_000;
 // Codeforces stores its anti-bot token in this evercookie and expects the
 // value back as the `ftaa` form field.
 const FTAA_COOKIE = "70a7c28f3de";
-// A fingerprint hash the browser extension CCHv2 also sends; the server only
-// checks that the field is present.
-const DEFAULT_BFAA = "f1b3f18c715565b589b7823cda7448ce";
 // Cookie-header-safe value: printable text without separators that would split
 // the header or inject another cookie.
 const COOKIE_VALUE_PATTERN = /^[^\s;,"\\]+$/u;
@@ -29,8 +26,6 @@ const BLOCKED_PAGE_PATTERNS: readonly RegExp[] = [
     /You are unable to access codeforces\.com/iu,
     /slowAES\.decrypt/iu,
 ];
-const SAME_SOURCE_PATTERN = /You have submitted exactly the same code before/iu;
-const SUBMITTED_PATTERN = /submitted successfully/iu;
 
 // Contest IDs are numeric. Problem indices are a letter optionally followed by
 // a sub-index, such as "A", "F1", or "B2".
@@ -230,30 +225,6 @@ export interface CodeforcesLanguage {
     name: string;
 }
 
-/** The submission form, parsed once and reused for the POST. */
-export interface CodeforcesSubmitPage {
-    /** The contest that owns the problem. */
-    contestId: string;
-    /** The problem index, absent when only the language list was requested. */
-    index: string | undefined;
-    /** The form URL. */
-    submitUrl: string;
-    /** The hidden `csrf_token` value. */
-    csrfToken: string;
-    /** Other hidden inputs, such as `ftaa`, `bfaa`, and `_tta`. */
-    hiddenFields: Readonly<Record<string, string>>;
-    /** The selectable languages. */
-    languages: CodeforcesLanguage[];
-}
-
-/** The submission created by {@link CodeforcesClient.submit}. */
-export interface CodeforcesSubmissionResult {
-    /** Missing when the submission succeeded but its ID could not be read. */
-    submissionId: string | undefined;
-    /** The submission page, or your submissions list when no ID was read. */
-    submissionUrl: string;
-}
-
 /** Codeforces answered with a browser check instead of the requested page. */
 export class CodeforcesBlockedError extends Error {
     constructor(readonly url: string) {
@@ -337,49 +308,23 @@ export function isCodeforcesBlockedPage(html: string): boolean {
     return BLOCKED_PAGE_PATTERNS.some((pattern) => pattern.test(html));
 }
 
-/** The submission form URL for a problem. */
+/**
+ * The submission form URL for a problem.
+ *
+ * `neoj` only reads the language list from this page: Codeforces rejects
+ * automated POSTs (Cloudflare answers every POST with a redirect to `/`), so
+ * submissions are made in the browser.
+ */
 export function buildCodeforcesSubmitUrl(route: Pick<CodeforcesProblemRoute, "contestId">): URL {
     return new URL(`/contest/${route.contestId}/submit`, CODEFORCES_ORIGIN);
 }
 
-/** Your own submissions for the contest that published the problem. */
-export function buildCodeforcesSubmissionsUrl(
-    route: Pick<CodeforcesProblemRoute, "contestId">,
-): URL {
-    return new URL(`/contest/${route.contestId}/my`, CODEFORCES_ORIGIN);
-}
-
-/** Parse the submission form into its CSRF token, hidden fields, and languages. */
-export function parseCodeforcesSubmitPage(
-    html: string,
-    submitUrl: string,
-    route: Pick<CodeforcesProblemRoute, "contestId"> & { index?: string },
-): CodeforcesSubmitPage {
+/** Parse the language select of a Codeforces submission form. */
+export function parseCodeforcesLanguages(html: string): CodeforcesLanguage[] {
     const document = parse(html);
     const languageSelect = document.querySelector('select[name="programTypeId"]');
     if (languageSelect === null) {
         throw new Error("Codeforces language list was not found in the submit page response.");
-    }
-
-    const form = languageSelect.closest("form");
-    const csrfToken =
-        form?.querySelector('input[name="csrf_token"]')?.getAttribute("value")?.trim() ??
-        document.querySelector('meta[name="X-Csrf-Token"]')?.getAttribute("content")?.trim() ??
-        /csrf\s*=\s*'([^']*)'/u.exec(html)?.[1]?.trim();
-    if (csrfToken === undefined || csrfToken === "") {
-        throw new Error(
-            'Codeforces submit page did not contain a CSRF token. Log in again with "neoj login codeforces".',
-        );
-    }
-
-    const hiddenFields: Record<string, string> = {};
-    for (const input of form?.querySelectorAll('input[type="hidden"]') ?? []) {
-        const name = input.getAttribute("name")?.trim();
-        const value = input.getAttribute("value");
-        if (name === undefined || name === "" || value === undefined || value === "") {
-            continue;
-        }
-        hiddenFields[name] = value;
     }
 
     const languages: CodeforcesLanguage[] = [];
@@ -394,63 +339,7 @@ export function parseCodeforcesSubmitPage(
         throw new Error("Codeforces language list was empty in the submit page response.");
     }
 
-    return {
-        contestId: route.contestId,
-        index: route.index,
-        submitUrl,
-        csrfToken,
-        hiddenFields,
-        languages,
-    };
-}
-
-/** The message in the error banner of a rejected submission, when present. */
-export function parseCodeforcesSubmissionError(html: string): string | undefined {
-    const document = parse(html);
-    for (const element of document.querySelectorAll("span.error, div.error, div.alert-error")) {
-        const message = element.textContent.trim().replace(/\s+/gu, " ");
-        if (message !== "") {
-            return message;
-        }
-    }
-
-    return undefined;
-}
-
-/**
- * Read the submission ID from your submissions page.
- *
- * The page lists the newest submission first; prefer the row whose problem
- * link matches the submitted index so a sidebar row cannot be mistaken for it.
- */
-export function parseCodeforcesSubmissionId(
-    html: string,
-    route: Pick<CodeforcesProblemRoute, "contestId" | "index">,
-): string | undefined {
-    const document = parse(html);
-    let fallback: string | undefined;
-    for (const row of document.querySelectorAll("[data-submission-id]")) {
-        const id = row.getAttribute("data-submission-id")?.trim();
-        if (id === undefined || !/^\d+$/u.test(id)) {
-            continue;
-        }
-        fallback ??= id;
-
-        const problemHref = row.querySelector('a[href*="/problem/"]')?.getAttribute("href");
-        if (problemHref === undefined || problemHref === null) {
-            continue;
-        }
-        try {
-            const pathname = new URL(problemHref, CODEFORCES_ORIGIN).pathname.toLowerCase();
-            if (pathname.endsWith(`/problem/${route.index.toLowerCase()}`)) {
-                return id;
-            }
-        } catch {
-            // A malformed link only disqualifies this row.
-        }
-    }
-
-    return fallback;
+    return languages;
 }
 
 /**
@@ -460,7 +349,6 @@ export function parseCodeforcesSubmissionId(
 export class CodeforcesClient {
     private currentSession: CodeforcesSession | undefined;
     private usernameValue: string | undefined;
-    private submitPages = new Map<string, CodeforcesSubmitPage>();
 
     /** The account name reported by the last successful `login()`, when readable. */
     get username(): string | undefined {
@@ -528,7 +416,6 @@ export class CodeforcesClient {
     private clearSession(): void {
         this.currentSession = undefined;
         this.usernameValue = undefined;
-        this.submitPages.clear();
     }
 
     /**
@@ -540,7 +427,6 @@ export class CodeforcesClient {
     async login(session: CodeforcesSession): Promise<boolean> {
         this.currentSession = normalizeCodeforcesSession(session);
         this.usernameValue = undefined;
-        this.submitPages.clear();
 
         const response = await this.send(LOGIN_CHECK_URL, {
             headers: this.createHeaders(),
@@ -595,132 +481,19 @@ export class CodeforcesClient {
         return parseCodeforcesProblem(await response.text(), problemUrl.href);
     }
 
-    /** Fetch the submission form once and reuse it for the POST. */
-    async getSubmitPage(url: string): Promise<CodeforcesSubmitPage> {
-        const route = extractCodeforcesProblemRoute(url);
-        const cacheKey = `${route.contestId}${route.index}`;
-        const cached = this.submitPages.get(cacheKey);
-        if (cached !== undefined) {
-            return cached;
-        }
-
-        const submitUrl = buildCodeforcesSubmitUrl(route);
-        const page = await this.fetchSubmitPage(submitUrl, route);
-        this.submitPages.set(cacheKey, page);
-        return page;
-    }
-
-    /** The languages the submission form accepts for `url`. */
-    async getLanguages(url: string): Promise<CodeforcesLanguage[]> {
-        return (await this.getSubmitPage(url)).languages;
-    }
-
     /**
-     * List the languages of a contest without a downloaded problem.
+     * List the languages of a contest's submission form.
      *
      * Every contest renders the same language select, so a fallback contest ID
-     * is enough when no Codeforces problem is recorded.
+     * is enough when no Codeforces problem is recorded. Only the language list
+     * is read: Codeforces answers automated submissions with a redirect to `/`.
      */
     async getLanguagesForContest(contestId: string): Promise<CodeforcesLanguage[]> {
         if (!CONTEST_ID_PATTERN.test(contestId)) {
             throw new TypeError(`Invalid Codeforces contest ID: "${contestId}".`);
         }
 
-        const page = await this.fetchSubmitPage(buildCodeforcesSubmitUrl({ contestId }), {
-            contestId,
-        });
-        return page.languages;
-    }
-
-    /**
-     * Submit `source` for the problem at `url`.
-     *
-     * Pass a cached form from `getSubmitPage()` to skip the extra request.
-     */
-    async submit(
-        url: string,
-        languageId: string,
-        source: string,
-        page?: CodeforcesSubmitPage,
-    ): Promise<CodeforcesSubmissionResult> {
-        const route = extractCodeforcesProblemRoute(url);
-        const submitPage = page ?? (await this.getSubmitPage(url));
-        if (!submitPage.languages.some((language) => language.id === languageId)) {
-            throw new Error(
-                `Codeforces does not recognize the language ID "${languageId}". Set a valid ID with "neoj languages codeforces", --platform-language, or languages.<key>.submit.codeforces.`,
-            );
-        }
-
-        const submitUrl = new URL(submitPage.submitUrl);
-        submitUrl.searchParams.set("csrf_token", submitPage.csrfToken);
-        const headers = this.createHeaders({
-            "Content-Type": "application/x-www-form-urlencoded",
-            Referer: submitPage.submitUrl,
-        });
-        let response = await this.send(submitUrl, {
-            method: "POST",
-            headers,
-            body: buildSubmitBody(submitPage, route, languageId, source, this.currentSession),
-            redirect: "manual",
-        });
-
-        // A successful post redirects to the contest's "my submissions" page;
-        // read that page to find the confirmation and the new submission ID.
-        const location = response.headers.get("Location");
-        if (isRedirect(response) && location !== null) {
-            const redirectUrl = new URL(location, submitUrl);
-            if (redirectUrl.origin === CODEFORCES_ORIGIN) {
-                response = await this.send(redirectUrl, {
-                    headers: this.createHeaders({ Referer: submitUrl.href }),
-                    redirect: "manual",
-                });
-            }
-        }
-
-        const html = await response.text();
-        if (isCodeforcesBlockedPage(html)) {
-            throw new CodeforcesBlockedError(submitPage.submitUrl);
-        }
-        if (isRedirect(response) || !response.ok) {
-            throw new Error(`Codeforces submission failed (${response.status}).`);
-        }
-
-        const account = parseCodeforcesAccount(html);
-        if (!account.signedIn) {
-            throw new Error(
-                'Codeforces rejected the submission because the session is not logged in. Run "neoj login codeforces" and try again.',
-            );
-        }
-        if (SAME_SOURCE_PATTERN.test(html)) {
-            throw new Error(
-                "Codeforces rejected the submission because the same code was already submitted for this problem.",
-            );
-        }
-        if (!SUBMITTED_PATTERN.test(html)) {
-            const message = parseCodeforcesSubmissionError(html);
-            throw new Error(
-                message ??
-                    `Codeforces did not confirm the submission. Open ${submitPage.submitUrl} in your browser and submit from there.`,
-            );
-        }
-
-        const submissionId = parseCodeforcesSubmissionId(html, route);
-        return {
-            submissionId,
-            submissionUrl:
-                submissionId === undefined
-                    ? buildCodeforcesSubmissionsUrl(route).href
-                    : new URL(
-                          `/contest/${route.contestId}/submission/${submissionId}`,
-                          CODEFORCES_ORIGIN,
-                      ).href,
-        };
-    }
-
-    private async fetchSubmitPage(
-        submitUrl: URL,
-        route: Pick<CodeforcesProblemRoute, "contestId"> & { index?: string },
-    ): Promise<CodeforcesSubmitPage> {
+        const submitUrl = buildCodeforcesSubmitUrl({ contestId });
         const response = await this.send(submitUrl, {
             headers: this.createHeaders(),
             redirect: "manual",
@@ -744,41 +517,12 @@ export class CodeforcesClient {
             );
         }
 
-        return parseCodeforcesSubmitPage(html, submitUrl.href, route);
+        return parseCodeforcesLanguages(html);
     }
 }
 
 function isRedirect(response: Response): boolean {
     return response.status >= 300 && response.status < 400;
-}
-
-function buildSubmitBody(
-    page: CodeforcesSubmitPage,
-    route: CodeforcesProblemRoute,
-    languageId: string,
-    source: string,
-    session: CodeforcesSession | undefined,
-): URLSearchParams {
-    const fields = new URLSearchParams();
-    for (const [name, value] of Object.entries(page.hiddenFields)) {
-        fields.set(name, value);
-    }
-
-    // Hidden values win when the form sends them; the session cookie and the
-    // browser-extension constant cover forms whose anti-bot fields are empty.
-    fields.set("csrf_token", page.csrfToken);
-    fields.set("action", "submitSolutionFormSubmitted");
-    fields.set("ftaa", page.hiddenFields.ftaa ?? session?.ftaa ?? "");
-    fields.set("bfaa", page.hiddenFields.bfaa ?? DEFAULT_BFAA);
-    fields.set("submittedProblemIndex", route.index);
-    fields.set("programTypeId", languageId);
-    fields.set("contestId", route.contestId);
-    fields.set("source", source);
-    fields.set("sourceFile", "");
-    fields.set("tabSize", "4");
-    fields.set("sourceCodeConfirmed", "true");
-
-    return fields;
 }
 
 function getSetCookieValues(headers: Headers): string[] {

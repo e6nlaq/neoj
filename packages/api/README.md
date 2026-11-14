@@ -45,7 +45,7 @@ Every platform has its own subpath:
 | `@neoj/api/yukicoder`   | yukicoder problem, device-flow login, and submission clients |
 | `@neoj/api/shareoj`     | ShareOJ problem, login, and submission clients               |
 | `@neoj/api/aoj`         | AOJ problem client                                           |
-| `@neoj/api/codeforces`  | Codeforces problem, language, and submission clients         |
+| `@neoj/api/codeforces`  | Codeforces problem and language clients                      |
 | `@neoj/api/problem`     | `Problem`, `ProblemSample`, `ProblemKey`, `ProblemClient`    |
 | `@neoj/api/problem-key` | `deriveProblemKey`                                           |
 | `@neoj/api/errors`      | `isTimeoutError`                                             |

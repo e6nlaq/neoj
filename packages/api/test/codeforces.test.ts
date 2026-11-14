@@ -6,7 +6,6 @@ import {
     buildCodeforcesContestUrl,
     buildCodeforcesProblemUrl,
     buildCodeforcesSubmitUrl,
-    buildCodeforcesSubmissionsUrl,
     CodeforcesBlockedError,
     CodeforcesClient,
     CodeforcesProblemRequestError,
@@ -14,11 +13,9 @@ import {
     isCodeforcesBlockedPage,
     normalizeCodeforcesSession,
     parseCodeforcesAccount,
+    parseCodeforcesLanguages,
     parseCodeforcesProblem,
     parseCodeforcesProblemUrl,
-    parseCodeforcesSubmissionError,
-    parseCodeforcesSubmissionId,
-    parseCodeforcesSubmitPage,
     stripCodeforcesTitleIndex,
 } from "@neoj/api/codeforces";
 
@@ -309,12 +306,12 @@ const submitHtml = `
             <div class="lang-chooser">
                 <div><a href="/profile/tourist">tourist</a><a href="/logout">Logout</a></div>
             </div>
-            <form class="submit-form" action="/contest/1900/submit" method="post">
+            <form class="submit-form" action="?csrf_token=form-token" method="post">
                 <input type="hidden" name="csrf_token" value="form-token">
                 <input type="hidden" name="ftaa" value="">
-                <input type="hidden" name="bfaa" value="hidden-bfaa">
-                <input type="hidden" name="_tta" value="594">
+                <input type="hidden" name="bfaa" value="">
                 <select name="programTypeId">
+                    <option value="">Choose language</option>
                     <option value="54">GNU G++17 7.3.0</option>
                     <option value="73">GNU G++20 13.2</option>
                 </select>
@@ -322,20 +319,6 @@ const submitHtml = `
             </form>
         </body>
     </html>
-`;
-
-const submittedHtml = `
-    <html><body>
-        <div class="lang-chooser">
-            <div><a href="/profile/tourist">tourist</a><a href="/logout">Logout</a></div>
-        </div>
-        <div class="alert alert-success">Solution submitted successfully</div>
-        <table>
-            <tr data-submission-id="123456789">
-                <td><a href="/contest/1900/problem/B">B</a></td>
-            </tr>
-        </table>
-    </body></html>
 `;
 
 describe("normalizeCodeforcesSession", () => {
@@ -384,59 +367,31 @@ describe("parseCodeforcesAccount", () => {
     });
 });
 
-describe("parseCodeforcesSubmitPage", () => {
-    it("reads the form token, hidden fields, and languages", () => {
-        const page = parseCodeforcesSubmitPage(
-            submitHtml,
-            "https://codeforces.com/contest/1900/submit",
-            { contestId: "1900", index: "B" },
-        );
-
-        expect(page).toEqual({
-            contestId: "1900",
-            index: "B",
-            submitUrl: "https://codeforces.com/contest/1900/submit",
-            csrfToken: "form-token",
-            hiddenFields: { csrf_token: "form-token", bfaa: "hidden-bfaa", _tta: "594" },
-            languages: [
-                { id: "54", name: "GNU G++17 7.3.0" },
-                { id: "73", name: "GNU G++20 13.2" },
-            ],
-        });
+describe("parseCodeforcesLanguages", () => {
+    it("reads the language select of the submission form", () => {
+        expect(parseCodeforcesLanguages(submitHtml)).toEqual([
+            { id: "54", name: "GNU G++17 7.3.0" },
+            { id: "73", name: "GNU G++20 13.2" },
+        ]);
     });
 
-    it("falls back to the page meta tag when the form has no token", () => {
-        const html = submitHtml.replace(
-            '<input type="hidden" name="csrf_token" value="form-token">',
-            "",
+    it("rejects a page without a language select", () => {
+        expect(() => parseCodeforcesLanguages("<html></html>")).toThrow(
+            "Codeforces language list was not found in the submit page response.",
         );
-
-        expect(
-            parseCodeforcesSubmitPage(html, "https://codeforces.com/contest/1900/submit", {
-                contestId: "1900",
-            }).csrfToken,
-        ).toBe("meta-token");
     });
 
-    it("reports a page without a CSRF token or languages", () => {
+    it("rejects a language select without options", () => {
         expect(() =>
-            parseCodeforcesSubmitPage("<html></html>", "https://codeforces.com/contest/1/submit", {
-                contestId: "1",
-            }),
-        ).toThrow("Codeforces language list was not found in the submit page response.");
-
-        expect(() =>
-            parseCodeforcesSubmitPage(
-                '<html><body><form><input type="hidden" name="csrf_token" value="token"><select name="programTypeId"><option value="">pick</option></select></form></body></html>',
-                "https://codeforces.com/contest/1/submit",
-                { contestId: "1" },
+            parseCodeforcesLanguages(
+                '<html><body><select name="programTypeId"><option value="">pick</option></select></body></html>',
             ),
         ).toThrow("Codeforces language list was empty in the submit page response.");
     });
 });
 
-describe("Codeforces submission helpers", () => {
-    it("builds the submit and submissions URLs from the route", () => {
+describe("Codeforces URL and page helpers", () => {
+    it("builds the submit URL from the route", () => {
         const route = extractCodeforcesProblemRoute(
             "https://codeforces.com/problemset/problem/1900/B",
         );
@@ -444,24 +399,6 @@ describe("Codeforces submission helpers", () => {
         expect(buildCodeforcesSubmitUrl(route).href).toBe(
             "https://codeforces.com/contest/1900/submit",
         );
-        expect(buildCodeforcesSubmissionsUrl(route).href).toBe(
-            "https://codeforces.com/contest/1900/my",
-        );
-    });
-
-    it("reads the submission ID of the submitted problem", () => {
-        const route = extractCodeforcesProblemRoute(
-            "https://codeforces.com/contest/1900/problem/B",
-        );
-        expect(parseCodeforcesSubmissionId(submittedHtml, route)).toBe("123456789");
-    });
-
-    it("reads the error banner of a rejected submission", () => {
-        expect(
-            parseCodeforcesSubmissionError(
-                '<span class="error for__source">Source should satisfy regex</span>',
-            ),
-        ).toBe("Source should satisfy regex");
     });
 
     it("detects Cloudflare and RCPC browser checks", () => {
@@ -561,9 +498,7 @@ describe("CodeforcesClient session requests", () => {
     it("reports a redirected submit page as a login problem", async () => {
         setFetch(async () => new Response(null, { status: 302, headers: { Location: "/enter" } }));
 
-        await expect(
-            new CodeforcesClient().getSubmitPage("https://codeforces.com/contest/1900/problem/B"),
-        ).rejects.toThrow(
+        await expect(new CodeforcesClient().getLanguagesForContest("1900")).rejects.toThrow(
             'Codeforces redirected the submit page (302). Log in again with "neoj login codeforces".',
         );
     });
@@ -571,9 +506,7 @@ describe("CodeforcesClient session requests", () => {
     it("detects a signed-out submit page served with a 200", async () => {
         setFetch(async () => new Response(signedOutPageHtml, { status: 200 }));
 
-        await expect(
-            new CodeforcesClient().getSubmitPage("https://codeforces.com/contest/1900/problem/B"),
-        ).rejects.toThrow(
+        await expect(new CodeforcesClient().getLanguagesForContest("1900")).rejects.toThrow(
             'Codeforces rejected the request because the session is not logged in. Run "neoj login codeforces" and try again.',
         );
     });
@@ -602,142 +535,5 @@ describe("CodeforcesClient session requests", () => {
             'Invalid Codeforces contest ID: "abc".',
         );
         expect(called).toBe(false);
-    });
-});
-
-describe("CodeforcesClient submission", () => {
-    async function createClientWithSubmitPage(): Promise<{
-        client: CodeforcesClient;
-        page: ReturnType<typeof parseCodeforcesSubmitPage>;
-    }> {
-        setFetch(async (input) =>
-            String(input).endsWith("/submit")
-                ? new Response(submitHtml, { status: 200 })
-                : new Response(loginPageHtml, { status: 200 }),
-        );
-        const client = new CodeforcesClient();
-        await client.login({ jsessionId: "abc", ftaa: "session-ftaa" });
-        const page = await client.getSubmitPage("https://codeforces.com/contest/1900/problem/B");
-        return { client, page };
-    }
-
-    it("posts the form and reads the new submission from the redirected page", async () => {
-        const { client, page } = await createClientWithSubmitPage();
-        const requests: Array<{ method: string; url: string; body: string | null }> = [];
-        setFetch(async (input, init) => {
-            requests.push({
-                method: init?.method ?? "GET",
-                url: String(input),
-                body: init?.body instanceof URLSearchParams ? init.body.toString() : null,
-            });
-            if (init?.method === "POST") {
-                return new Response(null, {
-                    status: 302,
-                    headers: { Location: "/contest/1900/my" },
-                });
-            }
-            return new Response(submittedHtml, { status: 200 });
-        });
-
-        const result = await client.submit(
-            "https://codeforces.com/contest/1900/problem/B",
-            "54",
-            "int main() { return 0; }",
-            page,
-        );
-
-        expect(requests).toHaveLength(2);
-        const post = requests[0];
-        expect(post?.method).toBe("POST");
-        expect(post?.url).toBe("https://codeforces.com/contest/1900/submit?csrf_token=form-token");
-        const body = new URLSearchParams(post?.body ?? "");
-        expect(body.get("action")).toBe("submitSolutionFormSubmitted");
-        expect(body.get("submittedProblemIndex")).toBe("B");
-        expect(body.get("programTypeId")).toBe("54");
-        expect(body.get("contestId")).toBe("1900");
-        expect(body.get("source")).toBe("int main() { return 0; }");
-        expect(body.get("ftaa")).toBe("session-ftaa");
-        expect(body.get("bfaa")).toBe("hidden-bfaa");
-        expect(body.get("_tta")).toBe("594");
-        expect(body.get("sourceCodeConfirmed")).toBe("true");
-        expect(requests[1]?.url).toBe("https://codeforces.com/contest/1900/my");
-
-        expect(result).toEqual({
-            submissionId: "123456789",
-            submissionUrl: "https://codeforces.com/contest/1900/submission/123456789",
-        });
-    });
-
-    it("rejects an unknown language ID without posting", async () => {
-        const { client, page } = await createClientWithSubmitPage();
-        let posted = false;
-        setFetch(async () => {
-            posted = true;
-            return new Response(submittedHtml);
-        });
-
-        await expect(
-            client.submit("https://codeforces.com/contest/1900/problem/B", "9999", "source", page),
-        ).rejects.toThrow(
-            'Codeforces does not recognize the language ID "9999". Set a valid ID with "neoj languages codeforces", --platform-language, or languages.<key>.submit.codeforces.',
-        );
-        expect(posted).toBe(false);
-    });
-
-    it("reports the same-source rejection", async () => {
-        const { client, page } = await createClientWithSubmitPage();
-        setFetch(
-            async () =>
-                new Response(
-                    '<div class="lang-chooser"><a href="/profile/tourist">tourist</a><a href="/logout">Logout</a></div>You have submitted exactly the same code before',
-                    { status: 200 },
-                ),
-        );
-
-        await expect(
-            client.submit("https://codeforces.com/contest/1900/problem/B", "54", "source", page),
-        ).rejects.toThrow(
-            "Codeforces rejected the submission because the same code was already submitted for this problem.",
-        );
-    });
-
-    it("reports the error banner when the submission is rejected", async () => {
-        const { client, page } = await createClientWithSubmitPage();
-        setFetch(
-            async () =>
-                new Response(
-                    '<div class="lang-chooser"><a href="/profile/tourist">tourist</a><a href="/logout">Logout</a></div><span class="error">Source should satisfy regex</span>',
-                    { status: 200 },
-                ),
-        );
-
-        await expect(
-            client.submit("https://codeforces.com/contest/1900/problem/B", "54", "source", page),
-        ).rejects.toThrow("Source should satisfy regex");
-    });
-
-    it("throws a blocked error when the POST hits a browser check", async () => {
-        const { client, page } = await createClientWithSubmitPage();
-        setFetch(async () => new Response("<title>Just a moment...</title>", { status: 403 }));
-
-        await expect(
-            client.submit("https://codeforces.com/contest/1900/problem/B", "54", "source", page),
-        ).rejects.toThrow(CodeforcesBlockedError);
-    });
-
-    it("reports a POST that redirects to the login page", async () => {
-        const { client, page } = await createClientWithSubmitPage();
-        setFetch(async (input, init) => {
-            if (init?.method === "POST") {
-                return new Response(null, { status: 302, headers: { Location: "/enter" } });
-            }
-            return new Response(signedOutPageHtml, { status: 200 });
-        });
-
-        await expect(
-            client.submit("https://codeforces.com/contest/1900/problem/B", "54", "source", page),
-        ).rejects.toThrow(
-            'Codeforces rejected the submission because the session is not logged in. Run "neoj login codeforces" and try again.',
-        );
     });
 });

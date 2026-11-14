@@ -8,8 +8,9 @@ neoj submits                  # alias
 ```
 
 `neoj submit` sends the solution to the problem recorded by `.neoj/problem.json`,
-so download the problem first. It works with AtCoder, Codeforces, yukicoder, and
-ShareOJ.
+so download the problem first. It works with AtCoder, yukicoder, and ShareOJ.
+Codeforces submissions stay in the browser: see [When automatic submission is
+blocked](#when-automatic-submission-is-blocked).
 
 ## Before you submit
 
@@ -38,6 +39,9 @@ pass it for one run:
 neoj languages atcoder --filter python
 neoj submit --platform-language <id>
 ```
+
+For Codeforces, use the ID in the browser form: the table is the same one the
+page shows.
 
 `neoj submit` does not compile the file. Run `neoj test` first when you want to
 check the samples, or combine both steps with `neoj test --submit`:
@@ -195,14 +199,13 @@ there. In that case set `submit.clip = "fail"` to have the text ready to paste.
 yukicoder accepts submissions through the same API as its web form, so no contest
 window is recorded or required.
 
-Codeforces applies a Cloudflare or RCPC browser check to some automated requests.
-When `neoj` detects that check, it stops with an error instead of retrying: open
-the submission page in your browser, finish the check, then run the command again
-with fresh cookies from `neoj login codeforces`. If the check keeps appearing,
-submit from the browser; set `submit.clip = "fail"` to have the text ready to
-paste. `neoj` never starts a headless browser. After a successful submission it
-prints the submission URL and opens it; a problem in a Gym or group is not
-supported.
+Codeforces answers every automated POST with a redirect to `/`: the submission
+form sits behind a Cloudflare check that rejects non-browser clients, so
+`neoj submit` does not post to Codeforces. The command prints the submission page
+and asks you to submit from the browser; `--dry-run` still shows the preview, and
+`submit.clip` (for example `"always"`) keeps the source ready to paste. Downloads,
+samples, languages, and session checks work as usual. Gym and group problems are
+not supported.
 
 ShareOJ submissions use the official API with the login from
 `neoj login shareoj`. A problem downloaded from a contest URL is submitted
