@@ -174,14 +174,14 @@ See [Log in, check status, and log out](../how-to/manage-sessions.md).
 
 ### `stash`
 
-| Subcommand       | Description                                                 |
-| ---------------- | ----------------------------------------------------------- |
-| `save` (default) | Save `src` and the test-case directory.                     |
-| `list`           | List saved stashes; the current problem is marked with `*`. |
-| `apply`          | Restore the current problem's stash.                        |
-| `pop`            | Restore the current problem's stash and remove it.          |
-| `drop`           | Remove the current problem's stash.                         |
-| `clear`          | Remove every stash.                                         |
+| Subcommand       | Description                                                                             |
+| ---------------- | --------------------------------------------------------------------------------------- |
+| `save` (default) | Save `src` and the test-case directory.                                                 |
+| `list`           | List saved stashes; the current problem is marked with `*`.                             |
+| `apply`          | Restore the current problem's stash.                                                    |
+| `pop`            | Restore the current problem's stash and remove it.                                      |
+| `drop`           | Remove the current problem's stash, or `drop <id>` removes the stash with the given id. |
+| `clear`          | Remove every stash.                                                                     |
 
 `neoj stash` without a subcommand is the same as `neoj stash save`.
 
@@ -193,7 +193,9 @@ See [Log in, check status, and log out](../how-to/manage-sessions.md).
 Every subcommand except `list` and `clear` works on the problem recorded in
 `.neoj/problem.json`, so run `neoj download <url>` first. `apply` restores the
 saved files and removes other files inside the saved directories, so the
-directories match the stash exactly. See
+directories match the stash exactly. `drop <id>` (for example
+`neoj stash drop atcoder/abc300_a`) removes a stash without a recorded problem;
+the id is the `platform/slug` shown by `list`. See
 [Stash and restore work per problem](../how-to/stash-work.md).
 
 ### `test`

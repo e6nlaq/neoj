@@ -5,7 +5,12 @@ import { join } from "node:path";
 
 import { deriveProblemKey } from "@neoj/api";
 
-import { clearProblemStashes, listProblemStashes, saveCurrentProblemStash } from "@/feature/stash";
+import {
+    clearProblemStashes,
+    dropProblemStash,
+    listProblemStashes,
+    saveCurrentProblemStash,
+} from "@/feature/stash";
 import type { Config } from "@/lib/util/config";
 import {
     applyStash,
@@ -15,6 +20,7 @@ import {
     findStash,
     formatStashTimestamp,
     listStashes,
+    parseStashId,
     saveStash,
 } from "@/lib/util/stash";
 
@@ -347,13 +353,38 @@ describe("stash bookkeeping", () => {
     });
 });
 
-async function createConfiguredProject(configToml: string): Promise<string> {
+describe("parseStashId", () => {
+    it("splits an id into a platform and a slug", () => {
+        expect(parseStashId("atcoder/abc300_a")).toEqual(key);
+        expect(parseStashId("yukicoder/no480")).toEqual({ platform: "yukicoder", slug: "no480" });
+    });
+
+    it("rejects ids without a separator", () => {
+        expect(() => parseStashId("abc300_a")).toThrow(
+            'Invalid stash id "abc300_a". Expected "platform/slug", e.g. "atcoder/abc300_a".',
+        );
+    });
+
+    it("rejects unsafe platform and slug characters", () => {
+        expect(() => parseStashId("at coder/abc300_a")).toThrow(
+            'Invalid stash platform "at coder".',
+        );
+        expect(() => parseStashId("atcoder/abc300 a")).toThrow('Invalid stash name "abc300 a".');
+    });
+});
+
+async function createConfiguredProject(
+    configToml: string,
+    options: { withProblem?: boolean } = {},
+): Promise<string> {
     const projectRoot = await createProject();
     const homeDirectory = join(projectRoot, "home");
     await mkdir(homeDirectory);
     await writeFile(join(projectRoot, "neoj.toml"), configToml);
-    await mkdir(join(projectRoot, ".neoj"));
-    await writeFile(join(projectRoot, ".neoj", "problem.json"), `${JSON.stringify({ url })}\n`);
+    if (options.withProblem !== false) {
+        await mkdir(join(projectRoot, ".neoj"));
+        await writeFile(join(projectRoot, ".neoj", "problem.json"), `${JSON.stringify({ url })}\n`);
+    }
     process.env.USERPROFILE = homeDirectory;
     process.env.HOME = homeDirectory;
     process.chdir(projectRoot);
@@ -382,5 +413,47 @@ describe("stash commands", () => {
         await expect(clearProblemStashes(false)).rejects.toThrow("--force");
         await expect(clearProblemStashes(true)).resolves.toBe(1);
         await expect(listProblemStashes()).resolves.toMatchObject({ entries: [], current: key });
+    });
+
+    it("drops the current problem's stash when no id is given", async () => {
+        const projectRoot = await createConfiguredProject('src = "src"\n');
+        await writeProblemFiles(projectRoot);
+        await saveCurrentProblemStash(false);
+
+        await expect(dropProblemStash()).resolves.toEqual(key);
+        await expect(listStashes(projectRoot)).resolves.toEqual([]);
+    });
+
+    it("drops a stash by id without a recorded problem", async () => {
+        const projectRoot = await createConfiguredProject('src = "src"\n', {
+            withProblem: false,
+        });
+        await writeProblemFiles(projectRoot);
+        await saveStash(projectRoot, createConfig({ src: "src" }), { url, key }, { force: true });
+        await saveStash(
+            projectRoot,
+            createConfig({ src: "src" }),
+            {
+                url: "https://yukicoder.me/problems/no/480",
+                key: { platform: "yukicoder", slug: "no480" },
+            },
+            { force: true },
+        );
+
+        await expect(dropProblemStash("yukicoder/no480")).resolves.toEqual({
+            platform: "yukicoder",
+            slug: "no480",
+        });
+        await expect(
+            listStashes(projectRoot).then((entries) => entries.map((entry) => entry.key)),
+        ).resolves.toEqual([key]);
+    });
+
+    it("fails when the stash id does not exist", async () => {
+        await createConfiguredProject('src = "src"\n', { withProblem: false });
+
+        await expect(dropProblemStash("atcoder/abc300_z")).rejects.toThrow(
+            'No stash found for "atcoder/abc300_z".',
+        );
     });
 });

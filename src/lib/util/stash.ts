@@ -110,6 +110,21 @@ function getStashDirectory(projectRoot: string, key: ProblemKey): string {
     );
 }
 
+/** Parse a stash id like "atcoder/abc300_a" into the problem key it addresses. */
+export function parseStashId(id: string): ProblemKey {
+    const separator = id.indexOf("/");
+    if (separator === -1) {
+        throw new Error(
+            `Invalid stash id "${id}". Expected "platform/slug", e.g. "atcoder/abc300_a".`,
+        );
+    }
+
+    return {
+        platform: normalizeSegment(id.slice(0, separator), "platform"),
+        slug: normalizeSegment(id.slice(separator + 1), "name"),
+    };
+}
+
 export function formatStashTimestamp(savedAt: string): string {
     const date = new Date(savedAt);
     if (Number.isNaN(date.getTime())) {

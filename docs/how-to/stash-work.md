@@ -19,17 +19,18 @@ neoj stash list
 neoj stash apply
 neoj stash pop
 neoj stash drop
+neoj stash drop atcoder/abc300_a
 neoj stash clear --force
 ```
 
-| Command | Description                                               |
-| ------- | --------------------------------------------------------- |
-| `save`  | Save the current problem's working files.                 |
-| `list`  | Show every stash; the current problem is marked with `*`. |
-| `apply` | Restore the current problem's stash.                      |
-| `pop`   | Restore the current problem's stash, then remove it.      |
-| `drop`  | Remove the current problem's stash.                       |
-| `clear` | Remove every stash. `--force` is required.                |
+| Command | Description                                                                             |
+| ------- | --------------------------------------------------------------------------------------- |
+| `save`  | Save the current problem's working files.                                               |
+| `list`  | Show every stash; the current problem is marked with `*`.                               |
+| `apply` | Restore the current problem's stash.                                                    |
+| `pop`   | Restore the current problem's stash, then remove it.                                    |
+| `drop`  | Remove the current problem's stash, or `drop <id>` removes the stash with the given id. |
+| `clear` | Remove every stash. `--force` is required.                                              |
 
 Every command except `list` and `clear` works on the problem recorded in
 `.neoj/problem.json`, so run `neoj download <url>` first. `neoj stash` reports
