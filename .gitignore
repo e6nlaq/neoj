@@ -10,6 +10,11 @@ dist
 packages/cli-*/neoj
 packages/cli-*/neoj.exe
 
+# generated third-party notices (release workflow)
+/THIRD_PARTY_NOTICES.txt
+/packages/*/THIRD_PARTY_NOTICES.txt
+/release/
+
 # runtimes fetched by cross-compiling
 .bun-cache
 

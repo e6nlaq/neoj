@@ -3,9 +3,13 @@ name: Release
 # Manual release pipeline:
 #   1. verify every workspace package shares the version and is unpublished
 #   2. compile the standalone binaries for the supported platforms
-#   3. drop each binary into its platform package and publish, in dependency
-#      order: @neoj/cli-<platform> -> @neoj/api -> @neoj/cli
-#   4. create a GitHub Release tagged `v<version>` with the binaries attached
+#   3. generate THIRD_PARTY_NOTICES.txt and package each binary with it and
+#      the LICENSE file into a zip archive for the GitHub Release
+#   4. drop each binary into its platform package (with the same notices),
+#      and publish, in dependency order:
+#      @neoj/cli-<platform> -> @neoj/api -> @neoj/cli
+#   5. create a GitHub Release tagged `v<version>` with the zip archives and
+#      their checksums attached
 #
 # Prerequisite: on npmjs.com, add a trusted publisher for each published package
 # (`@neoj/cli`, `@neoj/api`, and the five `@neoj/cli-<platform>` packages)
@@ -139,13 +143,29 @@ jobs:
                   fi
                   codesign -dv "$binary"
 
+            - name: Generate the third-party notices
+              run: bun run notices release/THIRD_PARTY_NOTICES.txt
+
             - name: Stage the release asset
               env:
                   VERSION: ${{ needs.verify.outputs.version }}
               run: |
                   mkdir -p release
+                  staging="$(mktemp -d)"
+                  directory="$staging/neoj-$VERSION-${{ matrix.asset }}"
+                  mkdir "$directory"
                   cp "packages/cli-${{ matrix.platform }}/neoj${{ matrix.extension }}" \
-                      "release/neoj-$VERSION-${{ matrix.asset }}${{ matrix.extension }}"
+                      "$directory/"
+                  # Keep the executable bit so Linux/macOS users can run the
+                  # binary straight after extracting the archive.
+                  chmod 0755 "$directory/neoj${{ matrix.extension }}"
+                  cp LICENSE THIRD_PARTY_NOTICES.txt "$directory/"
+                  (
+                      cd "$staging" &&
+                      zip -q -r "$GITHUB_WORKSPACE/release/neoj-$VERSION-${{ matrix.asset }}.zip" \
+                          "neoj-$VERSION-${{ matrix.asset }}"
+                  )
+                  unzip -l "release/neoj-$VERSION-${{ matrix.asset }}.zip"
 
             - name: Smoke test the binary
               if: ${{ matrix.smoke }}
@@ -216,6 +236,14 @@ jobs:
                   chmod 0755 packages/cli-win32-x64/neoj.exe
 
                   test -f packages/cli-win32-x64/neoj.exe
+                  # The notices are generated once in the binaries job and
+                  # uploaded inside the release/ artifact directory.
+                  test -f binaries/release/THIRD_PARTY_NOTICES.txt
+                  cp binaries/release/THIRD_PARTY_NOTICES.txt packages/cli-*/
+                  cp binaries/release/THIRD_PARTY_NOTICES.txt .
+                  for package in . packages/cli-linux-x64 packages/cli-linux-arm64 packages/cli-darwin-x64 packages/cli-darwin-arm64 packages/cli-win32-x64; do
+                      test -f "$package/THIRD_PARTY_NOTICES.txt"
+                  done
                   echo "Staged binaries for $version."
 
             - name: Build the API types
@@ -227,6 +255,8 @@ jobs:
                   pack="$(mktemp -d)"
                   platform_tarball="$(npm pack --silent --ignore-scripts --pack-destination "$pack" ./packages/cli-linux-x64)"
                   wrapper_tarball="$(npm pack --silent --ignore-scripts --pack-destination "$pack" .)"
+                  tar -tzf "$pack/$platform_tarball" | grep -F "THIRD_PARTY_NOTICES.txt"
+                  tar -tzf "$pack/$wrapper_tarball" | grep -F "THIRD_PARTY_NOTICES.txt"
                   echo '{ "name": "smoke", "private": true }' > "$prefix/package.json"
                   npm install --prefix "$prefix" --no-audit --no-fund \
                       "$pack/$platform_tarball" "$pack/$wrapper_tarball"
@@ -268,10 +298,10 @@ jobs:
             - name: Generate checksums
               run: |
                   mkdir -p assets
-                  cp binaries/release/* assets/
+                  cp binaries/release/*.zip assets/
                   cd assets
                   ls -l
-                  sha256sum neoj-* > SHA256SUMS.txt
+                  sha256sum neoj-*.zip > SHA256SUMS.txt
 
             - name: Create the release
               env:

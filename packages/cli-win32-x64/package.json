@@ -13,7 +13,8 @@
     },
     "files": [
         "neoj.exe",
-        "LICENSE"
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.txt"
     ],
     "os": [
         "win32"

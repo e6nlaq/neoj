@@ -49,6 +49,11 @@ test("the wrapper runs the Node launcher without install scripts", () => {
     expect(Object.keys(cliPackage.scripts ?? {})).not.toContain("postinstall");
 
     for (const file of cliPackage.files ?? []) {
+        // THIRD_PARTY_NOTICES.txt is generated in the release workflow and is
+        // never committed; its presence in the tarball is checked there.
+        if (file === "THIRD_PARTY_NOTICES.txt") {
+            continue;
+        }
         expect(existsSync(join(rootDirectory, file))).toBe(true);
     }
 });

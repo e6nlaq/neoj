@@ -19,7 +19,8 @@
     "files": [
         "bin",
         "README.md",
-        "LICENSE"
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.txt"
     ],
     "type": "module",
     "publishConfig": {
@@ -33,6 +34,7 @@
         "schema": "bun run scripts/generate-schema.ts",
         "set-version": "bun run scripts/set-version.ts",
         "template-assets": "bun run scripts/generate-template-assets.ts",
+        "notices": "bun run scripts/generate-notices.ts",
         "format": "bun fmt",
         "format:check": "bun fmt --check",
         "lint": "oxlint",
