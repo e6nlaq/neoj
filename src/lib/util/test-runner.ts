@@ -2023,6 +2023,8 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
 
         const results: TestCaseResult[] = [];
         const counters = { ac: 0, unjudged: 0, failed: 0 };
+        // Show the bar before the first case finishes, not only on advances.
+        progress.update(0);
         const nameWidth = maxValue(
             cases.map((item) => item.name.length),
             0,

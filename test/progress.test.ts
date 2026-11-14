@@ -78,6 +78,7 @@ describe("createProgressBar", () => {
             const capture = createStream({ isTTY: true, columns: 80 });
             const bar = createProgressBar({ total: 4, stream: capture.stream });
             bar.update(0);
+            expect(capture.text()).toContain("0/4");
             expect(capture.text()).not.toContain("eta");
         });
 
