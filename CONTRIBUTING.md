@@ -62,11 +62,14 @@ Releases are created manually with the `Release` GitHub Actions workflow
 2. Open the **Release** workflow in the Actions tab and run it (optionally as a
    dry run). The version is read from the root `package.json`.
 3. The workflow verifies the version and that every package is unpublished,
-   compiles standalone binaries for Linux, macOS, and Windows, drops each binary
-   into its `@neoj/cli-<platform>` package, and publishes in dependency order:
-   the platform packages, `@neoj/api`, then `@neoj/cli`. Finally it creates a
-   GitHub Release tagged `v<version>` with the binaries and their checksums
-   attached.
+   compiles standalone binaries for Linux, macOS, and Windows, generates
+   `THIRD_PARTY_NOTICES.txt` (`bun run notices <output>`; the file is never
+   committed), packages each binary with it and the `LICENSE` file into a zip
+   archive for the GitHub Release, drops each binary into its
+   `@neoj/cli-<platform>` package, and publishes in dependency order: the
+   platform packages, `@neoj/api`, then `@neoj/cli`. Finally it creates a
+   GitHub Release tagged `v<version>` with the zip archives and their
+   checksums attached.
 
 npm trusted publishing must be configured on npmjs.com for every published
 package (`@neoj/cli`, `@neoj/api`, and the five `@neoj/cli-<platform>` packages),

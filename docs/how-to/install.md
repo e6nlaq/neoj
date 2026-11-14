@@ -25,26 +25,31 @@ Bun's blocked-script default.
 
 If you want to skip the Node.js startup cost, download the standalone
 executable attached to each
-[GitHub Release](https://github.com/e6nlaq/neoj/releases):
+[GitHub Release](https://github.com/e6nlaq/neoj/releases). Every release
+publishes one zip archive per platform, containing the binary, the `LICENSE`
+file, and `THIRD_PARTY_NOTICES.txt` (the license notices of the embedded Bun
+runtime and of the bundled npm dependencies):
 
-- `neoj-<version>-linux-x64`
-- `neoj-<version>-linux-arm64`
-- `neoj-<version>-darwin-x64`
-- `neoj-<version>-darwin-arm64`
-- `neoj-<version>-windows-x64.exe`
+- `neoj-<version>-linux-x64.zip`
+- `neoj-<version>-linux-arm64.zip`
+- `neoj-<version>-darwin-x64.zip`
+- `neoj-<version>-darwin-arm64.zip`
+- `neoj-<version>-windows-x64.zip`
 
-Download the matching file, make it executable, and place it on your `PATH`:
+Download the matching archive, extract it, make the binary executable, and
+place it on your `PATH`:
 
 ```bash
-chmod +x neoj-<version>-linux-x64
-./neoj-<version>-linux-x64 --version
+unzip neoj-<version>-linux-x64.zip
+chmod +x neoj-<version>-linux-x64/neoj
+mv neoj-<version>-linux-x64/neoj ~/bin/neoj
 ```
 
 On macOS, the first run may be blocked by Gatekeeper because the binaries are
 unsigned. Remove the quarantine attribute if needed:
 
 ```bash
-xattr -d com.apple.quarantine ./neoj-<version>-darwin-arm64
+xattr -d com.apple.quarantine ~/bin/neoj
 ```
 
 SHA-256 checksums for every asset are published as `SHA256SUMS.txt` in the same
