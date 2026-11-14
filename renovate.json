@@ -20,5 +20,6 @@
             "matchUpdateTypes": ["patch"],
             "automerge": true
         }
-    ]
+    ],
+    "platformAutomerge": true
 }
