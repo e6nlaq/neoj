@@ -4,9 +4,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+    describeAtCoderFallback,
     describeCodeforcesSubmitUnavailable,
     describeSubmissionSize,
     formatSubmitPreview,
+    getAtCoderFallbackReason,
     getOfflineSubmitWarnings,
     prepareSubmissionSource,
     resolveSubmitLanguage,
@@ -75,6 +77,7 @@ function createConfig(overrides: Partial<Config["submit"]> = {}): Config {
             preview_lines: 5,
             presubmit_timeout: 30,
             check_limit: true,
+            atcoder_fallback: true,
             ...overrides,
         },
         testcase: { folder: "test", filename: "sample-{}" },
@@ -502,8 +505,111 @@ describe("getOfflineSubmitWarnings", () => {
     });
 });
 
+describe("getAtCoderFallbackReason", () => {
+    const atCoderUrl = "https://atcoder.jp/contests/abc300/tasks/abc300_a";
+    const now = Temporal.Instant.from("2026-02-01T00:00:00Z");
+
+    it("reports a contest that has ended", () => {
+        const metadata: ProblemMetadata = {
+            url: atCoderUrl,
+            contestrange: {
+                start: "2026-01-01T00:00:00Z",
+                end: "2026-01-02T00:00:00Z",
+            },
+        };
+
+        expect(getAtCoderFallbackReason({ problemUrl: atCoderUrl, metadata, now })).toEqual({
+            kind: "ended",
+            endTime: "2026-01-02T00:00:00Z",
+        });
+    });
+
+    it("reports a permanent contest with a year-3000 end date", () => {
+        const metadata: ProblemMetadata = {
+            url: atCoderUrl,
+            contestrange: {
+                start: "2019-01-01T00:00:00Z",
+                end: "3000-01-01T00:00:00Z",
+            },
+        };
+
+        expect(getAtCoderFallbackReason({ problemUrl: atCoderUrl, metadata, now })).toEqual({
+            kind: "permanent",
+        });
+    });
+
+    it("reports a contest that has not started", () => {
+        const metadata: ProblemMetadata = {
+            url: atCoderUrl,
+            contestrange: {
+                start: "2026-03-01T00:00:00Z",
+                end: "2026-03-02T00:00:00Z",
+            },
+        };
+
+        expect(getAtCoderFallbackReason({ problemUrl: atCoderUrl, metadata, now })).toEqual({
+            kind: "not-started",
+            startTime: "2026-03-01T00:00:00Z",
+        });
+    });
+
+    it("reports an AtCoder Daily Training contest from the URL alone", () => {
+        const url = "https://atcoder.jp/contests/adt_easy_20250101_1/tasks/adt_easy_20250101_1_a";
+
+        expect(getAtCoderFallbackReason({ problemUrl: url, metadata: { url }, now })).toEqual({
+            kind: "daily-training",
+        });
+    });
+
+    it("returns nothing inside the window, without a window, or with a malformed window", () => {
+        const insideWindow: ProblemMetadata = {
+            url: atCoderUrl,
+            contestrange: {
+                start: "2026-01-01T00:00:00Z",
+                end: "2026-03-01T00:00:00Z",
+            },
+        };
+        const malformed: ProblemMetadata = {
+            url: atCoderUrl,
+            contestrange: { start: "not-a-time", end: "2026-03-01T00:00:00Z" },
+        };
+
+        expect(
+            getAtCoderFallbackReason({ problemUrl: atCoderUrl, metadata: insideWindow, now }),
+        ).toBeUndefined();
+        expect(
+            getAtCoderFallbackReason({
+                problemUrl: atCoderUrl,
+                metadata: { url: atCoderUrl },
+                now,
+            }),
+        ).toBeUndefined();
+        expect(
+            getAtCoderFallbackReason({ problemUrl: atCoderUrl, metadata: malformed, now }),
+        ).toBeUndefined();
+    });
+
+    it("describes each reason", () => {
+        expect(describeAtCoderFallback({ kind: "ended", endTime: "2026-01-02T00:00:00Z" })).toBe(
+            "The AtCoder contest ended at 2026-01-02T00:00:00Z, so automatic submission is likely blocked by Cloudflare. Submit from the browser.",
+        );
+        expect(describeAtCoderFallback({ kind: "permanent" })).toBe(
+            "This is a permanent AtCoder contest (it ends in 3000), so automatic submission is likely blocked by Cloudflare. Submit from the browser.",
+        );
+        expect(
+            describeAtCoderFallback({ kind: "not-started", startTime: "2026-03-01T00:00:00Z" }),
+        ).toBe(
+            "The AtCoder contest has not started yet (it starts at 2026-03-01T00:00:00Z), so automatic submission cannot work. Submit from the browser after it starts.",
+        );
+        expect(describeAtCoderFallback({ kind: "daily-training" })).toBe(
+            "This is an AtCoder Daily Training contest, where automatic submission is likely blocked by Turnstile/Cloudflare. Submit from the browser.",
+        );
+    });
+});
+
 describe("runSubmit", () => {
     const problemUrl = "https://atcoder.jp/contests/abc300/tasks/abc300_a";
+    const fallbackNow = Temporal.Instant.from("2026-02-01T00:00:00Z");
 
     it("shows the preview and stops without contacting the platform in dry-run mode", async () => {
         const root = await createProject({ problemUrl });
@@ -971,6 +1077,302 @@ describe("runSubmit", () => {
         expect(warnings).toContain(
             "Copied the source to the clipboard so you can submit it in the browser.",
         );
+    });
+
+    it("skips an ended AtCoder contest and copies for the browser when submit.clip is fail", async () => {
+        const root = await createProject({
+            problemUrl,
+            contestrange: {
+                start: "2026-01-01T00:00:00Z",
+                end: "2026-01-02T00:00:00Z",
+            },
+        });
+        const stdout = createCapture();
+        const copies: string[] = [];
+        const warnings: string[] = [];
+        const config = createConfig({ clip: "fail", wait: 0 });
+        setSubmitLanguage(config);
+
+        await expect(
+            runSubmit({
+                projectRoot: root,
+                config,
+                cwd: root,
+                waitSeconds: 0,
+                now: fallbackNow,
+                yes: true,
+                stdout: stdout.stream,
+                stderr: createCapture().stream,
+                dependencies: {
+                    createTarget: async () => {
+                        throw new Error("should not create a target");
+                    },
+                    copyToClipboard: async (text) => {
+                        copies.push(text);
+                        return true;
+                    },
+                    warn: (message) => warnings.push(message),
+                },
+            }),
+        ).rejects.toThrow(
+            "The AtCoder contest ended at 2026-01-02T00:00:00Z, so automatic submission is likely blocked by Cloudflare. Submit from the browser.",
+        );
+
+        expect(stdout.text()).toContain("1 │ int main() { return 0; }");
+        expect(copies).toEqual(["int main() { return 0; }\n"]);
+        expect(warnings).toContain(
+            "Copied the source to the clipboard so you can submit it in the browser.",
+        );
+    });
+
+    it("skips an ended AtCoder contest without copying when submit.clip is never", async () => {
+        const root = await createProject({
+            problemUrl,
+            contestrange: {
+                start: "2026-01-01T00:00:00Z",
+                end: "2026-01-02T00:00:00Z",
+            },
+        });
+        let copied = false;
+
+        await expect(
+            runSubmit({
+                projectRoot: root,
+                config: createConfig({ wait: 0 }),
+                cwd: root,
+                waitSeconds: 0,
+                now: fallbackNow,
+                yes: true,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+                dependencies: {
+                    copyToClipboard: async () => {
+                        copied = true;
+                        return true;
+                    },
+                },
+            }),
+        ).rejects.toThrow(
+            "The AtCoder contest ended at 2026-01-02T00:00:00Z, so automatic submission is likely blocked by Cloudflare. Submit from the browser.",
+        );
+
+        expect(copied).toBe(false);
+    });
+
+    it("copies the presubmit output when an ended AtCoder contest falls back", async () => {
+        const root = await createProject({
+            problemUrl,
+            contestrange: {
+                start: "2026-01-01T00:00:00Z",
+                end: "2026-01-02T00:00:00Z",
+            },
+        });
+        const script = join(root, "presubmit.mjs");
+        await Bun.write(script, 'process.stdout.write("prepared for submit\\n");');
+        const copies: string[] = [];
+        const config = createConfig({ clip: "fail", wait: 0 });
+        setSubmitLanguage(config);
+        const cpp = config.languages.cpp;
+        if (cpp === undefined) {
+            throw new Error("test setup is missing the cpp language");
+        }
+        cpp.presubmit = [process.execPath, script];
+
+        await expect(
+            runSubmit({
+                projectRoot: root,
+                config,
+                cwd: root,
+                waitSeconds: 0,
+                now: fallbackNow,
+                yes: true,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+                dependencies: {
+                    copyToClipboard: async (text) => {
+                        copies.push(text);
+                        return true;
+                    },
+                },
+            }),
+        ).rejects.toThrow("The AtCoder contest ended at");
+
+        expect(copies).toEqual(["prepared for submit\n"]);
+    });
+
+    it("skips a permanent AtCoder contest", async () => {
+        const root = await createProject({
+            problemUrl,
+            contestrange: {
+                start: "2019-01-01T00:00:00Z",
+                end: "3000-01-01T00:00:00Z",
+            },
+        });
+
+        await expect(
+            runSubmit({
+                projectRoot: root,
+                config: createConfig({ wait: 0 }),
+                cwd: root,
+                waitSeconds: 0,
+                now: fallbackNow,
+                yes: true,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+                dependencies: {
+                    createTarget: async () => {
+                        throw new Error("should not create a target");
+                    },
+                },
+            }),
+        ).rejects.toThrow(
+            "This is a permanent AtCoder contest (it ends in 3000), so automatic submission is likely blocked by Cloudflare. Submit from the browser.",
+        );
+    });
+
+    it("skips an AtCoder contest that has not started", async () => {
+        const root = await createProject({
+            problemUrl,
+            contestrange: {
+                start: "2026-03-01T00:00:00Z",
+                end: "2026-03-02T00:00:00Z",
+            },
+        });
+
+        await expect(
+            runSubmit({
+                projectRoot: root,
+                config: createConfig({ wait: 0 }),
+                cwd: root,
+                waitSeconds: 0,
+                now: fallbackNow,
+                yes: true,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+                dependencies: {
+                    createTarget: async () => {
+                        throw new Error("should not create a target");
+                    },
+                },
+            }),
+        ).rejects.toThrow(
+            "The AtCoder contest has not started yet (it starts at 2026-03-01T00:00:00Z), so automatic submission cannot work. Submit from the browser after it starts.",
+        );
+    });
+
+    it("skips an AtCoder Daily Training contest even without a recorded window", async () => {
+        const root = await createProject({
+            problemUrl:
+                "https://atcoder.jp/contests/adt_easy_20250101_1/tasks/adt_easy_20250101_1_a",
+        });
+
+        await expect(
+            runSubmit({
+                projectRoot: root,
+                config: createConfig({ wait: 0 }),
+                cwd: root,
+                waitSeconds: 0,
+                now: fallbackNow,
+                yes: true,
+                stdout: createCapture().stream,
+                stderr: createCapture().stream,
+                dependencies: {
+                    createTarget: async () => {
+                        throw new Error("should not create a target");
+                    },
+                },
+            }),
+        ).rejects.toThrow(
+            "This is an AtCoder Daily Training contest, where automatic submission is likely blocked by Turnstile/Cloudflare. Submit from the browser.",
+        );
+    });
+
+    it("submits an ended AtCoder contest when submit.atcoder_fallback is false", async () => {
+        const root = await createProject({
+            problemUrl,
+            contestrange: {
+                start: "2026-01-01T00:00:00Z",
+                end: "2026-01-02T00:00:00Z",
+            },
+        });
+        const target = createFakeTarget();
+        const config = createConfig({ wait: 0, open: false, atcoder_fallback: false });
+        setSubmitLanguage(config);
+
+        const result = await runSubmit({
+            projectRoot: root,
+            config,
+            cwd: root,
+            waitSeconds: 0,
+            now: fallbackNow,
+            yes: true,
+            stdout: createCapture().stream,
+            stderr: createCapture().stream,
+            dependencies: { createTarget: async () => target },
+        });
+
+        expect(result.status).toBe("submitted");
+        expect(target.submitted).toHaveLength(1);
+    });
+
+    it("stays in dry-run mode for an ended AtCoder contest", async () => {
+        const root = await createProject({
+            problemUrl,
+            contestrange: {
+                start: "2026-01-01T00:00:00Z",
+                end: "2026-01-02T00:00:00Z",
+            },
+        });
+        let copied = false;
+
+        const result = await runSubmit({
+            projectRoot: root,
+            config: createConfig({ clip: "fail" }),
+            cwd: root,
+            dryRun: true,
+            waitSeconds: 0,
+            now: fallbackNow,
+            yes: true,
+            stdout: createCapture().stream,
+            stderr: createCapture().stream,
+            dependencies: {
+                copyToClipboard: async () => {
+                    copied = true;
+                    return true;
+                },
+            },
+        });
+
+        expect(result).toEqual({ status: "dry-run" });
+        expect(copied).toBe(false);
+    });
+
+    it("submits an ended yukicoder problem without the AtCoder fallback", async () => {
+        const root = await createProject({
+            problemUrl: "https://yukicoder.me/problems/no/480",
+            contestrange: {
+                start: "2026-01-01T00:00:00Z",
+                end: "2026-01-02T00:00:00Z",
+            },
+        });
+        const target = createFakeTarget({ platform: "yukicoder" });
+        const config = createConfig({ wait: 0, open: false });
+        setSubmitLanguages(config, { yukicoder: "5001" });
+
+        const result = await runSubmit({
+            projectRoot: root,
+            config,
+            cwd: root,
+            waitSeconds: 0,
+            now: fallbackNow,
+            yes: true,
+            stdout: createCapture().stream,
+            stderr: createCapture().stream,
+            dependencies: { createTarget: async () => target },
+        });
+
+        expect(result.status).toBe("submitted");
+        expect(target.submitted).toHaveLength(1);
     });
 
     it("warns instead of failing when the browser cannot be opened", async () => {

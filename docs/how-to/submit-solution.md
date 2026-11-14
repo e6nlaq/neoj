@@ -185,16 +185,30 @@ case.
 
 ## When automatic submission is blocked
 
-AtCoder applies Turnstile in some situations, so automation is only reliable
-inside a contest window. `neoj submit` warns when:
+AtCoder applies Cloudflare/Turnstile to submissions outside a contest window, so
+automation is only reliable inside one. By default (`submit.atcoder_fallback =
+true`), `neoj submit` does not even try when the problem is very likely blocked:
 
-- the contest ID starts with `adt_` (AtCoder Daily Training),
-- the current time is outside the contest window stored by `neoj download`, or
-- the submission page contains a Turnstile challenge.
+- the recorded contest window has ended,
+- the contest has not started yet,
+- the contest is permanent (its end year is 3000), or
+- the contest ID starts with `adt_` (AtCoder Daily Training).
 
-The warnings do not stop the submission. If AtCoder rejects the request, the
-error includes the submission page URL; open it in your browser and submit from
-there. In that case set `submit.clip = "fail"` to have the text ready to paste.
+The command still runs the presubmit command and prints the preview, then it
+copies the text to the clipboard when `submit.clip` is not `"never"` and exits
+with `1`; open the problem's submit page in your browser and paste it. Set
+`submit.atcoder_fallback = false` to attempt the submission inside a known
+window anyway.
+
+When the fallback does not apply, `neoj submit` only warns before submitting:
+
+- when the current time is outside the contest window stored by `neoj download`,
+  and
+- when the submission page contains a Turnstile challenge.
+
+If AtCoder rejects the request, the error includes the submission page URL; open
+it in your browser and submit from there. `submit.clip = "fail"` keeps the text
+ready to paste in that case.
 
 yukicoder accepts submissions through the same API as its web form, so no contest
 window is recorded or required.

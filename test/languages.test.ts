@@ -53,6 +53,7 @@ function createConfig(): Config {
             preview_lines: 5,
             presubmit_timeout: 30,
             check_limit: true,
+            atcoder_fallback: true,
         },
         testcase: { folder: "test", filename: "sample-{}" },
         handmade: { filename: "handmade-{}" },

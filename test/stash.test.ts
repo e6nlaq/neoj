@@ -61,6 +61,7 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
             preview_lines: 5,
             presubmit_timeout: 30,
             check_limit: true,
+            atcoder_fallback: true,
         },
         testcase: { folder: options.folder ?? "test", filename: "sample-{}" },
         handmade: { filename: "handmade-{}" },
