@@ -13,6 +13,7 @@ import {
     dropStash,
     formatStashTimestamp,
     listStashes,
+    parseStashId,
     saveStash,
     type ApplyStashResult,
     type SaveStashResult,
@@ -86,6 +87,21 @@ export async function dropCurrentProblemStash(): Promise<ProblemKey> {
     }
 
     return current.key;
+}
+
+export async function dropProblemStash(id?: string): Promise<ProblemKey> {
+    if (id === undefined) {
+        return dropCurrentProblemStash();
+    }
+
+    const projectRoot = await requireInitializedProject(process.cwd());
+    const key = parseStashId(id);
+    const dropped = await dropStash(projectRoot, key);
+    if (!dropped) {
+        throw new Error(`No stash found for "${formatKey(key)}".`);
+    }
+
+    return key;
 }
 
 export async function clearProblemStashes(force: boolean): Promise<number> {
@@ -206,12 +222,15 @@ export function createStashCommand(): Command {
     );
 
     command.addCommand(
-        new Command("drop").description("Remove the stash of the current problem").action(() =>
-            run(async () => {
-                const key = await dropCurrentProblemStash();
-                consola.success(`Dropped the stash for "${formatKey(key)}".`);
-            }),
-        ),
+        new Command("drop")
+            .description("Remove the current problem's stash, or the stash with the given id")
+            .argument("[id]", 'Stash id shown by "stash list", e.g. "atcoder/abc300_a"')
+            .action((id) =>
+                run(async () => {
+                    const key = await dropProblemStash(id);
+                    consola.success(`Dropped the stash for "${formatKey(key)}".`);
+                }),
+            ),
     );
 
     command.addCommand(
