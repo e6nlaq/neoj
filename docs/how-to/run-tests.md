@@ -100,9 +100,10 @@ you have defined.
 3. Runs every test case, in parallel by default.
 4. Prints a report in name order, regardless of completion order.
 
-The progress bar is drawn on standard error. When the output is not a terminal
-or you pass `--no-progress`, the bar is skipped and only the final report is
-written.
+The progress bar is drawn on standard error. After the first case finishes it
+also shows an estimated remaining time (`eta 1m23s`) based on the average rate
+so far. When the output is not a terminal or you pass `--no-progress`, the bar
+is skipped and only the final report is written.
 
 ## Read the report
 

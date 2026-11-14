@@ -48,7 +48,8 @@ $ neoj generate
 
 Each run takes the next free case numbers in the test-case directory, so
 existing cases are never replaced. Cases are generated in parallel by default;
-a progress bar shows how many are done.
+a progress bar shows how many are done, plus an estimated remaining time once
+the first case finishes.
 
 - `-c 20` (`--count`) creates more cases per run. `generate.count` sets the
   default.
