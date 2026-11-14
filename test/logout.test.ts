@@ -13,6 +13,7 @@ const confirmPrompt = mock(async () => false);
 
 mock.module("@inquirer/prompts", () => ({
     confirm: confirmPrompt,
+    input: mock(async () => ""),
     password: mock(async () => ""),
 }));
 
@@ -104,7 +105,7 @@ describe("logoutServices", () => {
         await saveAuth("atcoder", { revelSession: "atcoder-session" });
 
         await expect(logoutServices(["atcoder", "unknown"])).rejects.toThrow(
-            "Unsupported service: unknown. Supported services: atcoder, yukicoder, shareoj.",
+            "Unsupported service: unknown. Supported services: atcoder, yukicoder, shareoj, codeforces.",
         );
 
         expect(confirmPrompt).not.toHaveBeenCalled();

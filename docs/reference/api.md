@@ -27,7 +27,7 @@ npm install @neoj/api
 | `@neoj/api/yukicoder`   | yukicoder problem, device-flow login, and submission clients |
 | `@neoj/api/shareoj`     | ShareOJ problem, login, runtime, and submission clients      |
 | `@neoj/api/aoj`         | AOJ problem client                                           |
-| `@neoj/api/codeforces`  | Codeforces problem client                                    |
+| `@neoj/api/codeforces`  | Codeforces problem and language clients                      |
 | `@neoj/api/problem`     | `Problem`, `ProblemSample`, `ProblemKey`, `ProblemClient`    |
 | `@neoj/api/problem-key` | `deriveProblemKey`                                           |
 | `@neoj/api/errors`      | `isTimeoutError`                                             |
@@ -324,29 +324,59 @@ versions.
 
 ## Codeforces
 
-`CodeforcesClient` fetches problems from the public contest page. Codeforces is
-download-only: the package does not log in or submit.
+`CodeforcesClient` reuses the two cookies a signed-in browser holds. The
+constructor takes no arguments.
 
-| Member            | Returns                      | Description                                    |
-| ----------------- | ---------------------------- | ---------------------------------------------- |
-| `getProblem(url)` | `Promise<CodeforcesProblem>` | Fetches a problem page and parses its samples. |
+| Member                              | Returns                          | Description                                                                                                             |
+| ----------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `login(session)`                    | `Promise<boolean>`               | Validates `{ jsessionId, ftaa }` against `/settings/general` and keeps it for later requests. `false` means signed out. |
+| `session`                           | `CodeforcesSession \| undefined` | The cookies after the latest response, including any rotation.                                                          |
+| `username`                          | `string \| undefined`            | The account name read during the last successful `login()`.                                                             |
+| `getProblem(url)`                   | `Promise<CodeforcesProblem>`     | Fetches a problem page and parses its samples.                                                                          |
+| `getLanguagesForContest(contestId)` | `Promise<CodeforcesLanguage[]>`  | Languages of a contest's submission form.                                                                               |
 
-Accepted URL forms:
+```ts
+import { CodeforcesClient } from "@neoj/api/codeforces";
 
-- `https://codeforces.com/contest/<contestId>/problem/<index>`
-- `https://codeforces.com/problemset/problem/<contestId>/<index>`
+const client = new CodeforcesClient();
+if (!(await client.login({ jsessionId, ftaa }))) {
+    throw new Error("The Codeforces session is not valid.");
+}
 
-Gym, group, and mirror URLs are rejected: they need a login or a different
-origin.
+const languages = await client.getLanguagesForContest("1900");
+console.log(languages.map((language) => language.id));
+```
 
-| Function                               | Description                                              |
-| -------------------------------------- | -------------------------------------------------------- |
-| `parseCodeforcesProblemUrl(value)`     | Validates one of the two URL forms.                      |
-| `extractCodeforcesProblemRoute(value)` | Returns `{ contestId, index }`, with an uppercase index. |
-| `buildCodeforcesContestUrl(route)`     | The contest page.                                        |
-| `buildCodeforcesProblemUrl(route)`     | The contest-path problem page.                           |
-| `stripCodeforcesTitleIndex(title)`     | Removes a leading `B.` style index from a title.         |
-| `parseCodeforcesProblem(html, url)`    | Parses a problem page into `CodeforcesProblem`.          |
+`CodeforcesSession` holds `jsessionId` (the `JSESSIONID` cookie) and `ftaa`
+(the `70a7c28f3de` cookie). Codeforces rotates both cookies from time to time,
+so read `client.session` after a call and persist the values it holds rather
+than the ones you passed to `login()`.
+
+`login()` follows a redirect to `/enter` as the signed-out signal. When
+Cloudflare or the RCPC challenge answers instead of the page, it throws
+`CodeforcesBlockedError` rather than returning `false`, because the cookies may
+still be valid. `isCodeforcesBlockedPage(html)` exposes the detection. `neoj`
+does not run a headless browser, so the caller has to finish the check manually.
+
+The package does not submit to Codeforces. Cloudflare redirects every automated
+POST to `/`, so `getLanguagesForContest()` only reads the language select of the
+form and the CLI points at the browser page instead.
+
+### Codeforces helpers
+
+| Function                               | Description                                                  |
+| -------------------------------------- | ------------------------------------------------------------ |
+| `parseCodeforcesProblemUrl(value)`     | Validates one of the two accepted URL forms.                 |
+| `extractCodeforcesProblemRoute(value)` | Returns `{ contestId, index }`, with an uppercase index.     |
+| `buildCodeforcesContestUrl(route)`     | The contest page.                                            |
+| `buildCodeforcesProblemUrl(route)`     | The contest-path problem page.                               |
+| `buildCodeforcesSubmitUrl(route)`      | The contest submission form (read-only: languages only).     |
+| `stripCodeforcesTitleIndex(title)`     | Removes a leading `B.` style index from a title.             |
+| `parseCodeforcesProblem(html, url)`    | Parses a problem page into `CodeforcesProblem`.              |
+| `normalizeCodeforcesSession(session)`  | Trims both cookies and accepts a `name=value` pair for each. |
+| `parseCodeforcesAccount(html)`         | Reads `{ username, signedIn }` from a page.                  |
+| `isCodeforcesBlockedPage(html)`        | Whether the response is a Cloudflare or RCPC browser check.  |
+| `parseCodeforcesLanguages(html)`       | Reads the language select of a submission form.              |
 
 ## Problem keys
 
@@ -374,6 +404,8 @@ from your own storage:
 
 - `normalizeRevelSession()` accepts a cookie value with or without the
   `REVEL_SESSION=` prefix.
+- `normalizeCodeforcesSession()` accepts each of `JSESSIONID` and `70a7c28f3de`
+  with or without its `name=` prefix.
 - `normalizeYukicoderCredential()` accepts a token or API key with or without
   the `Bearer ` prefix.
 - ShareOJ takes an access token or refresh token as a plain string.

@@ -5,7 +5,27 @@ import type { Problem, ProblemSample } from "./problem.js";
 import { USER_AGENT } from "./user-agent.js";
 
 const CODEFORCES_ORIGIN = "https://codeforces.com";
+// /settings/general redirects to /enter while unauthenticated, so it is a
+// stable login check.
+const LOGIN_CHECK_URL = `${CODEFORCES_ORIGIN}/settings/general`;
 const REQUEST_TIMEOUT_MS = 15_000;
+// Codeforces stores its anti-bot token in this evercookie and expects the
+// value back as the `ftaa` form field.
+const FTAA_COOKIE = "70a7c28f3de";
+// Cookie-header-safe value: printable text without separators that would split
+// the header or inject another cookie.
+const COOKIE_VALUE_PATTERN = /^[^\s;,"\\]+$/u;
+const CONTROL_CHARACTER_PATTERN = /\p{Cc}/u;
+// Codeforces answers automated clients with Cloudflare or its own RCPC/pow
+// challenge instead of the requested page.
+const BLOCKED_PAGE_PATTERNS: readonly RegExp[] = [
+    /<title>\s*Just a moment\.\.\.\s*<\/title>/iu,
+    /window\._cf_chl_opt/iu,
+    /cf-chl-(?:captcha|widget|body)/iu,
+    /Please wait\. Your browser is being checked/iu,
+    /You are unable to access codeforces\.com/iu,
+    /slowAES\.decrypt/iu,
+];
 
 // Contest IDs are numeric. Problem indices are a letter optionally followed by
 // a sub-index, such as "A", "F1", or "B2".
@@ -134,7 +154,7 @@ export function parseCodeforcesProblem(html: string, url: string): CodeforcesPro
     const statement = document.querySelector(".problem-statement");
     if (!statement) {
         throw new Error(
-            "Codeforces problem statement was not found in the response. The problem may require a login, which neoj does not support for Codeforces yet.",
+            "Codeforces problem statement was not found in the response. The problem may require a login; neoj downloads Codeforces problems without a session.",
         );
     }
 
@@ -189,8 +209,254 @@ async function request(url: URL, init: RequestInit): Promise<Response> {
     }
 }
 
-/** Fetch Codeforces problems from the public contest page. */
+/** Cookies that prove a Codeforces session. */
+export interface CodeforcesSession {
+    /** The `JSESSIONID` cookie value. */
+    jsessionId: string;
+    /** The `70a7c28f3de` cookie value, sent back as `ftaa`. */
+    ftaa: string;
+}
+
+/** One selectable language on the Codeforces submit page. */
+export interface CodeforcesLanguage {
+    /** The value submitted as `programTypeId`. */
+    id: string;
+    /** The display name, with whitespace collapsed. */
+    name: string;
+}
+
+/** Codeforces answered with a browser check instead of the requested page. */
+export class CodeforcesBlockedError extends Error {
+    constructor(readonly url: string) {
+        super(
+            `Codeforces returned a browser check instead of the page. Open ${url} in your browser, finish the check, then copy fresh JSESSIONID and ${FTAA_COOKIE} cookies and run "neoj login codeforces" again. If the check keeps appearing, submit from the browser.`,
+        );
+        this.name = "CodeforcesBlockedError";
+    }
+}
+
+function normalizeCookieValue(name: string, value: string): string {
+    const cookieValue = value.trim().replace(new RegExp(`^${name}=`, "iu"), "");
+    if (cookieValue.length === 0) {
+        throw new Error(`${name} cannot be empty.`);
+    }
+    if (!COOKIE_VALUE_PATTERN.test(cookieValue) || CONTROL_CHARACTER_PATTERN.test(cookieValue)) {
+        throw new Error(`${name} contains invalid characters.`);
+    }
+
+    try {
+        decodeURIComponent(cookieValue);
+    } catch (error) {
+        throw new Error(`${name} is not valid percent-encoding.`, { cause: error });
+    }
+
+    return cookieValue;
+}
+
+/** Trim and validate the two cookies, accepting a `name=value` pair for each. */
+export function normalizeCodeforcesSession(session: CodeforcesSession): CodeforcesSession {
+    return {
+        jsessionId: normalizeCookieValue("JSESSIONID", session.jsessionId),
+        ftaa: normalizeCookieValue(FTAA_COOKIE, session.ftaa),
+    };
+}
+
+/** The signed-in account a Codeforces page reports. */
+export interface CodeforcesAccount {
+    /** The handle, when the page exposes it. */
+    username: string | undefined;
+    /** Whether the page contains the signed-in navigation. */
+    signedIn: boolean;
+}
+
+/**
+ * Read the signed-in handle from a Codeforces page.
+ *
+ * Signed-out pages link to "Register" and have no logout link. The `handle`
+ * variable only appears on signed-in pages, so it is a secondary signal.
+ */
+export function parseCodeforcesAccount(html: string): CodeforcesAccount {
+    const document = parse(html);
+    let username: string | undefined;
+    let signedIn = false;
+    for (const anchor of document.querySelectorAll("a")) {
+        const href = anchor.getAttribute("href")?.trim() ?? "";
+        if (href.startsWith("/profile/")) {
+            const name = anchor.textContent.trim();
+            if (name !== "") {
+                username ??= name;
+            }
+        }
+        if (/(?:^|\/)logout(?:$|[?#])/u.test(href)) {
+            signedIn = true;
+        }
+    }
+
+    if (!signedIn) {
+        const handle = /\bhandle\s*=\s*"([^"]*)"/u.exec(html)?.[1]?.trim();
+        if (handle !== undefined && handle !== "") {
+            username ??= handle;
+            signedIn = true;
+        }
+    }
+
+    return { username: signedIn ? username : undefined, signedIn };
+}
+
+/** Whether the response is a Cloudflare or RCPC browser check. */
+export function isCodeforcesBlockedPage(html: string): boolean {
+    return BLOCKED_PAGE_PATTERNS.some((pattern) => pattern.test(html));
+}
+
+/**
+ * The submission form URL for a problem.
+ *
+ * `neoj` only reads the language list from this page: Codeforces rejects
+ * automated POSTs (Cloudflare answers every POST with a redirect to `/`), so
+ * submissions are made in the browser.
+ */
+export function buildCodeforcesSubmitUrl(route: Pick<CodeforcesProblemRoute, "contestId">): URL {
+    return new URL(`/contest/${route.contestId}/submit`, CODEFORCES_ORIGIN);
+}
+
+/** Parse the language select of a Codeforces submission form. */
+export function parseCodeforcesLanguages(html: string): CodeforcesLanguage[] {
+    const document = parse(html);
+    const languageSelect = document.querySelector('select[name="programTypeId"]');
+    if (languageSelect === null) {
+        throw new Error("Codeforces language list was not found in the submit page response.");
+    }
+
+    const languages: CodeforcesLanguage[] = [];
+    for (const option of languageSelect.querySelectorAll("option")) {
+        const id = option.getAttribute("value")?.trim();
+        if (id === undefined || id === "") {
+            continue;
+        }
+        languages.push({ id, name: option.textContent.trim().replace(/\s+/gu, " ") });
+    }
+    if (languages.length === 0) {
+        throw new Error("Codeforces language list was empty in the submit page response.");
+    }
+
+    return languages;
+}
+
+/**
+ * Codeforces pages are served to signed-in clients only. `login()` keeps the
+ * cookies for later calls; the problem fetch also works without them.
+ */
 export class CodeforcesClient {
+    private currentSession: CodeforcesSession | undefined;
+    private usernameValue: string | undefined;
+
+    /** The account name reported by the last successful `login()`, when readable. */
+    get username(): string | undefined {
+        return this.usernameValue;
+    }
+
+    /** The cookies after the latest response, including any rotation. */
+    get session(): CodeforcesSession | undefined {
+        return this.currentSession === undefined ? undefined : { ...this.currentSession };
+    }
+
+    private createHeaders(extra?: Record<string, string>): Headers {
+        const headers = new Headers(extra);
+        headers.set("User-Agent", USER_AGENT);
+        if (this.currentSession !== undefined) {
+            headers.set(
+                "Cookie",
+                `JSESSIONID=${this.currentSession.jsessionId}; ${FTAA_COOKIE}=${this.currentSession.ftaa}`,
+            );
+        }
+
+        return headers;
+    }
+
+    private async send(url: URL | string, init: RequestInit): Promise<Response> {
+        const response = await request(new URL(url), init);
+        this.updateCookies(response);
+        return response;
+    }
+
+    private updateCookies(response: Response): void {
+        if (this.currentSession === undefined) {
+            return;
+        }
+
+        for (const header of getSetCookieValues(response.headers)) {
+            const pair = header.split(";", 1)[0] ?? "";
+            const separator = pair.indexOf("=");
+            if (separator <= 0) {
+                continue;
+            }
+
+            const name = pair.slice(0, separator).trim();
+            const rawValue = pair.slice(separator + 1).trim();
+            const value =
+                rawValue.startsWith('"') && rawValue.endsWith('"')
+                    ? rawValue.slice(1, -1)
+                    : rawValue;
+            if (
+                !COOKIE_VALUE_PATTERN.test(value) ||
+                CONTROL_CHARACTER_PATTERN.test(value) ||
+                value.length === 0
+            ) {
+                continue;
+            }
+
+            if (name === "JSESSIONID") {
+                this.currentSession.jsessionId = value;
+            } else if (name === FTAA_COOKIE) {
+                this.currentSession.ftaa = value;
+            }
+        }
+    }
+
+    private clearSession(): void {
+        this.currentSession = undefined;
+        this.usernameValue = undefined;
+    }
+
+    /**
+     * Validate a saved session against `/settings/general` and keep it for
+     * later requests. Returns `false` when Codeforces reports signed out; a
+     * browser check throws {@link CodeforcesBlockedError} instead, because the
+     * cookies may still be valid.
+     */
+    async login(session: CodeforcesSession): Promise<boolean> {
+        this.currentSession = normalizeCodeforcesSession(session);
+        this.usernameValue = undefined;
+
+        const response = await this.send(LOGIN_CHECK_URL, {
+            headers: this.createHeaders(),
+            redirect: "manual",
+        });
+        if (isRedirect(response)) {
+            this.clearSession();
+            return false;
+        }
+
+        const html = await response.text();
+        if (isCodeforcesBlockedPage(html)) {
+            this.clearSession();
+            throw new CodeforcesBlockedError(LOGIN_CHECK_URL);
+        }
+        if (!response.ok) {
+            this.clearSession();
+            return false;
+        }
+
+        const account = parseCodeforcesAccount(html);
+        if (!account.signedIn) {
+            this.clearSession();
+            return false;
+        }
+
+        this.usernameValue = account.username;
+        return true;
+    }
+
     /**
      * Fetch the problem page and parse the samples.
      *
@@ -214,4 +480,57 @@ export class CodeforcesClient {
 
         return parseCodeforcesProblem(await response.text(), problemUrl.href);
     }
+
+    /**
+     * List the languages of a contest's submission form.
+     *
+     * Every contest renders the same language select, so a fallback contest ID
+     * is enough when no Codeforces problem is recorded. Only the language list
+     * is read: Codeforces answers automated submissions with a redirect to `/`.
+     */
+    async getLanguagesForContest(contestId: string): Promise<CodeforcesLanguage[]> {
+        if (!CONTEST_ID_PATTERN.test(contestId)) {
+            throw new TypeError(`Invalid Codeforces contest ID: "${contestId}".`);
+        }
+
+        const submitUrl = buildCodeforcesSubmitUrl({ contestId });
+        const response = await this.send(submitUrl, {
+            headers: this.createHeaders(),
+            redirect: "manual",
+        });
+        if (isRedirect(response)) {
+            throw new Error(
+                `Codeforces redirected the submit page (${response.status}). Log in again with "neoj login codeforces".`,
+            );
+        }
+
+        const html = await response.text();
+        if (isCodeforcesBlockedPage(html)) {
+            throw new CodeforcesBlockedError(submitUrl.href);
+        }
+        if (!response.ok) {
+            throw new Error(`Codeforces submit page request failed (${response.status}).`);
+        }
+        if (!parseCodeforcesAccount(html).signedIn) {
+            throw new Error(
+                'Codeforces rejected the request because the session is not logged in. Run "neoj login codeforces" and try again.',
+            );
+        }
+
+        return parseCodeforcesLanguages(html);
+    }
+}
+
+function isRedirect(response: Response): boolean {
+    return response.status >= 300 && response.status < 400;
+}
+
+function getSetCookieValues(headers: Headers): string[] {
+    const getSetCookie = (headers as Headers & { getSetCookie?: () => string[] }).getSetCookie;
+    if (typeof getSetCookie === "function") {
+        return getSetCookie.call(headers);
+    }
+
+    const combined = headers.get("set-cookie");
+    return combined === null ? [] : combined.split(/,(?=\s*[^;,=\s]+=)/u);
 }

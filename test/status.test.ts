@@ -25,6 +25,7 @@ describe("getLoginStatuses", () => {
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
         expect(fetched).toBe(false);
     });
@@ -45,6 +46,7 @@ describe("getLoginStatuses", () => {
             { platform: "atcoder", displayName: "AtCoder", status: "logged-in" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
         expect(requests).toEqual([
             {
@@ -70,6 +72,7 @@ describe("getLoginStatuses", () => {
             },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
     });
 
@@ -83,6 +86,7 @@ describe("getLoginStatuses", () => {
             },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
     });
 
@@ -99,6 +103,7 @@ describe("getLoginStatuses", () => {
             { platform: "atcoder", displayName: "AtCoder", status: "logged-in" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
         expect(fetched).toBe(false);
     });
@@ -114,6 +119,7 @@ describe("getLoginStatuses", () => {
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
         expect(fetched).toBe(false);
     });
@@ -128,6 +134,7 @@ describe("getLoginStatuses", () => {
             },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
     });
 
@@ -150,6 +157,7 @@ describe("getLoginStatuses", () => {
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-in" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
         expect(requests).toEqual([
             {
@@ -168,6 +176,7 @@ describe("getLoginStatuses", () => {
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-in" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
     });
 
@@ -190,6 +199,7 @@ describe("getLoginStatuses", () => {
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
         expect(fetched).toBe(false);
     });
@@ -203,6 +213,7 @@ describe("getLoginStatuses", () => {
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-out" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
     });
 
@@ -218,6 +229,7 @@ describe("getLoginStatuses", () => {
                 error: "Saved yukicoder authentication data is invalid.",
             },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
     });
 
@@ -240,6 +252,7 @@ describe("getLoginStatuses", () => {
                 error: "Failed to connect to yukicoder.",
             },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
     });
 
@@ -260,6 +273,7 @@ describe("getLoginStatuses", () => {
             { platform: "atcoder", displayName: "AtCoder", status: "logged-out" },
             { platform: "yukicoder", displayName: "yukicoder", status: "logged-in" },
             { platform: "shareoj", displayName: "ShareOJ", status: "logged-out" },
+            { platform: "codeforces", displayName: "Codeforces", status: "logged-out" },
         ]);
         expect(fetched).toBe(false);
     });

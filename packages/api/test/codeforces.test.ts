@@ -5,9 +5,15 @@ import { deriveProblemKey, USER_AGENT } from "@neoj/api";
 import {
     buildCodeforcesContestUrl,
     buildCodeforcesProblemUrl,
+    buildCodeforcesSubmitUrl,
+    CodeforcesBlockedError,
     CodeforcesClient,
     CodeforcesProblemRequestError,
     extractCodeforcesProblemRoute,
+    isCodeforcesBlockedPage,
+    normalizeCodeforcesSession,
+    parseCodeforcesAccount,
+    parseCodeforcesLanguages,
     parseCodeforcesProblem,
     parseCodeforcesProblemUrl,
     stripCodeforcesTitleIndex,
@@ -274,5 +280,260 @@ describe("deriveProblemKey for Codeforces", () => {
 
         expect(contest).toEqual({ platform: "codeforces", slug: "1900B" });
         expect(problemset).toEqual(contest);
+    });
+});
+
+const loginPageHtml = `
+    <html><body>
+        <div class="lang-chooser">
+            <div><a href="/profile/tourist">tourist</a><a href="/logout">Logout</a></div>
+        </div>
+    </body></html>
+`;
+
+const signedOutPageHtml = `
+    <html><body>
+        <div class="lang-chooser">
+            <div><a href="/enter">Enter</a><a href="/register">Register</a></div>
+        </div>
+    </body></html>
+`;
+
+const submitHtml = `
+    <html>
+        <head><meta name="X-Csrf-Token" content="meta-token"></head>
+        <body>
+            <div class="lang-chooser">
+                <div><a href="/profile/tourist">tourist</a><a href="/logout">Logout</a></div>
+            </div>
+            <form class="submit-form" action="?csrf_token=form-token" method="post">
+                <input type="hidden" name="csrf_token" value="form-token">
+                <input type="hidden" name="ftaa" value="">
+                <input type="hidden" name="bfaa" value="">
+                <select name="programTypeId">
+                    <option value="">Choose language</option>
+                    <option value="54">GNU G++17 7.3.0</option>
+                    <option value="73">GNU G++20 13.2</option>
+                </select>
+                <textarea name="source"></textarea>
+            </form>
+        </body>
+    </html>
+`;
+
+describe("normalizeCodeforcesSession", () => {
+    it("trims values and accepts a name=value pair", () => {
+        expect(
+            normalizeCodeforcesSession({
+                jsessionId: "  JSESSIONID=abc123  ",
+                ftaa: " 70a7c28f3de=xyz789 ",
+            }),
+        ).toEqual({ jsessionId: "abc123", ftaa: "xyz789" });
+    });
+
+    it("rejects empty and header-breaking values", () => {
+        expect(() => normalizeCodeforcesSession({ jsessionId: " ", ftaa: "ftaa" })).toThrow(
+            "JSESSIONID cannot be empty.",
+        );
+        expect(() => normalizeCodeforcesSession({ jsessionId: "abc", ftaa: "abc;def" })).toThrow(
+            "70a7c28f3de contains invalid characters.",
+        );
+        expect(() => normalizeCodeforcesSession({ jsessionId: "abc", ftaa: "abc%zz" })).toThrow(
+            "70a7c28f3de is not valid percent-encoding.",
+        );
+    });
+});
+
+describe("parseCodeforcesAccount", () => {
+    it("reads the handle and the signed-in navigation", () => {
+        expect(parseCodeforcesAccount(loginPageHtml)).toEqual({
+            username: "tourist",
+            signedIn: true,
+        });
+    });
+
+    it("reports a signed-out page without a handle", () => {
+        expect(parseCodeforcesAccount(signedOutPageHtml)).toEqual({
+            username: undefined,
+            signedIn: false,
+        });
+    });
+
+    it("falls back to the handle variable", () => {
+        expect(parseCodeforcesAccount('<script>handle = "benq";</script>')).toEqual({
+            username: "benq",
+            signedIn: true,
+        });
+    });
+});
+
+describe("parseCodeforcesLanguages", () => {
+    it("reads the language select of the submission form", () => {
+        expect(parseCodeforcesLanguages(submitHtml)).toEqual([
+            { id: "54", name: "GNU G++17 7.3.0" },
+            { id: "73", name: "GNU G++20 13.2" },
+        ]);
+    });
+
+    it("rejects a page without a language select", () => {
+        expect(() => parseCodeforcesLanguages("<html></html>")).toThrow(
+            "Codeforces language list was not found in the submit page response.",
+        );
+    });
+
+    it("rejects a language select without options", () => {
+        expect(() =>
+            parseCodeforcesLanguages(
+                '<html><body><select name="programTypeId"><option value="">pick</option></select></body></html>',
+            ),
+        ).toThrow("Codeforces language list was empty in the submit page response.");
+    });
+});
+
+describe("Codeforces URL and page helpers", () => {
+    it("builds the submit URL from the route", () => {
+        const route = extractCodeforcesProblemRoute(
+            "https://codeforces.com/problemset/problem/1900/B",
+        );
+
+        expect(buildCodeforcesSubmitUrl(route).href).toBe(
+            "https://codeforces.com/contest/1900/submit",
+        );
+    });
+
+    it("detects Cloudflare and RCPC browser checks", () => {
+        expect(isCodeforcesBlockedPage("<title>Just a moment...</title>")).toBe(true);
+        expect(isCodeforcesBlockedPage("Please wait. Your browser is being checked.")).toBe(true);
+        expect(isCodeforcesBlockedPage('<script src="/aes.min.js"></script>slowAES.decrypt')).toBe(
+            true,
+        );
+        expect(isCodeforcesBlockedPage(loginPageHtml)).toBe(false);
+    });
+});
+
+describe("CodeforcesClient session requests", () => {
+    it("validates the cookies against /settings/general and reads the handle", async () => {
+        const requests: Array<{
+            url: string;
+            cookie: string | null;
+            redirect: string | undefined;
+        }> = [];
+        setFetch(async (input, init) => {
+            requests.push({
+                url: String(input),
+                cookie: new Headers(init?.headers).get("Cookie"),
+                redirect: init?.redirect,
+            });
+            return new Response(loginPageHtml, { status: 200 });
+        });
+
+        const client = new CodeforcesClient();
+        await expect(client.login({ jsessionId: "abc", ftaa: "xyz" })).resolves.toBe(true);
+
+        expect(client.username).toBe("tourist");
+        expect(client.session).toEqual({ jsessionId: "abc", ftaa: "xyz" });
+        expect(requests).toEqual([
+            {
+                url: "https://codeforces.com/settings/general",
+                cookie: "JSESSIONID=abc; 70a7c28f3de=xyz",
+                redirect: "manual",
+            },
+        ]);
+    });
+
+    it("treats a redirect as a signed-out session", async () => {
+        setFetch(async () => new Response(null, { status: 302, headers: { Location: "/enter" } }));
+
+        const client = new CodeforcesClient();
+        await expect(client.login({ jsessionId: "abc", ftaa: "xyz" })).resolves.toBe(false);
+
+        expect(client.session).toBeUndefined();
+    });
+
+    it("throws a blocked error when Cloudflare answers", async () => {
+        setFetch(async () => new Response("<title>Just a moment...</title>", { status: 403 }));
+
+        const error = await new CodeforcesClient()
+            .login({ jsessionId: "abc", ftaa: "xyz" })
+            .catch((caught: unknown) => caught);
+
+        expect(error instanceof CodeforcesBlockedError).toBe(true);
+        expect((error as Error).message).toContain("returned a browser check");
+    });
+
+    it("keeps rotated Set-Cookie values", async () => {
+        setFetch(
+            async () =>
+                new Response(loginPageHtml, {
+                    status: 200,
+                    headers: [
+                        ["set-cookie", "JSESSIONID=rotated; Path=/; Secure"],
+                        [
+                            "set-cookie",
+                            "70a7c28f3de=rotated-ftaa; Expires=Wed, 21 Oct 2030 07:28:00 GMT",
+                        ],
+                    ],
+                }),
+        );
+
+        const client = new CodeforcesClient();
+        await client.login({ jsessionId: "abc", ftaa: "xyz" });
+
+        expect(client.session).toEqual({ jsessionId: "rotated", ftaa: "rotated-ftaa" });
+    });
+
+    it("rejects invalid cookies before fetching", async () => {
+        let fetched = false;
+        setFetch(async () => {
+            fetched = true;
+            return new Response(loginPageHtml);
+        });
+
+        await expect(
+            new CodeforcesClient().login({ jsessionId: "abc", ftaa: "a b" }),
+        ).rejects.toThrow("70a7c28f3de contains invalid characters.");
+        expect(fetched).toBe(false);
+    });
+
+    it("reports a redirected submit page as a login problem", async () => {
+        setFetch(async () => new Response(null, { status: 302, headers: { Location: "/enter" } }));
+
+        await expect(new CodeforcesClient().getLanguagesForContest("1900")).rejects.toThrow(
+            'Codeforces redirected the submit page (302). Log in again with "neoj login codeforces".',
+        );
+    });
+
+    it("detects a signed-out submit page served with a 200", async () => {
+        setFetch(async () => new Response(signedOutPageHtml, { status: 200 }));
+
+        await expect(new CodeforcesClient().getLanguagesForContest("1900")).rejects.toThrow(
+            'Codeforces rejected the request because the session is not logged in. Run "neoj login codeforces" and try again.',
+        );
+    });
+
+    it("lists contest languages without a downloaded problem", async () => {
+        let requestedUrl: string | undefined;
+        setFetch(async (input) => {
+            requestedUrl = String(input);
+            return new Response(submitHtml, { status: 200 });
+        });
+
+        const languages = await new CodeforcesClient().getLanguagesForContest("1");
+
+        expect(requestedUrl).toBe("https://codeforces.com/contest/1/submit");
+        expect(languages.map((language) => language.id)).toEqual(["54", "73"]);
+    });
+
+    it("rejects an invalid contest ID before fetching", async () => {
+        let called = false;
+        setFetch(async () => {
+            called = true;
+            return new Response(submitHtml);
+        });
+
+        await expect(new CodeforcesClient().getLanguagesForContest("abc")).rejects.toThrow(
+            'Invalid Codeforces contest ID: "abc".',
+        );
+        expect(called).toBe(false);
     });
 });

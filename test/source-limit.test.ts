@@ -8,12 +8,14 @@ describe("source size limits", () => {
         expect(sourceLimitBytes.atcoder).toBe(512 * 1024);
         expect(sourceLimitBytes.yukicoder).toBe(128 * 1024);
         expect(sourceLimitBytes.shareoj).toBe(128 * 1024);
+        expect(sourceLimitBytes.codeforces).toBe(256 * 1024);
     });
 
     it("labels a limit as a whole number of KiB", () => {
         expect(formatSourceLimit("atcoder")).toBe("512 KiB");
         expect(formatSourceLimit("yukicoder")).toBe("128 KiB");
         expect(formatSourceLimit("shareoj")).toBe("128 KiB");
+        expect(formatSourceLimit("codeforces")).toBe("256 KiB");
     });
 
     it("formats byte sizes for messages", () => {

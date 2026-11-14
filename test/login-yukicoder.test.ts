@@ -18,6 +18,7 @@ const passwordPrompt = mock(async () => "api-key");
 
 mock.module("@inquirer/prompts", () => ({
     confirm: confirmPrompt,
+    input: mock(async () => ""),
     password: passwordPrompt,
 }));
 

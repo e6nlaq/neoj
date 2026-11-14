@@ -45,7 +45,7 @@ Every platform has its own subpath:
 | `@neoj/api/yukicoder`   | yukicoder problem, device-flow login, and submission clients |
 | `@neoj/api/shareoj`     | ShareOJ problem, login, and submission clients               |
 | `@neoj/api/aoj`         | AOJ problem client                                           |
-| `@neoj/api/codeforces`  | Codeforces problem client                                    |
+| `@neoj/api/codeforces`  | Codeforces problem and language clients                      |
 | `@neoj/api/problem`     | `Problem`, `ProblemSample`, `ProblemKey`, `ProblemClient`    |
 | `@neoj/api/problem-key` | `deriveProblemKey`                                           |
 | `@neoj/api/errors`      | `isTimeoutError`                                             |
@@ -61,8 +61,9 @@ documents every client, helper function, type, and error class.
 ## Authentication
 
 The clients accept credentials as arguments (`AtCoderClient.login`,
-`YukicoderClient.checkCredential`, `ShareOjClient.getMe`, and so on) but never
-store them. Credential storage belongs to the CLI.
+`CodeforcesClient.login`, `YukicoderClient.checkCredential`,
+`ShareOjClient.getMe`, and so on) but never store them. Credential storage
+belongs to the CLI.
 
 ## Licenses
 

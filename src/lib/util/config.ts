@@ -115,7 +115,7 @@ const languageSchema = v.pipe(
             v.pipe(
                 v.record(v.pipe(v.string(), v.minLength(1)), v.pipe(v.string(), v.minLength(1))),
                 v.description(
-                    "Platform language ID used by neoj submit, keyed by platform name such as atcoder or yukicoder.",
+                    "Platform language ID used by neoj submit, keyed by platform name such as atcoder, codeforces, or yukicoder.",
                 ),
             ),
         ),

@@ -1,6 +1,7 @@
 # Sessions and credential security
 
 `neoj` stores credentials per platform. AtCoder uses a browser session cookie;
+Codeforces uses two browser cookies (`JSESSIONID` and `70a7c28f3de`);
 yukicoder uses a submit-only CLI token from the browser device flow or an account
 API key; ShareOJ uses the access and refresh tokens issued by its own CLI login
 endpoints. That keeps the CLI simple and avoids storing a password, but it means

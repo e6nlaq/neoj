@@ -36,8 +36,9 @@ page is used.
 
 For Codeforces, `neoj` accepts `/contest/<contest-id>/problem/<index>` and
 `/problemset/problem/<contest-id>/<index>` URLs; both identify the same problem
-and share one stash key. Gym and group problems require a login, which `neoj`
-does not support for Codeforces yet, so they are rejected.
+and share one stash key. Problem statements are public, so downloading needs no
+session. Gym, group, and acmsguru URLs are rejected because `neoj` only handles
+regular contests.
 
 For ShareOJ, `neoj` accepts the `https://www.share-oj.net/problems/<id>` URL,
 where `<id>` is the 22-character ID shown in the address bar, and the contest

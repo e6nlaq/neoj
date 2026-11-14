@@ -1,4 +1,9 @@
 import { hasAtCoderCredentials, isAtCoderLoggedIn, loginToAtCoder } from "@/feature/login/atcoder";
+import {
+    hasCodeforcesCredentials,
+    isCodeforcesLoggedIn,
+    loginToCodeforces,
+} from "@/feature/login/codeforces";
 import { hasShareOjCredentials, isShareOjLoggedIn, loginToShareOj } from "@/feature/login/shareoj";
 import {
     hasYukicoderCredentials,
@@ -72,5 +77,14 @@ export const platforms: Platform[] = [
         ],
         isLoggedIn: isShareOjLoggedIn,
         hasCredentials: hasShareOjCredentials,
+    },
+    {
+        name: "codeforces",
+        displayName: "Codeforces",
+        description: "Log in to Codeforces",
+        login: loginToCodeforces,
+        loginOptions: [],
+        isLoggedIn: isCodeforcesLoggedIn,
+        hasCredentials: hasCodeforcesCredentials,
     },
 ];

@@ -17,6 +17,9 @@ The file is a JSON object keyed by platform name. Each value is an object of
 that platform's credentials:
 
 - AtCoder stores its session cookie as `revelSession`.
+- Codeforces stores two browser cookies: `jsessionId` (`JSESSIONID`) and `ftaa`
+  (`70a7c28f3de`). Codeforces rotates them, so the file is updated whenever a
+  response replaces either value.
 - yukicoder stores either a CLI token (`method: "token"`, `token`, `expiresAt`)
   or an account API key (`method: "api-key"`, `apiKey`). The CLI token expires
   24 hours after it is issued; an expired token is treated as logged out.
@@ -29,6 +32,10 @@ that platform's credentials:
 {
     "atcoder": {
         "revelSession": "..."
+    },
+    "codeforces": {
+        "jsessionId": "...",
+        "ftaa": "..."
     },
     "yukicoder": {
         "method": "token",
@@ -46,8 +53,9 @@ that platform's credentials:
 
 The yukicoder token is used as a `Bearer` credential and is only valid for
 submitting and checking the logged-in user. An API key has broader access and
-should be treated the same way as a password. The ShareOJ tokens grant the same
-access as a browser login and must be treated like a password.
+should be treated the same way as a password. The ShareOJ tokens and the
+Codeforces cookies grant the same access as a browser login and must be treated
+like a password.
 
 The file is rewritten whenever a session is saved or removed, and deleted once
 no platform sessions remain.

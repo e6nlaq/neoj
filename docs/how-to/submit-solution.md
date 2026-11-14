@@ -9,6 +9,8 @@ neoj submits                  # alias
 
 `neoj submit` sends the solution to the problem recorded by `.neoj/problem.json`,
 so download the problem first. It works with AtCoder, yukicoder, and ShareOJ.
+Codeforces submissions stay in the browser: see [When automatic submission is
+blocked](#when-automatic-submission-is-blocked).
 
 ## Before you submit
 
@@ -37,6 +39,9 @@ pass it for one run:
 neoj languages atcoder --filter python
 neoj submit --platform-language <id>
 ```
+
+For Codeforces, use the ID in the browser form: the table is the same one the
+page shows.
 
 `neoj submit` does not compile the file. Run `neoj test` first when you want to
 check the samples, or combine both steps with `neoj test --submit`:
@@ -87,10 +92,10 @@ or the wait exits with `0` without submitting.
 ## Source size limits
 
 `neoj submit` compares the UTF-8 size of the text it would send (after
-`presubmit`) with the platform's documented limit: 512 KiB for AtCoder, and
-128 KiB for yukicoder and ShareOJ. An oversized source stops the command before
-the preview and before any network request, and reports how many bytes are over
-the limit:
+`presubmit`) with the platform's documented limit: 512 KiB for AtCoder, 256 KiB
+for Codeforces, and 128 KiB for yukicoder and ShareOJ. An oversized source stops
+the command before the preview and before any network request, and reports how
+many bytes are over the limit:
 
 ```text
 The source is 140.0 KiB (143,360 bytes), over the yukicoder limit of 128 KiB (131,072 bytes). Shorten it by at least 12.0 KiB, or pass --ignore-limit to submit anyway.
@@ -193,6 +198,14 @@ there. In that case set `submit.clip = "fail"` to have the text ready to paste.
 
 yukicoder accepts submissions through the same API as its web form, so no contest
 window is recorded or required.
+
+Codeforces answers every automated POST with a redirect to `/`: the submission
+form sits behind a Cloudflare check that rejects non-browser clients, so
+`neoj submit` does not post to Codeforces. The command prints the submission page
+and asks you to submit from the browser; `--dry-run` still shows the preview, and
+`submit.clip` (for example `"always"`) keeps the source ready to paste. Downloads,
+samples, languages, and session checks work as usual. Gym and group problems are
+not supported.
 
 ShareOJ submissions use the official API with the login from
 `neoj login shareoj`. A problem downloaded from a contest URL is submitted

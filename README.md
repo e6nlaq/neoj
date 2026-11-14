@@ -40,12 +40,14 @@ for standalone-binary instructions that skip the Node.js launcher.
 | ----------------------- | ---------------------------- | ----------------- | ------------------------------------ |
 | Aizu Online Judge (AOJ) | ✅                           | —                 | —                                    |
 | AtCoder                 | ✅                           | ✅                | ✅                                   |
-| Codeforces              | ✅                           | —                 | —                                    |
+| Codeforces              | ✅                           | —                 | ✅                                   |
 | ShareOJ                 | ✅ (also contest problems)   | ✅                | ✅                                   |
 | yukicoder               | ✅                           | ✅                | ✅                                   |
 
-AOJ and Codeforces support is download-only for now: samples can be fetched,
-but submissions and sessions are not implemented yet.
+AOJ support is download-only for now: samples can be fetched, but submissions
+and sessions are not implemented yet. Codeforces accepts no automated
+submissions (Cloudflare redirects every POST), so `neoj submit` points to the
+browser page instead.
 
 ## API client
 

@@ -5,6 +5,7 @@ import { extname, join } from "node:path";
 import { Command, InvalidArgumentError } from "@commander-js/extra-typings";
 import { confirm } from "@inquirer/prompts";
 import { AtCoderClient, parseAtCoderTask, type AtCoderSubmitPage } from "@neoj/api/atcoder";
+import { buildCodeforcesSubmitUrl, extractCodeforcesProblemRoute } from "@neoj/api/codeforces";
 import type { ProblemKey } from "@neoj/api/problem";
 import {
     buildShareOjSubmissionUrl,
@@ -44,7 +45,7 @@ import {
     type TestLanguage,
 } from "@/lib/util/test-runner";
 
-export type SubmitPlatform = "atcoder" | "yukicoder" | "shareoj";
+export type SubmitPlatform = "atcoder" | "yukicoder" | "shareoj" | "codeforces";
 
 export interface SubmitLanguageCandidate {
     id: string;
@@ -362,7 +363,7 @@ export async function prepareSubmissionSource(options: PrepareSubmissionOptions)
 }
 
 function toSubmitPlatform(name: string): SubmitPlatform {
-    if (name === "atcoder" || name === "yukicoder" || name === "shareoj") {
+    if (name === "atcoder" || name === "yukicoder" || name === "shareoj" || name === "codeforces") {
         return name;
     }
 
@@ -416,11 +417,27 @@ async function createDefaultTarget(
     if (input.platform === "atcoder") {
         return await createAtCoderTarget(input);
     }
+    if (input.platform === "codeforces") {
+        throw new Error(describeCodeforcesSubmitUnavailable(input.problemUrl));
+    }
     if (input.platform === "shareoj") {
         return await createShareOjTarget(input);
     }
 
     return await createYukicoderTarget(input);
+}
+
+/**
+ * Why `neoj submit` cannot post to Codeforces.
+ *
+ * Codeforces answers every automated POST with a redirect to `/`: the form is
+ * gated by Cloudflare, which also rejects a browser `User-Agent` from clients
+ * it does not trust. Submitting therefore stays in the browser, and the command
+ * only names the page to open.
+ */
+export function describeCodeforcesSubmitUnavailable(problemUrl: string): string {
+    const submitUrl = buildCodeforcesSubmitUrl(extractCodeforcesProblemRoute(problemUrl)).href;
+    return `Codeforces rejects automated submissions, so "neoj submit" cannot post to it. Open ${submitUrl} in your browser and submit from there.`;
 }
 
 async function createAtCoderTarget(
@@ -764,6 +781,12 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
 
     if (options.dryRun === true) {
         return { status: "dry-run" };
+    }
+
+    // Fail before the confirmation prompt and the wait: this platform cannot be
+    // submitted to automatically.
+    if (platform === "codeforces") {
+        throw new Error(describeCodeforcesSubmitUnavailable(metadata.url));
     }
 
     if (options.yes !== true && options.config.submit.confirm) {

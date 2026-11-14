@@ -590,8 +590,10 @@ submit = { atcoder = "5001", yukicoder = "5001" }
 | table of string values | none    | global or project |
 
 Platform language IDs for this language, keyed by platform name. `neoj submit`
-uses `submit.atcoder` for AtCoder and `submit.yukicoder` for yukicoder, and
+uses `submit.atcoder` for AtCoder, `submit.yukicoder` for yukicoder, and
 `submit.shareoj` for ShareOJ (a runtime ID from `neoj languages shareoj`).
+`submit.codeforces` is kept for `neoj languages codeforces`, which marks the configured
+ID, but `neoj submit` does not post to Codeforces.
 `--platform-language <id>` overrides the value for one run. When the key is
 missing, the command lists the platform's available IDs and exits with `1`
 instead of prompting.
