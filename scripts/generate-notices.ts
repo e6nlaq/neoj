@@ -409,7 +409,12 @@ async function main(outputPath: string): Promise<void> {
     const report = JSON.parse(await runBun(["bun", "pm", "licenses", "--json"])) as LicenseReport;
     const notices = await generateNotices(report, bunVersion, bunLicense);
 
-    await mkdir(dirname(outputPath), { recursive: true });
+    // `mkdir('.', ...)` throws EEXIST on Windows, so only create the output
+    // directory when the path actually has one.
+    const outputDirectory = dirname(outputPath);
+    if (outputDirectory !== "." && outputDirectory !== "") {
+        await mkdir(outputDirectory, { recursive: true });
+    }
     await Bun.write(outputPath, notices.content);
 
     for (const warning of notices.warnings) {
