@@ -1,6 +1,6 @@
 {
     "name": "@neoj/cli",
-    "version": "0.0.9",
+    "version": "0.1.0",
     "description": "A CLI for competitive programming workflows",
     "license": "MIT",
     "author": {
@@ -45,7 +45,7 @@
         "@commitlint/cli": "^21.2.4",
         "@commitlint/config-conventional": "^21.2.4",
         "@inquirer/prompts": "^8.8.0",
-        "@neoj/api": "0.0.9",
+        "@neoj/api": "0.1.0",
         "@types/bun": "^1.4.4",
         "@types/semver": "^7.8.0",
         "@valibot/to-json-schema": "^1.8.0",
@@ -61,11 +61,11 @@
         "valibot": "^1.5.0"
     },
     "optionalDependencies": {
-        "@neoj/cli-darwin-arm64": "0.0.9",
-        "@neoj/cli-darwin-x64": "0.0.9",
-        "@neoj/cli-linux-arm64": "0.0.9",
-        "@neoj/cli-linux-x64": "0.0.9",
-        "@neoj/cli-win32-x64": "0.0.9"
+        "@neoj/cli-darwin-arm64": "0.1.0",
+        "@neoj/cli-darwin-x64": "0.1.0",
+        "@neoj/cli-linux-arm64": "0.1.0",
+        "@neoj/cli-linux-x64": "0.1.0",
+        "@neoj/cli-win32-x64": "0.1.0"
     },
     "engines": {
         "node": ">=18"
