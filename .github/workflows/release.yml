@@ -159,7 +159,7 @@ jobs:
                   # Keep the executable bit so Linux/macOS users can run the
                   # binary straight after extracting the archive.
                   chmod 0755 "$directory/neoj${{ matrix.extension }}"
-                  cp LICENSE THIRD_PARTY_NOTICES.txt "$directory/"
+                  cp LICENSE release/THIRD_PARTY_NOTICES.txt "$directory/"
                   (
                       cd "$staging" &&
                       zip -q -r "$GITHUB_WORKSPACE/release/neoj-$VERSION-${{ matrix.asset }}.zip" \
