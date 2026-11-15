@@ -192,6 +192,10 @@ describe("authentication data", () => {
 
     it("prefers the encrypted file in auto mode once it exists", async () => {
         const authFilePath = await setTemporaryDataDirectory();
+        // Disable the injected memory store so the default backend selection
+        // logic actually runs.
+        setAuthStoreForTesting(undefined);
+
         process.env.NEOJ_SECRETS_BACKEND = "file";
         await saveAuth("atcoder", { revelSession: "file-session" });
         delete process.env.NEOJ_SECRETS_BACKEND;
