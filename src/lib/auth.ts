@@ -5,6 +5,7 @@ import {
     createEncryptedFileAuthStore,
     createOsAuthStore,
     deleteLegacyAuthFile,
+    encryptedAuthFileExists,
     readLegacyAuthFile,
     type AuthStore,
 } from "@/lib/auth-store";
@@ -43,7 +44,7 @@ export function setAuthStoreForTesting(store: AuthStore | undefined): void {
     fallbackNoticeShown = false;
 }
 
-function selectDefaultStore(): AuthStore {
+async function selectDefaultStore(): Promise<AuthStore> {
     const mode = process.env.NEOJ_SECRETS_BACKEND;
     if (mode === "file") {
         return createEncryptedFileAuthStore();
@@ -52,15 +53,18 @@ function selectDefaultStore(): AuthStore {
         return createOsAuthStore();
     }
     if (mode === undefined || mode === "auto") {
-        return osStoreUnavailable ? createEncryptedFileAuthStore() : createOsAuthStore();
+        if (osStoreUnavailable || (await encryptedAuthFileExists())) {
+            return createEncryptedFileAuthStore();
+        }
+        return createOsAuthStore();
     }
     throw new Error(
         `Invalid NEOJ_SECRETS_BACKEND value: "${mode}". Supported values are "auto", "os", and "file".`,
     );
 }
 
-function resolveStore(exclude?: AuthStore): AuthStore {
-    const primary = injectedStore ?? selectDefaultStore();
+async function resolveStore(exclude?: AuthStore): Promise<AuthStore> {
+    const primary = injectedStore ?? (await selectDefaultStore());
     if (primary === exclude) {
         return createEncryptedFileAuthStore();
     }
@@ -141,7 +145,7 @@ async function runWithAuthStore<T>(
         return await operation(store);
     };
 
-    const primary = resolveStore();
+    const primary = await resolveStore();
     try {
         return await run(primary);
     } catch (error) {
@@ -155,7 +159,7 @@ async function runWithAuthStore<T>(
                 "The OS credential store is unavailable. Falling back to an encrypted file in the neoj data directory.",
             );
         }
-        return await run(resolveStore(primary));
+        return await run(await resolveStore(primary));
     }
 }
 

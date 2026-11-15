@@ -78,6 +78,11 @@ async function writePrivateFile(path: string, contents: string): Promise<void> {
     await chmod(path, AUTH_FILE_MODE).catch(() => undefined);
 }
 
+/** Whether an encrypted fallback file exists in the data directory. */
+export async function encryptedAuthFileExists(): Promise<boolean> {
+    return await Bun.file(encryptedAuthFilePath()).exists();
+}
+
 export async function readLegacyAuthFile(): Promise<unknown> {
     const path = legacyAuthFilePath();
     const authFile = Bun.file(path);

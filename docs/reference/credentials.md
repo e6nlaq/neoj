@@ -45,6 +45,15 @@ your user.
 Set the `NEOJ_SECRETS_BACKEND` environment variable to force a backend: `auto`
 (default), `os`, or `file`.
 
+In `auto` mode, `neoj` uses the encrypted fallback file whenever `auth.enc`
+exists in the data directory, and the OS credential storage otherwise. This
+keeps the choice stable across processes: once the fallback file has been
+written, later commands keep reading it instead of silently reading an empty OS
+store. If both stores hold credentials, the encrypted file wins in `auto` mode;
+use `NEOJ_SECRETS_BACKEND=os` to read credentials that only exist in the OS
+credential storage. Logging out of every platform deletes the fallback file, so
+`auto` mode goes back to the OS credential storage afterwards.
+
 ## Saved credentials
 
 - AtCoder stores its session cookie as `revelSession`.

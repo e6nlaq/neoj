@@ -12,6 +12,7 @@ const { readAuth, replaceAuth, saveAuth, removeAuth, clearAuth, setAuthStoreForT
     await import("@/lib/auth");
 
 const originalLocalAppData = process.env.LOCALAPPDATA;
+const originalBackend = process.env.NEOJ_SECRETS_BACKEND;
 let dataRoot: string | undefined;
 
 afterEach(async () => {
@@ -21,6 +22,11 @@ afterEach(async () => {
         delete process.env.LOCALAPPDATA;
     } else {
         process.env.LOCALAPPDATA = originalLocalAppData;
+    }
+    if (originalBackend === undefined) {
+        delete process.env.NEOJ_SECRETS_BACKEND;
+    } else {
+        process.env.NEOJ_SECRETS_BACKEND = originalBackend;
     }
 
     if (dataRoot !== undefined) {
@@ -181,6 +187,20 @@ describe("authentication data", () => {
         const encryptedPath = `${authFilePath.slice(0, -"auth.json".length)}auth.enc`;
         expect(await Bun.file(encryptedPath).exists()).toBe(true);
         await expect(readAuth()).resolves.toEqual({ atcoder: { revelSession: "session" } });
+        expect(await Bun.file(authFilePath).exists()).toBe(false);
+    });
+
+    it("prefers the encrypted file in auto mode once it exists", async () => {
+        const authFilePath = await setTemporaryDataDirectory();
+        process.env.NEOJ_SECRETS_BACKEND = "file";
+        await saveAuth("atcoder", { revelSession: "file-session" });
+        delete process.env.NEOJ_SECRETS_BACKEND;
+
+        // Without the preference, auto mode would silently read the empty OS
+        // credential store and report every service as logged out.
+        await expect(readAuth()).resolves.toEqual({
+            atcoder: { revelSession: "file-session" },
+        });
         expect(await Bun.file(authFilePath).exists()).toBe(false);
     });
 
