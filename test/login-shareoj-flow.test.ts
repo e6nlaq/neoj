@@ -22,7 +22,7 @@ mock.module("@inquirer/prompts", () => ({
 }));
 
 const { getShareOjAuth, loginToShareOj } = await import("@/feature/login/shareoj");
-const { readAuth, replaceAuth } = await import("@/lib/util/auth");
+const { readAuth, replaceAuth } = await import("@/lib/auth");
 
 type FetchHandler = (...args: Parameters<typeof fetch>) => ReturnType<typeof fetch>;
 

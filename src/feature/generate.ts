@@ -2,9 +2,9 @@ import { Command } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
 import { parsePositiveInteger } from "@/feature/test";
-import { loadConfig } from "@/lib/util/config";
-import { GenerateInterruptedError, runGenerate, type GeneratedCase } from "@/lib/util/generate";
-import { requireInitializedProject } from "@/lib/util/project";
+import { loadConfig } from "@/lib/project/config";
+import { GenerateInterruptedError, runGenerate, type GeneratedCase } from "@/lib/project/generate";
+import { requireInitializedProject } from "@/lib/project/project";
 
 export interface FormatGeneratedCasesOptions {
     inputOnly: boolean;

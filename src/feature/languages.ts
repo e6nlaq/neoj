@@ -14,13 +14,13 @@ import {
     persistCodeforcesSession,
 } from "@/feature/login/codeforces";
 import { findProblemSource } from "@/feature/problem-sources";
-import { readAuth } from "@/lib/util/auth";
-import { loadConfig, type Config } from "@/lib/util/config";
+import { readAuth } from "@/lib/auth";
+import { loadConfig, type Config } from "@/lib/project/config";
+import { readProblemMetadata, type ProblemMetadata } from "@/lib/project/problem-metadata";
+import { findProjectConfig } from "@/lib/project/project";
+import { formatSourceLimit } from "@/lib/source-limit";
 import { maxValue } from "@/lib/util/numbers";
-import { readProblemMetadata, type ProblemMetadata } from "@/lib/util/problem-metadata";
 import type { ProgressStream } from "@/lib/util/progress";
-import { findProjectConfig } from "@/lib/util/project";
-import { formatSourceLimit } from "@/lib/util/source-limit";
 
 export const fallbackAtCoderContestId = "abc100";
 export const fallbackCodeforcesContestId = "1";

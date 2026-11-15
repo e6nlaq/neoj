@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
+import { formatSourceLimit, sourceLimitBytes } from "@/lib/source-limit";
 import { formatBytes } from "@/lib/util/bytes";
-import { formatSourceLimit, sourceLimitBytes } from "@/lib/util/source-limit";
 
 describe("source size limits", () => {
     it("records each platform's documented limit in bytes", () => {

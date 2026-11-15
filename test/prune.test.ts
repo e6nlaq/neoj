@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { formatByteSize, pruneProjectCache } from "@/feature/prune";
-import { getBuildCacheDirectory, pruneBuildCache } from "@/lib/util/build-cache";
+import { getBuildCacheDirectory, pruneBuildCache } from "@/lib/project/build-cache";
 
 let testRoot: string | undefined;
 const originalCwd = process.cwd();

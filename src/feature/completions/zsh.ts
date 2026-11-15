@@ -6,7 +6,7 @@ import {
     type CompletionCandidate,
     type CompletionModel,
     type CompletionOption,
-} from "@/lib/util/completion";
+} from "@/lib/completion";
 
 function zshQuote(value: string): string {
     return `'${value.replaceAll("'", "'\\''")}'`;

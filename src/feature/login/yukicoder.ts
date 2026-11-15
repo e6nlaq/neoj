@@ -8,9 +8,9 @@ import { consola } from "consola";
 import * as v from "valibot";
 
 import type { LoginSession } from "@/feature/platforms";
-import { readAuth, replaceAuth } from "@/lib/util/auth";
+import { readAuth, replaceAuth } from "@/lib/auth";
+import { loadConfig } from "@/lib/project/config";
 import { openInBrowser } from "@/lib/util/browser";
-import { loadConfig } from "@/lib/util/config";
 
 const tokenAuthSchema = v.strictObject({
     method: v.literal("token"),

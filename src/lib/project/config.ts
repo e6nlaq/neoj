@@ -3,8 +3,8 @@ import { join } from "node:path";
 
 import * as v from "valibot";
 
-import { errorExponentBounds } from "@/lib/util/judge";
-import { findProjectConfig } from "@/lib/util/project";
+import { errorExponentBounds } from "@/lib/judge/judge";
+import { findProjectConfig } from "@/lib/project/project";
 
 function createFilenamePatternSchema(description: string) {
     return v.pipe(

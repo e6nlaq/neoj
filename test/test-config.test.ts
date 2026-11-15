@@ -2,7 +2,7 @@ import { describe, expect, it } from "bun:test";
 
 import * as v from "valibot";
 
-import { configSchema } from "@/lib/util/config";
+import { configSchema } from "@/lib/project/config";
 
 function parse(input: unknown) {
     return v.parse(configSchema, input);

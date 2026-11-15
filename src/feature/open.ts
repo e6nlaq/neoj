@@ -12,10 +12,10 @@ import { buildYukicoderSubmissionsUrl, fetchYukicoderContestUrl } from "@neoj/ap
 import { consola } from "consola";
 
 import { findProblemSource } from "@/feature/problem-sources";
+import { readProblemMetadata } from "@/lib/project/problem-metadata";
+import { requireInitializedProject } from "@/lib/project/project";
 import { openInBrowser } from "@/lib/util/browser";
 import { copyToClipboard } from "@/lib/util/clipboard";
-import { readProblemMetadata } from "@/lib/util/problem-metadata";
-import { requireInitializedProject } from "@/lib/util/project";
 
 export type OpenTarget = "problem" | "contest" | "submissions";
 

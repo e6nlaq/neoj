@@ -5,9 +5,9 @@ import { USER_AGENT } from "@neoj/api";
 import envPaths from "env-paths";
 import semver from "semver";
 
-import { loadConfig, type Config } from "@/lib/util/config";
+import { loadConfig, type Config } from "@/lib/project/config";
 
-import { version as currentVersion } from "../../../package.json";
+import { version as currentVersion } from "../../package.json";
 
 /** npm package whose dist-tags.latest tracks the neoj CLI version. */
 export const updatePackageName = "@neoj/cli";

@@ -1,10 +1,6 @@
 import { mkdir, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { defaultOutputLimitBytes, runCommand, type CommandResult } from "@/lib/util/command-runner";
-import type { Config } from "@/lib/util/config";
-import { collectExistingCaseNames } from "@/lib/util/handmade";
-import { createProgressBar } from "@/lib/util/progress";
 import {
     auxiliaryPlaceholderNames,
     buildAuxiliaryTool,
@@ -13,8 +9,12 @@ import {
     describeExit,
     expandTokens,
     type BuiltInteractor,
-} from "@/lib/util/test-runner";
-import { resolveTestcaseDirectory } from "@/lib/util/testcase";
+} from "@/lib/judge/test-runner";
+import type { Config } from "@/lib/project/config";
+import { collectExistingCaseNames } from "@/lib/project/handmade";
+import { resolveTestcaseDirectory } from "@/lib/project/testcase";
+import { defaultOutputLimitBytes, runCommand, type CommandResult } from "@/lib/util/command-runner";
+import { createProgressBar } from "@/lib/util/progress";
 
 /** One test case picked for generation, with its free case number. */
 export interface GenerateCaseSpec {

@@ -5,8 +5,8 @@ import {
     pruneBuildCache,
     type PruneBuildCacheOptions,
     type PruneBuildCacheResult,
-} from "@/lib/util/build-cache";
-import { requireInitializedProject } from "@/lib/util/project";
+} from "@/lib/project/build-cache";
+import { requireInitializedProject } from "@/lib/project/project";
 
 const byteUnits = ["B", "KiB", "MiB", "GiB", "TiB"] as const;
 

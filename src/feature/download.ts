@@ -4,15 +4,15 @@ import type { ProblemSample } from "@neoj/api/problem";
 import { consola } from "consola";
 
 import { findProblemSource } from "@/feature/problem-sources";
+import { loadConfig } from "@/lib/project/config";
+import { readProblemMetadata, saveProblemMetadata } from "@/lib/project/problem-metadata";
+import { requireInitializedProject } from "@/lib/project/project";
+import { resolveProjectDirectories } from "@/lib/project/project-path";
+import { applyStash, EmptyStashError, findStash, saveStash } from "@/lib/project/stash";
+import { applyProjectTemplate } from "@/lib/project/template-apply";
+import { fetchSamples, writeSamples, type DownloadedSamples } from "@/lib/project/testcase";
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
-import { loadConfig } from "@/lib/util/config";
 import { snapshotDirectories } from "@/lib/util/directory-snapshot";
-import { readProblemMetadata, saveProblemMetadata } from "@/lib/util/problem-metadata";
-import { requireInitializedProject } from "@/lib/util/project";
-import { resolveProjectDirectories } from "@/lib/util/project-path";
-import { applyStash, EmptyStashError, findStash, saveStash } from "@/lib/util/stash";
-import { applyProjectTemplate } from "@/lib/util/template-apply";
-import { fetchSamples, writeSamples, type DownloadedSamples } from "@/lib/util/testcase";
 
 export { getProblemWithLoginHint } from "@/feature/problem-sources";
 

@@ -3,9 +3,9 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { findProjectConfig, requireInitializedProject } from "@/lib/util/project";
-import { copyTemplateFiles } from "@/lib/util/template";
-import { templateFiles } from "@/lib/util/template-assets";
+import { findProjectConfig, requireInitializedProject } from "@/lib/project/project";
+import { copyTemplateFiles } from "@/lib/project/template";
+import { templateFiles } from "@/lib/project/template-assets";
 
 import {
     collectTemplateAssetPaths,

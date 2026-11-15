@@ -3,10 +3,10 @@ import { deriveProblemKey } from "@neoj/api";
 import type { ProblemKey } from "@neoj/api/problem";
 import { consola } from "consola";
 
-import type { Config } from "@/lib/util/config";
-import { loadConfig } from "@/lib/util/config";
-import { readProblemMetadata } from "@/lib/util/problem-metadata";
-import { requireInitializedProject } from "@/lib/util/project";
+import type { Config } from "@/lib/project/config";
+import { loadConfig } from "@/lib/project/config";
+import { readProblemMetadata } from "@/lib/project/problem-metadata";
+import { requireInitializedProject } from "@/lib/project/project";
 import {
     applyStash,
     clearStashes,
@@ -18,7 +18,7 @@ import {
     type ApplyStashResult,
     type SaveStashResult,
     type StashEntry,
-} from "@/lib/util/stash";
+} from "@/lib/project/stash";
 
 interface CurrentProblem {
     projectRoot: string;

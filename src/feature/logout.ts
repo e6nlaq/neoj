@@ -3,7 +3,7 @@ import { confirm } from "@inquirer/prompts";
 import { consola } from "consola";
 
 import { platforms } from "@/feature/platforms";
-import { clearAuth, readAuth, removeAuth } from "@/lib/util/auth";
+import { clearAuth, readAuth, removeAuth } from "@/lib/auth";
 
 function getDisplayName(name: string): string {
     return platforms.find((platform) => platform.name === name)?.displayName ?? name;

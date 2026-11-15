@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
+import { compareOutput, displayWidth, formatComparison, formatLinesTable } from "@/lib/judge/judge";
 import { createAnsiStyles } from "@/lib/util/ansi";
-import { compareOutput, displayWidth, formatComparison, formatLinesTable } from "@/lib/util/judge";
 
 const strict = { ignoreTrailingSpace: false, ignoreTrailingNewline: false };
 const plain = createAnsiStyles(false);

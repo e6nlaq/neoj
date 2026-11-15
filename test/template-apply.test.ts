@@ -3,7 +3,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { applyProjectTemplate } from "@/lib/util/template-apply";
+import { applyProjectTemplate } from "@/lib/project/template-apply";
 
 let testRoot: string | undefined;
 

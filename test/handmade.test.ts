@@ -11,7 +11,7 @@ import {
     readHandmadeBlock,
     saveHandmadeCase,
     type HandmadePrompt,
-} from "@/lib/util/handmade";
+} from "@/lib/project/handmade";
 
 let testRoot: string | undefined;
 

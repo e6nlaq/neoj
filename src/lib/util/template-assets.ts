@@ -7,7 +7,7 @@ import asset3 from "@/assets/template/judge/interactor.cpp" with { type: "file" 
 import asset4 from "@/assets/template/neoj.toml" with { type: "file" };
 import asset5 from "@/assets/template/src/main.cpp" with { type: "file" };
 import asset6 from "@/assets/template/template/main.cpp" with { type: "file" };
-import type { TemplateFile } from "@/lib/util/template";
+import type { TemplateFile } from "@/lib/project/template";
 
 /** Static imports let Bun bundle these files for npm and standalone CLI builds. */
 export const templateFiles: readonly TemplateFile[] = [

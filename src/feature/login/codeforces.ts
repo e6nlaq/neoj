@@ -7,7 +7,7 @@ import {
 import * as v from "valibot";
 
 import type { LoginSession } from "@/feature/platforms";
-import { readAuth, saveAuth } from "@/lib/util/auth";
+import { readAuth, saveAuth } from "@/lib/auth";
 
 const codeforcesAuthSchema = v.strictObject({
     jsessionId: v.pipe(v.string(), v.nonEmpty()),

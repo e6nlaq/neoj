@@ -4,7 +4,7 @@ import {
     commandPathKeys,
     flattenCommands,
     type CompletionModel,
-} from "@/lib/util/completion";
+} from "@/lib/completion";
 
 function renderPathResolution(model: CompletionModel): string {
     const groups = flattenCommands(model)

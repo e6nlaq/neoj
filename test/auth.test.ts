@@ -5,7 +5,7 @@ import { join } from "node:path";
 
 import "./helpers/mock-auth-paths";
 
-const { readAuth, replaceAuth, saveAuth } = await import("@/lib/util/auth");
+const { readAuth, replaceAuth, saveAuth } = await import("@/lib/auth");
 
 const originalLocalAppData = process.env.LOCALAPPDATA;
 let dataRoot: string | undefined;

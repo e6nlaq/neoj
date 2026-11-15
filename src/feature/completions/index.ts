@@ -13,8 +13,8 @@ import {
     type CompletionCandidate,
     type CompletionHints,
     type CompletionModel,
-} from "@/lib/util/completion";
-import { showStderrModes } from "@/lib/util/config";
+} from "@/lib/completion";
+import { showStderrModes } from "@/lib/project/config";
 
 export const completionShells = ["bash", "zsh", "fish", "powershell"] as const;
 

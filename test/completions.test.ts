@@ -8,7 +8,7 @@ import {
     renderCompletion,
 } from "@/feature/completions";
 import { createProgram } from "@/feature/program";
-import { buildCompletionModel, commandPathKey, flattenCommands } from "@/lib/util/completion";
+import { buildCompletionModel, commandPathKey, flattenCommands } from "@/lib/completion";
 
 function createModel() {
     return buildCompletionModel(createProgram(), getCompletionHints());

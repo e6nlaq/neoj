@@ -2,10 +2,15 @@ import { Command, InvalidArgumentError } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
 import { runSubmit, type SubmitResult } from "@/feature/submit";
-import { loadConfig, showStderrModes, type Config, type ShowStderrMode } from "@/lib/util/config";
-import { errorExponentBounds } from "@/lib/util/judge";
-import { requireInitializedProject } from "@/lib/util/project";
-import { runTests } from "@/lib/util/test-runner";
+import { errorExponentBounds } from "@/lib/judge/judge";
+import { runTests } from "@/lib/judge/test-runner";
+import {
+    loadConfig,
+    showStderrModes,
+    type Config,
+    type ShowStderrMode,
+} from "@/lib/project/config";
+import { requireInitializedProject } from "@/lib/project/project";
 
 export function parsePositiveInteger(value: string): number {
     const parsed = Number(value);

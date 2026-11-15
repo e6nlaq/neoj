@@ -3,7 +3,6 @@ import { mkdir, mkdtemp, readdir, readFile, realpath, rm, writeFile } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { Config } from "@/lib/util/config";
 import {
     collectCacheFiles,
     computeBuildKey,
@@ -23,7 +22,8 @@ import {
     buildSolution,
     cleanupBuild,
     type TestLanguage,
-} from "@/lib/util/test-runner";
+} from "@/lib/judge/test-runner";
+import type { Config } from "@/lib/project/config";
 
 const strict = { ignoreTrailingSpace: false, ignoreTrailingNewline: false };
 

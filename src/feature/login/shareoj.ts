@@ -9,7 +9,7 @@ import { consola } from "consola";
 import * as v from "valibot";
 
 import type { LoginSession } from "@/feature/platforms";
-import { readAuth, replaceAuth } from "@/lib/util/auth";
+import { readAuth, replaceAuth } from "@/lib/auth";
 
 const shareOjAuthSchema = v.strictObject({
     method: v.literal("password"),

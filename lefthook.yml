@@ -2,7 +2,7 @@ pre-commit:
     parallel: false
     commands:
         schema:
-            glob: "{src/lib/util/config.ts,scripts/*.ts,schema/*.json}"
+            glob: "{src/lib/project/config.ts,scripts/*.ts,schema/*.json}"
             run: bun run schema
             stage_fixed: true
         format:
