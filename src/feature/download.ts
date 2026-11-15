@@ -8,7 +8,13 @@ import { loadConfig } from "@/lib/project/config";
 import { readProblemMetadata, saveProblemMetadata } from "@/lib/project/problem-metadata";
 import { requireInitializedProject } from "@/lib/project/project";
 import { resolveProjectDirectories } from "@/lib/project/project-path";
-import { applyStash, EmptyStashError, findStash, saveStash } from "@/lib/project/stash";
+import {
+    applyStash,
+    EmptyStashError,
+    formatStashExpiredMessage,
+    lookupStash,
+    saveStash,
+} from "@/lib/project/stash";
 import { applyProjectTemplate } from "@/lib/project/template-apply";
 import { fetchSamples, writeSamples, type DownloadedSamples } from "@/lib/project/testcase";
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
@@ -145,9 +151,16 @@ export async function downloadProblem(url: string): Promise<void> {
         }
 
         if (config.stash.auto_apply && problemChanged) {
-            const entry = await findStash(projectRoot, currentKey);
-            if (entry !== undefined) {
-                const applied = await applyStash(projectRoot, config, currentKey);
+            const lookup = await lookupStash(projectRoot, currentKey, {
+                expireDays: config.stash.expire_days,
+            });
+            if (lookup.expired !== undefined) {
+                consola.warn(formatStashExpiredMessage(currentKey, lookup.expired));
+            }
+            if (lookup.entry !== undefined) {
+                const applied = await applyStash(projectRoot, config, currentKey, {
+                    expireDays: config.stash.expire_days,
+                });
                 for (const warning of applied.warnings) {
                     consola.warn(warning);
                 }

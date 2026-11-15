@@ -526,6 +526,12 @@
                     "type": "boolean",
                     "description": "Allow neoj stash save to replace an existing stash without --force.",
                     "default": true
+                },
+                "expire_days": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Treat stashes saved more than this many days ago as expired: skip and delete them. 0 disables expiration.",
+                    "default": 0
                 }
             },
             "required": [],
@@ -534,7 +540,8 @@
             "default": {
                 "auto_stash": false,
                 "auto_apply": false,
-                "force": true
+                "force": true,
+                "expire_days": 0
             }
         },
         "template": {

@@ -48,6 +48,7 @@ export interface StashTarget {
 export interface SaveStashOptions {
     force: boolean;
     now?: Date;
+    expireDays?: number;
 }
 
 export interface SaveStashResult {
@@ -72,6 +73,13 @@ export class EmptyStashError extends Error {
     }
 }
 
+export class ExpiredStashError extends Error {
+    constructor(key: ProblemKey, meta: StashMeta) {
+        super(formatStashExpiredMessage(key, meta));
+        this.name = "ExpiredStashError";
+    }
+}
+
 const stashMetaSchema = v.strictObject({
     url: v.pipe(v.string(), v.minLength(1)),
     platform: v.pipe(v.string(), v.minLength(1)),
@@ -93,6 +101,27 @@ export function getStashRoot(projectRoot: string): string {
 
 function formatKey(key: ProblemKey): string {
     return `${key.platform}/${key.slug}`;
+}
+
+export function formatStashExpiredMessage(key: ProblemKey, meta: StashMeta): string {
+    return `The stash for "${formatKey(key)}" expired (saved ${formatStashTimestamp(meta.saved_at)}) and was removed.`;
+}
+
+/** How many days a stash may stay before it is treated as expired. 0 disables expiration. */
+export interface StashExpiryOptions {
+    expireDays?: number;
+    now?: Date;
+}
+
+export function isStashExpired(meta: StashMeta, expireDays: number, now: Date): boolean {
+    if (expireDays <= 0) {
+        return false;
+    }
+    const saved = new Date(meta.saved_at);
+    if (Number.isNaN(saved.getTime())) {
+        return false;
+    }
+    return now.getTime() - saved.getTime() >= expireDays * 24 * 60 * 60 * 1000;
 }
 
 function normalizeSegment(value: string, description: string): string {
@@ -226,7 +255,23 @@ async function readStashMeta(directory: string): Promise<StashMeta | undefined> 
     return result.output;
 }
 
-export async function findStash(
+async function removeStashDirectory(directory: string): Promise<void> {
+    await rm(directory, { recursive: true });
+    try {
+        await rmdir(dirname(directory));
+    } catch (error) {
+        if (
+            !hasErrorCode(error, "ENOTEMPTY") &&
+            !hasErrorCode(error, "EEXIST") &&
+            !hasErrorCode(error, "ENOENT") &&
+            !hasErrorCode(error, "EPERM")
+        ) {
+            throw error;
+        }
+    }
+}
+
+async function readStashEntry(
     projectRoot: string,
     key: ProblemKey,
 ): Promise<StashEntry | undefined> {
@@ -252,6 +297,42 @@ export async function findStash(
     }
 
     return { key, directory, meta };
+}
+
+/** Look up a stash, deleting and ignoring it when it is saved more than `expireDays` days ago. */
+export async function findStash(
+    projectRoot: string,
+    key: ProblemKey,
+    options?: StashExpiryOptions,
+): Promise<StashEntry | undefined> {
+    const lookup = await lookupStash(projectRoot, key, options);
+    return lookup.entry;
+}
+
+export interface StashLookupResult {
+    entry?: StashEntry;
+    /** Present when an expired stash was found and removed instead of returned. */
+    expired?: StashMeta;
+}
+
+/** Look up a stash, reporting whether an expired stash was found and removed instead. */
+export async function lookupStash(
+    projectRoot: string,
+    key: ProblemKey,
+    options?: StashExpiryOptions,
+): Promise<StashLookupResult> {
+    const entry = await readStashEntry(projectRoot, key);
+    if (entry === undefined) {
+        return {};
+    }
+
+    const expireDays = options?.expireDays ?? 0;
+    const now = options?.now ?? new Date();
+    if (isStashExpired(entry.meta, expireDays, now)) {
+        await removeStashDirectory(entry.directory);
+        return { expired: entry.meta };
+    }
+    return { entry };
 }
 
 export async function listStashes(projectRoot: string): Promise<StashEntry[]> {
@@ -378,7 +459,7 @@ export async function saveStash(
     await ensureDirectory(platformDirectory);
 
     const directory = getStashDirectory(projectRoot, key);
-    const existingStats = await lstatOptional(directory);
+    let existingStats = await lstatOptional(directory);
     let replacedAt: string | undefined;
     if (existingStats !== undefined) {
         if (existingStats.isSymbolicLink() || !existingStats.isDirectory()) {
@@ -391,14 +472,26 @@ export async function saveStash(
         } catch {
             previousMeta = undefined;
         }
-        replacedAt = previousMeta?.saved_at;
 
-        if (!options.force) {
-            const previous =
-                replacedAt === undefined ? "" : ` (saved ${formatStashTimestamp(replacedAt)})`;
-            throw new Error(
-                `A stash for "${formatKey(key)}" already exists${previous}. Re-run with "--force" or set stash.force = true.`,
-            );
+        const now = options.now ?? new Date();
+        if (
+            previousMeta !== undefined &&
+            isStashExpired(previousMeta, options.expireDays ?? 0, now)
+        ) {
+            // An expired stash does not exist anymore: replace it without "--force".
+            await removeStashDirectory(directory);
+            existingStats = undefined;
+            // removeStashDirectory prunes the now-empty platform directory.
+            await ensureDirectory(platformDirectory);
+        } else {
+            replacedAt = previousMeta?.saved_at;
+            if (!options.force) {
+                const previous =
+                    replacedAt === undefined ? "" : ` (saved ${formatStashTimestamp(replacedAt)})`;
+                throw new Error(
+                    `A stash for "${formatKey(key)}" already exists${previous}. Re-run with "--force" or set stash.force = true.`,
+                );
+            }
         }
     }
 
@@ -441,8 +534,13 @@ export async function applyStash(
     projectRoot: string,
     config: Config,
     key: ProblemKey,
+    options?: StashExpiryOptions,
 ): Promise<ApplyStashResult> {
-    const entry = await findStash(projectRoot, key);
+    const lookup = await lookupStash(projectRoot, key, options);
+    if (lookup.expired !== undefined) {
+        throw new ExpiredStashError(key, lookup.expired);
+    }
+    const entry = lookup.entry;
     if (entry === undefined) {
         throw new Error(`No stash found for "${formatKey(key)}".`);
     }
@@ -586,20 +684,7 @@ export async function dropStash(projectRoot: string, key: ProblemKey): Promise<b
         return false;
     }
 
-    await rm(entry.directory, { recursive: true });
-    try {
-        await rmdir(dirname(entry.directory));
-    } catch (error) {
-        if (
-            !hasErrorCode(error, "ENOTEMPTY") &&
-            !hasErrorCode(error, "EEXIST") &&
-            !hasErrorCode(error, "ENOENT") &&
-            !hasErrorCode(error, "EPERM")
-        ) {
-            throw error;
-        }
-    }
-
+    await removeStashDirectory(entry.directory);
     return true;
 }
 
@@ -616,4 +701,27 @@ export async function clearStashes(projectRoot: string): Promise<number> {
 
     await rm(stashRoot, { recursive: true });
     return entries.length;
+}
+
+/** Remove every stash saved more than `expireDays` days ago and return how many were removed. */
+export async function sweepExpiredStashes(
+    projectRoot: string,
+    options?: StashExpiryOptions,
+): Promise<number> {
+    const expireDays = options?.expireDays ?? 0;
+    if (expireDays <= 0) {
+        return 0;
+    }
+    const now = options?.now ?? new Date();
+    const entries = await listStashes(projectRoot);
+
+    let removed = 0;
+    for (const entry of entries) {
+        if (!isStashExpired(entry.meta, expireDays, now)) {
+            continue;
+        }
+        await removeStashDirectory(entry.directory);
+        removed += 1;
+    }
+    return removed;
 }

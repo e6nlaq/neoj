@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "bun:test";
-import { mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -9,6 +9,7 @@ import {
     clearProblemStashes,
     dropProblemStash,
     listProblemStashes,
+    applyCurrentProblemStash,
     saveCurrentProblemStash,
 } from "@/feature/stash";
 import type { Config } from "@/lib/project/config";
@@ -19,9 +20,12 @@ import {
     EmptyStashError,
     findStash,
     formatStashTimestamp,
+    isStashExpired,
     listStashes,
+    lookupStash,
     parseStashId,
     saveStash,
+    sweepExpiredStashes,
 } from "@/lib/project/stash";
 
 let testRoot: string | undefined;
@@ -95,7 +99,7 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
         languages: {},
         update: { enabled: true, interval: 259_200 },
         download: { show_sample: false },
-        stash: { auto_stash: false, auto_apply: false, force: true },
+        stash: { auto_stash: false, auto_apply: false, force: true, expire_days: 0 },
         template: { enable: false, exclude: [], mode: "overlay" },
     };
 }
@@ -372,6 +376,198 @@ describe("stash bookkeeping", () => {
         expect(formatStashTimestamp("2026-10-30T12:00:00.000Z")).toMatch(
             /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/,
         );
+    });
+});
+
+describe("stash expiration", () => {
+    const savedAt = new Date("2026-10-01T00:00:00Z");
+
+    async function saveBackdatedStash(projectRoot: string, config: Config): Promise<void> {
+        await saveStash(projectRoot, config, { url, key }, { force: true, now: savedAt });
+    }
+
+    it("detects a stash saved at least expireDays days ago", () => {
+        const meta = {
+            url,
+            platform: key.platform,
+            slug: key.slug,
+            saved_at: "2026-10-01T00:00:00.000Z",
+            slots: { testcase: "test" },
+            file_count: 1,
+        };
+        expect(isStashExpired(meta, 14, new Date("2026-10-14T23:59:59Z"))).toBe(false);
+        expect(isStashExpired(meta, 14, new Date("2026-10-15T00:00:00Z"))).toBe(true);
+        expect(isStashExpired(meta, 0, new Date("2027-10-15T00:00:00Z"))).toBe(false);
+    });
+
+    it("removes an expired stash on lookup and reports it", async () => {
+        const projectRoot = await createProject();
+        await writeProblemFiles(projectRoot);
+        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+
+        const lookup = await lookupStash(projectRoot, key, {
+            expireDays: 14,
+            now: new Date("2026-10-20T00:00:00Z"),
+        });
+        expect(lookup.entry).toBeUndefined();
+        expect(lookup.expired).toMatchObject({ saved_at: "2026-10-01T00:00:00.000Z" });
+        await expect(findStash(projectRoot, key)).resolves.toBeUndefined();
+        await expect(
+            lstat(join(projectRoot, ".neoj", "stash", "atcoder", "abc300_a")),
+        ).rejects.toMatchObject({ code: "ENOENT" });
+    });
+
+    it("keeps a stash that is not yet expired", async () => {
+        const projectRoot = await createProject();
+        await writeProblemFiles(projectRoot);
+        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+
+        const lookup = await lookupStash(projectRoot, key, {
+            expireDays: 14,
+            now: new Date("2026-10-10T00:00:00Z"),
+        });
+        expect(lookup.entry).toBeDefined();
+        expect(lookup.expired).toBeUndefined();
+        await expect(findStash(projectRoot, key)).resolves.toMatchObject({ key });
+    });
+
+    it("ignores expiration when expireDays is 0", async () => {
+        const projectRoot = await createProject();
+        await writeProblemFiles(projectRoot);
+        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+
+        const lookup = await lookupStash(projectRoot, key, {
+            expireDays: 0,
+            now: new Date("2027-10-01T00:00:00Z"),
+        });
+        expect(lookup.entry).toBeDefined();
+    });
+
+    it("replaces an expired stash without --force", async () => {
+        const projectRoot = await createProject();
+        await writeProblemFiles(projectRoot);
+        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+
+        const saved = await saveStash(
+            projectRoot,
+            createConfig({ src: "src" }),
+            { url, key },
+            {
+                force: false,
+                now: new Date("2026-10-20T00:00:00Z"),
+                expireDays: 14,
+            },
+        );
+        expect(saved.replacedAt).toBeUndefined();
+        await expect(
+            Bun.file(join(stashDirectory(projectRoot), "meta.json")).json(),
+        ).resolves.toMatchObject({ saved_at: "2026-10-20T00:00:00.000Z" });
+    });
+
+    it("still requires --force for a stash that is not expired", async () => {
+        const projectRoot = await createProject();
+        await writeProblemFiles(projectRoot);
+        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+
+        await expect(
+            saveStash(
+                projectRoot,
+                createConfig({ src: "src" }),
+                { url, key },
+                {
+                    force: false,
+                    now: new Date("2026-10-10T00:00:00Z"),
+                    expireDays: 14,
+                },
+            ),
+        ).rejects.toThrow("already exists");
+    });
+
+    it("fails apply of an expired stash after removing it", async () => {
+        const projectRoot = await createProject();
+        await writeProblemFiles(projectRoot);
+        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+
+        await expect(
+            applyStash(projectRoot, createConfig({ src: "src" }), key, {
+                expireDays: 14,
+                now: new Date("2026-10-20T00:00:00Z"),
+            }),
+        ).rejects.toThrow(
+            /^The stash for "atcoder\/abc300_a" expired \(saved .+\) and was removed\.$/,
+        );
+        await expect(findStash(projectRoot, key)).resolves.toBeUndefined();
+    });
+
+    it("sweeps only expired stashes", async () => {
+        const projectRoot = await createProject();
+        await writeProblemFiles(projectRoot);
+        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+        const recentKey = { platform: "yukicoder", slug: "no480" as const };
+        await saveStash(
+            projectRoot,
+            createConfig({ src: "src" }),
+            { url: "https://yukicoder.me/problems/no/480", key: recentKey },
+            { force: true, now: new Date("2026-10-19T00:00:00Z") },
+        );
+
+        await expect(
+            sweepExpiredStashes(projectRoot, {
+                expireDays: 14,
+                now: new Date("2026-10-20T00:00:00Z"),
+            }),
+        ).resolves.toBe(1);
+        await expect(
+            listStashes(projectRoot).then((entries) =>
+                entries.map((entry) => `${entry.key.platform}/${entry.key.slug}`),
+            ),
+        ).resolves.toEqual(["yukicoder/no480"]);
+        await expect(sweepExpiredStashes(projectRoot, { expireDays: 0 })).resolves.toBe(0);
+    });
+
+    it("sweeps expired stashes during list and reports the count", async () => {
+        const projectRoot = await createConfiguredProject(
+            'src = "src"\n\n[stash]\nexpire_days = 1\n',
+        );
+        await writeProblemFiles(projectRoot);
+        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+        const metaPath = join(stashDirectory(projectRoot), "meta.json");
+        const meta = (await Bun.file(metaPath).json()) as Record<string, unknown>;
+        meta.saved_at = "2026-10-01T00:00:00.000Z";
+        await Bun.write(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+
+        await expect(listProblemStashes()).resolves.toMatchObject({
+            entries: [],
+            expired: 1,
+        });
+        await expect(findStash(projectRoot, key)).resolves.toBeUndefined();
+    });
+
+    it("replaces an expired stash without --force at the command level", async () => {
+        await createConfiguredProject('src = "src"\n\n[stash]\nforce = false\nexpire_days = 14\n');
+        await writeProblemFiles(testRoot!);
+        await saveBackdatedStash(testRoot!, createConfig({ src: "src" }));
+        const metaPath = join(stashDirectory(testRoot!), "meta.json");
+        const meta = (await Bun.file(metaPath).json()) as Record<string, unknown>;
+        meta.saved_at = "2020-01-01T00:00:00.000Z";
+        await Bun.write(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+
+        await expect(saveCurrentProblemStash(false)).resolves.toMatchObject({
+            replacedAt: undefined,
+        });
+    });
+
+    it("fails apply of an expired stash at the command level", async () => {
+        await createConfiguredProject('src = "src"\n\n[stash]\nexpire_days = 14\n');
+        await writeProblemFiles(testRoot!);
+        await saveBackdatedStash(testRoot!, createConfig({ src: "src" }));
+        const metaPath = join(stashDirectory(testRoot!), "meta.json");
+        const meta = (await Bun.file(metaPath).json()) as Record<string, unknown>;
+        meta.saved_at = "2020-01-01T00:00:00.000Z";
+        await Bun.write(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+
+        await expect(applyCurrentProblemStash()).rejects.toThrow("expired");
+        await expect(findStash(testRoot!, key)).resolves.toBeUndefined();
     });
 });
 
