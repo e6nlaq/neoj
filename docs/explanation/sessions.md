@@ -18,19 +18,29 @@ expired access token is refreshed automatically while its refresh token lasts.
 
 ## Keep the blast radius small
 
-Credentials live in a single file in the per-user data directory, never in the
-project directory:
+Credentials live in the operating system's credential storage (macOS Keychain,
+Windows Credential Manager, or the Linux secret service) through the Bun secrets
+API, one entry per platform credential under the service name `dev.neoj.cli`.
+They are never written to the project directory.
 
-- The directory is created with `0700` and the file with `0600` on POSIX
-  systems.
+When the OS credential storage is unavailable, `neoj` falls back to an
+AES-256-GCM encrypted file in the per-user data directory:
+
+- The directory is created with `0700` and every file `neoj` writes there is
+  created with `0600` on POSIX systems.
 - Writes use a temporary file and a rename, so an interrupted run cannot
   truncate the saved sessions.
-- Logging out of the last platform deletes the file instead of leaving an empty
-  one behind.
+- Logging out of the last platform deletes the stored credentials instead of
+  leaving an empty record behind.
 
-The file is plain JSON, so anything running as your user can read it. `neoj`
-relies on operating-system file permissions rather than encryption, and it never
-prints the cookie in logs or error messages.
+The fallback encryption protects the saved sessions from being read by backups,
+file scanners, and other processes that copy files, but the encryption key sits
+in the same data directory, so malware running as your user can still read the
+credentials. `neoj` never prints a credential in logs or error messages.
+
+See [where credentials are stored](../reference/credentials.md) for the exact
+locations, the backend override, and the automatic migration from the legacy
+plaintext `auth.json` file.
 
 ## What this does not protect against
 
@@ -40,7 +50,9 @@ prints the cookie in logs or error messages.
   and expires after 24 hours, but it is still a secret while valid. A ShareOJ
   access token grants what a browser session grants, and its refresh token can
   mint new access tokens for about 30 days.
-- Malware or another process running as your user can read the file.
+- Malware or another process running as your user can retrieve the credentials,
+  both from the OS credential storage (it runs with your user's access) and
+  from the encrypted fallback file (the encryption key is on the same disk).
 - A credential copied into a repository, issue, or chat is compromised even after
   you log out elsewhere.
 

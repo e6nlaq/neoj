@@ -2,7 +2,8 @@
 
 Credentials are stored per platform, so you can stay logged in to each one
 independently. `neoj` verifies a credential before saving it and never prints it
-back.
+back. Sessions are kept in the OS credential storage with an encrypted file
+fallback; see [where sessions are stored](../reference/credentials.md).
 
 ## Log in to AtCoder
 

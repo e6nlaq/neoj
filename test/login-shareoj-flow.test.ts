@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import "./helpers/mock-auth-paths";
+import { installMemoryAuthStore } from "./helpers/mock-auth-store";
 
 const originalFetch = globalThis.fetch;
 const originalLocalAppData = process.env.LOCALAPPDATA;
@@ -38,6 +39,7 @@ function jsonResponse(value: unknown, status = 200): Response {
 }
 
 async function setupDirectories(): Promise<void> {
+    installMemoryAuthStore();
     testRoot = await mkdtemp(join(tmpdir(), "neoj-login-shareoj-flow-test-"));
     const home = join(testRoot, "home");
     await mkdir(home, { recursive: true });

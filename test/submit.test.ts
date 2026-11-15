@@ -939,7 +939,9 @@ describe("runSubmit", () => {
             { preconnect: originalFetch.preconnect },
         ) as typeof fetch;
         try {
+            const { installMemoryAuthStore } = await import("./helpers/mock-auth-store");
             const { saveAuth } = await import("@/lib/auth");
+            installMemoryAuthStore();
             await saveAuth("shareoj", {
                 method: "password",
                 accessToken: "tok",

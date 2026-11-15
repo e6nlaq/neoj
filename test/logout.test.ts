@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import "./helpers/mock-auth-paths";
+import { installMemoryAuthStore } from "./helpers/mock-auth-store";
 
 const { readAuth, saveAuth } = await import("@/lib/auth");
 
@@ -20,6 +21,7 @@ mock.module("@inquirer/prompts", () => ({
 const { logoutServices } = await import("@/feature/logout");
 
 async function setupDataDirectory(): Promise<void> {
+    installMemoryAuthStore();
     dataRoot = await mkdtemp(join(tmpdir(), "neoj-logout-test-"));
     process.env.LOCALAPPDATA = dataRoot;
 }
@@ -114,14 +116,13 @@ describe("logoutServices", () => {
         });
     });
 
-    it("deletes the auth file when the selected provider was the last entry", async () => {
+    it("clears the store when the selected provider was the last entry", async () => {
         await setupDataDirectory();
         await saveAuth("atcoder", { revelSession: "atcoder-session" });
         confirmPrompt.mockImplementation(async () => true);
 
         await logoutServices(["atcoder"]);
 
-        const authFile = Bun.file(join(dataRoot!, "neoj-nodejs", "Data", "auth.json"));
-        expect(await authFile.exists()).toBe(false);
+        await expect(readAuth()).resolves.toEqual({});
     });
 });

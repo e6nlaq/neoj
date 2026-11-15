@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import "./helpers/mock-auth-paths";
+import { installMemoryAuthStore } from "./helpers/mock-auth-store";
 
 const { readAuth, saveAuth } = await import("@/lib/auth");
 
@@ -50,6 +51,7 @@ function queuePasswordResponses(...values: string[]): void {
 }
 
 async function setupDataDirectory(): Promise<void> {
+    installMemoryAuthStore();
     dataRoot = await mkdtemp(join(tmpdir(), "neoj-login-codeforces-test-"));
     process.env.LOCALAPPDATA = dataRoot;
 }
