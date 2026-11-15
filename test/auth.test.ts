@@ -4,13 +4,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import "./helpers/mock-auth-paths";
+import type { AuthStore } from "@/lib/auth-store";
 
-const { readAuth, replaceAuth, saveAuth } = await import("@/lib/auth");
+import { installMemoryAuthStore } from "./helpers/mock-auth-store";
+
+const { readAuth, replaceAuth, saveAuth, removeAuth, clearAuth, setAuthStoreForTesting } =
+    await import("@/lib/auth");
 
 const originalLocalAppData = process.env.LOCALAPPDATA;
 let dataRoot: string | undefined;
 
 afterEach(async () => {
+    installMemoryAuthStore();
+
     if (originalLocalAppData === undefined) {
         delete process.env.LOCALAPPDATA;
     } else {
@@ -30,14 +36,14 @@ async function setTemporaryDataDirectory(): Promise<string> {
 }
 
 describe("authentication data", () => {
-    it("returns an empty object when no authentication file exists", async () => {
-        await setTemporaryDataDirectory();
+    it("returns an empty object when no credentials are saved", async () => {
+        installMemoryAuthStore();
 
         await expect(readAuth()).resolves.toEqual({});
     });
 
     it("saves and reads credentials for multiple providers", async () => {
-        const authFilePath = await setTemporaryDataDirectory();
+        installMemoryAuthStore();
 
         await saveAuth("atcoder", { revelSession: "atcoder-session" });
         await saveAuth("codeforces", { session: "codeforces-session" });
@@ -46,11 +52,21 @@ describe("authentication data", () => {
             atcoder: { revelSession: "atcoder-session" },
             codeforces: { session: "codeforces-session" },
         });
-        expect(await Bun.file(authFilePath).exists()).toBe(true);
+    });
+
+    it("merges partially updated provider credentials", async () => {
+        installMemoryAuthStore();
+
+        await saveAuth("codeforces", { jsessionId: "session", ftaa: "ftaa" });
+        await saveAuth("codeforces", { ftaa: "new-ftaa" });
+
+        await expect(readAuth()).resolves.toEqual({
+            codeforces: { jsessionId: "session", ftaa: "new-ftaa" },
+        });
     });
 
     it("replaces provider credentials without retaining old fields", async () => {
-        await setTemporaryDataDirectory();
+        installMemoryAuthStore();
         await saveAuth("yukicoder", {
             method: "token",
             token: "old-token",
@@ -64,16 +80,65 @@ describe("authentication data", () => {
         });
     });
 
-    it("rejects authentication files that do not match the Valibot schema", async () => {
+    it("removes the selected provider while preserving other providers", async () => {
+        installMemoryAuthStore();
+        await saveAuth("atcoder", { revelSession: "atcoder-session" });
+        await saveAuth("legacy", { token: "legacy-token" });
+
+        await removeAuth(["atcoder"]);
+
+        await expect(readAuth()).resolves.toEqual({
+            legacy: { token: "legacy-token" },
+        });
+    });
+
+    it("clears all credentials", async () => {
+        installMemoryAuthStore();
+        await saveAuth("atcoder", { revelSession: "atcoder-session" });
+
+        await clearAuth();
+
+        await expect(readAuth()).resolves.toEqual({});
+    });
+
+    it("migrates the legacy plaintext authentication file and deletes it", async () => {
+        installMemoryAuthStore();
+        const authFilePath = await setTemporaryDataDirectory();
+        await Bun.write(
+            authFilePath,
+            `${JSON.stringify({ atcoder: { revelSession: "legacy-session" } }, null, 2)}\n`,
+        );
+
+        await expect(readAuth()).resolves.toEqual({
+            atcoder: { revelSession: "legacy-session" },
+        });
+        expect(await Bun.file(authFilePath).exists()).toBe(false);
+    });
+
+    it("reports the authentication file path when the legacy JSON is invalid", async () => {
+        installMemoryAuthStore();
+        const authFilePath = await setTemporaryDataDirectory();
+        await Bun.write(authFilePath, "invalid json");
+
+        await expect(readAuth()).rejects.toThrow(
+            `Failed to parse authentication file "${authFilePath}".`,
+        );
+        await expect(Bun.file(authFilePath).text()).resolves.toBe("invalid json");
+    });
+
+    it("rejects legacy authentication files that do not match the schema", async () => {
+        installMemoryAuthStore();
         const authFilePath = await setTemporaryDataDirectory();
         await Bun.write(authFilePath, "[]");
 
         await expect(readAuth()).rejects.toThrow(
             "Saved authentication data must be a JSON object.",
         );
+        await expect(Bun.file(authFilePath).text()).resolves.toBe("[]");
     });
 
-    it("does not overwrite malformed JSON when saving credentials", async () => {
+    it("does not overwrite a malformed legacy file when saving credentials", async () => {
+        installMemoryAuthStore();
         const authFilePath = await setTemporaryDataDirectory();
         await Bun.write(authFilePath, "invalid json");
 
@@ -81,23 +146,73 @@ describe("authentication data", () => {
         await expect(Bun.file(authFilePath).text()).resolves.toBe("invalid json");
     });
 
-    it("reports the authentication file path when the JSON is invalid", async () => {
+    it("rejects legacy credentials that are not strings", async () => {
+        installMemoryAuthStore();
         const authFilePath = await setTemporaryDataDirectory();
-        await Bun.write(authFilePath, "invalid json");
+        await Bun.write(authFilePath, JSON.stringify({ atcoder: { revelSession: 42 } }));
 
         await expect(readAuth()).rejects.toThrow(
-            `Failed to parse authentication file "${authFilePath}".`,
+            'Saved credential "revelSession" for atcoder must be a string.',
         );
+        await expect(Bun.file(authFilePath).exists()).resolves.toBe(true);
     });
 
-    it("writes credentials atomically without leaving a temporary file", async () => {
+    it("falls back to the encrypted file store when the OS credential store fails", async () => {
         const authFilePath = await setTemporaryDataDirectory();
+        const failingStore: AuthStore = {
+            kind: "os",
+            load: async () => {
+                throw new Error("keyring unavailable");
+            },
+            set: async () => {
+                throw new Error("keyring unavailable");
+            },
+            remove: async () => {
+                throw new Error("keyring unavailable");
+            },
+            removeAll: async () => {
+                throw new Error("keyring unavailable");
+            },
+        };
+        setAuthStoreForTesting(failingStore);
 
         await saveAuth("atcoder", { revelSession: "session" });
 
-        expect(await Bun.file(`${authFilePath}.tmp`).exists()).toBe(false);
-        await expect(Bun.file(authFilePath).text()).resolves.toBe(
-            `${JSON.stringify({ atcoder: { revelSession: "session" } }, null, 2)}\n`,
+        const encryptedPath = `${authFilePath.slice(0, -"auth.json".length)}auth.enc`;
+        expect(await Bun.file(encryptedPath).exists()).toBe(true);
+        await expect(readAuth()).resolves.toEqual({ atcoder: { revelSession: "session" } });
+        expect(await Bun.file(authFilePath).exists()).toBe(false);
+    });
+
+    it("migrates the legacy file into the encrypted file store when the OS store fails", async () => {
+        const authFilePath = await setTemporaryDataDirectory();
+        await Bun.write(
+            authFilePath,
+            JSON.stringify({ atcoder: { revelSession: "legacy-session" } }),
         );
+        const failingStore: AuthStore = {
+            kind: "os",
+            load: async () => {
+                throw new Error("keyring unavailable");
+            },
+            set: async () => {
+                throw new Error("keyring unavailable");
+            },
+            remove: async () => {
+                throw new Error("keyring unavailable");
+            },
+            removeAll: async () => {
+                throw new Error("keyring unavailable");
+            },
+        };
+        setAuthStoreForTesting(failingStore);
+
+        await expect(readAuth()).resolves.toEqual({
+            atcoder: { revelSession: "legacy-session" },
+        });
+        expect(await Bun.file(authFilePath).exists()).toBe(false);
+        await expect(readAuth()).resolves.toEqual({
+            atcoder: { revelSession: "legacy-session" },
+        });
     });
 });

@@ -4,7 +4,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import "./helpers/mock-auth-paths";
-
 import {
     getShareOjAccessToken,
     getShareOjAuth,
@@ -13,6 +12,8 @@ import {
     parseShareOjLoginMethod,
 } from "@/feature/login/shareoj";
 import { readAuth, replaceAuth } from "@/lib/auth";
+
+import { installMemoryAuthStore } from "./helpers/mock-auth-store";
 
 const originalLocalAppData = process.env.LOCALAPPDATA;
 let dataRoot: string | undefined;
@@ -31,6 +32,7 @@ afterEach(async () => {
 });
 
 async function setTemporaryDataDirectory(): Promise<void> {
+    installMemoryAuthStore();
     dataRoot = await mkdtemp(join(tmpdir(), "neoj-login-shareoj-test-"));
     process.env.LOCALAPPDATA = dataRoot;
 }

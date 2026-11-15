@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import "./helpers/mock-auth-paths";
+import { installMemoryAuthStore } from "./helpers/mock-auth-store";
 
 const { readAuth, saveAuth } = await import("@/lib/auth");
 
@@ -38,6 +39,7 @@ function jsonResponse(value: unknown, status = 200): Response {
 }
 
 async function setupDirectories(): Promise<{ home: string; data: string }> {
+    installMemoryAuthStore();
     testRoot = await mkdtemp(join(tmpdir(), "neoj-login-yukicoder-test-"));
     const home = join(testRoot, "home");
     const data = join(testRoot, "data");
