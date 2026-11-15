@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { loadConfig, mergeConfig } from "@/lib/util/config";
+import { loadConfig, mergeConfig } from "@/lib/project/config";
 
 const originalCwd = process.cwd();
 const originalUserProfile = process.env.USERPROFILE;

@@ -11,7 +11,7 @@ import {
     listProblemStashes,
     saveCurrentProblemStash,
 } from "@/feature/stash";
-import type { Config } from "@/lib/util/config";
+import type { Config } from "@/lib/project/config";
 import {
     applyStash,
     clearStashes,
@@ -22,7 +22,7 @@ import {
     listStashes,
     parseStashId,
     saveStash,
-} from "@/lib/util/stash";
+} from "@/lib/project/stash";
 
 let testRoot: string | undefined;
 const originalCwd = process.cwd();

@@ -14,7 +14,7 @@ import {
 import { parseYukicoderProblemUrl, YukicoderClient } from "@neoj/api/yukicoder";
 
 import { getAtCoderSession } from "@/feature/login/atcoder";
-import { readAuth } from "@/lib/util/auth";
+import { readAuth } from "@/lib/auth";
 
 export interface ProblemSource {
     name: string;

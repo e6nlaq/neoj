@@ -6,7 +6,7 @@ import {
     warnIfErrorIgnored,
     type SubmitAfterTestInvocation,
 } from "@/feature/test";
-import type { Config } from "@/lib/util/config";
+import type { Config } from "@/lib/project/config";
 
 describe("maybeSubmitAfterTests", () => {
     const invocation = {

@@ -47,7 +47,7 @@ jobs:
             - name: Verify generated template asset list is up to date
               run: |
                   bun run template-assets
-                  git diff --exit-code -- src/lib/util/template-assets.ts
+                  git diff --exit-code -- src/lib/project/template-assets.ts
 
     test:
         name: Test (${{ matrix.os }})

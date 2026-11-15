@@ -4,16 +4,6 @@ import { mkdir, readFile, readdir, realpath, rm, stat } from "node:fs/promises";
 import { arch, availableParallelism, platform } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
-import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
-import { getBuildCacheDirectory } from "@/lib/util/build-cache";
-import {
-    runCommand,
-    runInteractiveCommand,
-    type CommandResult,
-    type InteractiveLine,
-} from "@/lib/util/command-runner";
-import type { Config, ShowStderrMode } from "@/lib/util/config";
-import { hasErrorCode } from "@/lib/util/errors";
 import {
     compareOutput,
     formatComparison,
@@ -21,10 +11,20 @@ import {
     type CaseVerdict,
     type ComparisonOptions,
     type ComparisonResult,
-} from "@/lib/util/judge";
+} from "@/lib/judge/judge";
+import { getBuildCacheDirectory } from "@/lib/project/build-cache";
+import type { Config, ShowStderrMode } from "@/lib/project/config";
+import { resolveTestcaseDirectory } from "@/lib/project/testcase";
+import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
+import {
+    runCommand,
+    runInteractiveCommand,
+    type CommandResult,
+    type InteractiveLine,
+} from "@/lib/util/command-runner";
+import { hasErrorCode } from "@/lib/util/errors";
 import { maxValue } from "@/lib/util/numbers";
 import { createProgressBar } from "@/lib/util/progress";
-import { resolveTestcaseDirectory } from "@/lib/util/testcase";
 
 const executableBaseName = "a";
 const compileTimeoutMs = 10 * 60 * 1000;

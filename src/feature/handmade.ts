@@ -3,7 +3,7 @@ import { createInterface } from "node:readline/promises";
 import { Command } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
-import { loadConfig } from "@/lib/util/config";
+import { loadConfig } from "@/lib/project/config";
 import {
     findNextHandmadeTarget,
     formatHandmadeContents,
@@ -12,9 +12,9 @@ import {
     saveHandmadeCase,
     type HandmadePrompt,
     type HandmadeTarget,
-} from "@/lib/util/handmade";
-import { requireInitializedProject } from "@/lib/util/project";
-import { resolveTestcaseDirectory } from "@/lib/util/testcase";
+} from "@/lib/project/handmade";
+import { requireInitializedProject } from "@/lib/project/project";
+import { resolveTestcaseDirectory } from "@/lib/project/testcase";
 
 export interface RunHandmadeOptions {
     projectRoot: string;

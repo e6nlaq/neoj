@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { USER_AGENT } from "@neoj/api";
 import * as v from "valibot";
 
-import type { Config } from "@/lib/util/config";
+import type { Config } from "@/lib/project/config";
 import {
     defaultUpdateIntervalSeconds,
     fetchLatestVersionFromRegistry,
@@ -14,7 +14,7 @@ import {
     isUpdateNotificationSuppressed,
     isNewerVersion,
     type UpdateCheckCache,
-} from "@/lib/util/update";
+} from "@/lib/update";
 
 import { version as currentVersion } from "../package.json";
 
@@ -307,7 +307,7 @@ describe("getPendingUpdateNotification", () => {
 
 describe("config schema", () => {
     it("applies the update defaults", async () => {
-        const { configSchema } = await import("@/lib/util/config");
+        const { configSchema } = await import("@/lib/project/config");
 
         const parsed = v.parse(configSchema, {});
         expect(parsed.update).toEqual({ enabled: true, interval: defaultUpdateIntervalSeconds });

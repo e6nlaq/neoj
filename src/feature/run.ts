@@ -1,10 +1,10 @@
 import { Command } from "@commander-js/extra-typings";
 import { consola, createConsola, LogLevels } from "consola";
 
-import { loadConfig } from "@/lib/util/config";
-import { requireInitializedProject } from "@/lib/util/project";
-import { runProgram, splitRunArguments } from "@/lib/util/run-runner";
-import { buildSolution, cleanupBuild } from "@/lib/util/test-runner";
+import { buildSolution, cleanupBuild } from "@/lib/judge/test-runner";
+import { loadConfig } from "@/lib/project/config";
+import { requireInitializedProject } from "@/lib/project/project";
+import { runProgram, splitRunArguments } from "@/lib/run-runner";
 
 export interface RunSolutionOptions {
     source?: string;

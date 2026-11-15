@@ -3,7 +3,7 @@
 import { consola, createConsola } from "consola";
 
 import { createProgram } from "@/feature/program";
-import { getPendingUpdateNotification, isUpdateNotificationSuppressed } from "@/lib/util/update";
+import { getPendingUpdateNotification, isUpdateNotificationSuppressed } from "@/lib/update";
 
 if (typeof Bun === "undefined") {
     consola.error("Please run this script with bun.");

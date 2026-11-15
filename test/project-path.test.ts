@@ -7,7 +7,7 @@ import {
     assertDirectoriesDoNotOverlap,
     isWithin,
     resolveProjectDirectory,
-} from "@/lib/util/project-path";
+} from "@/lib/project/project-path";
 
 let testRoot: string | undefined;
 

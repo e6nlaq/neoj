@@ -3,9 +3,9 @@ import { dirname, resolve } from "node:path";
 import { Command } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
-import { findProjectConfig } from "@/lib/util/project";
-import { copyTemplateFiles } from "@/lib/util/template";
-import { templateFiles } from "@/lib/util/template-assets";
+import { findProjectConfig } from "@/lib/project/project";
+import { copyTemplateFiles } from "@/lib/project/template";
+import { templateFiles } from "@/lib/project/template-assets";
 
 export function createInitCommand(): Command {
     return new Command("init")

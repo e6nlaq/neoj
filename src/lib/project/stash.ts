@@ -15,11 +15,11 @@ import { basename, dirname, join, resolve } from "node:path";
 import type { ProblemKey } from "@neoj/api/problem";
 import * as v from "valibot";
 
-import type { Config } from "@/lib/util/config";
+import type { Config } from "@/lib/project/config";
+import { assertDirectoriesDoNotOverlap, resolveProjectDirectory } from "@/lib/project/project-path";
 import { commitStagedDirectory } from "@/lib/util/directory-replace";
 import { snapshotDirectories } from "@/lib/util/directory-snapshot";
 import { hasErrorCode } from "@/lib/util/errors";
-import { assertDirectoriesDoNotOverlap, resolveProjectDirectory } from "@/lib/util/project-path";
 
 export const stashSlots = ["src", "testcase"] as const;
 

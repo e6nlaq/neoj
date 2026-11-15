@@ -17,10 +17,10 @@ import {
     waitBeforeSubmit,
     type SubmissionTarget,
 } from "@/feature/submit";
+import type { TestLanguage } from "@/lib/judge/test-runner";
+import type { Config } from "@/lib/project/config";
+import type { ProblemMetadata } from "@/lib/project/problem-metadata";
 import { createAnsiStyles } from "@/lib/util/ansi";
-import type { Config } from "@/lib/util/config";
-import type { ProblemMetadata } from "@/lib/util/problem-metadata";
-import type { TestLanguage } from "@/lib/util/test-runner";
 
 const originalCwd = process.cwd();
 let testRoot: string | undefined;
@@ -939,7 +939,7 @@ describe("runSubmit", () => {
             { preconnect: originalFetch.preconnect },
         ) as typeof fetch;
         try {
-            const { saveAuth } = await import("@/lib/util/auth");
+            const { saveAuth } = await import("@/lib/auth");
             await saveAuth("shareoj", {
                 method: "password",
                 accessToken: "tok",

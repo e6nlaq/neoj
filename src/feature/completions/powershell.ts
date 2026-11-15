@@ -5,7 +5,7 @@ import {
     flattenCommands,
     type CompletionCandidate,
     type CompletionModel,
-} from "@/lib/util/completion";
+} from "@/lib/completion";
 
 function psQuote(value: string): string {
     return `'${value.replaceAll("'", "''")}'`;

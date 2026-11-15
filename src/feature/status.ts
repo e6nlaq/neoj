@@ -4,7 +4,7 @@ import { Command } from "@commander-js/extra-typings";
 import { consola } from "consola";
 
 import { platforms } from "@/feature/platforms";
-import { readAuth } from "@/lib/util/auth";
+import { readAuth } from "@/lib/auth";
 
 export interface PlatformLoginStatus {
     platform: string;

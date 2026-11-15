@@ -1,7 +1,7 @@
 import { describe, expect, it } from "bun:test";
 
+import { compareOutput, displayWidth, formatComparison, formatLinesTable } from "@/lib/judge/judge";
 import { createAnsiStyles } from "@/lib/util/ansi";
-import { compareOutput, displayWidth, formatComparison, formatLinesTable } from "@/lib/util/judge";
 
 const strict = { ignoreTrailingSpace: false, ignoreTrailingNewline: false };
 const plain = createAnsiStyles(false);
@@ -225,10 +225,11 @@ describe("formatComparison", () => {
             lineNumbers: false,
         });
 
-        expect(colored.filter((line) => line.includes("\u001B[31m"))).toHaveLength(1);
-        expect(colored.find((line) => line.includes("\u001B[31m"))).toContain("b");
+        // The correct output stays green; the program's own output turns red.
         expect(colored.filter((line) => line.includes("\u001B[32m"))).toHaveLength(1);
-        expect(colored.find((line) => line.includes("\u001B[32m"))).toContain("x");
+        expect(colored.find((line) => line.includes("\u001B[32m"))).toContain("b");
+        expect(colored.filter((line) => line.includes("\u001B[31m"))).toHaveLength(1);
+        expect(colored.find((line) => line.includes("\u001B[31m"))).toContain("x");
         expect(colored[1]).not.toContain("\u001B[");
     });
 

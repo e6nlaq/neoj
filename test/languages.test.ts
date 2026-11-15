@@ -13,7 +13,7 @@ import {
     type LanguageTarget,
     type PlatformLanguage,
 } from "@/feature/languages";
-import type { Config } from "@/lib/util/config";
+import type { Config } from "@/lib/project/config";
 
 let testRoot: string | undefined;
 

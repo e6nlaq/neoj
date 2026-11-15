@@ -1,9 +1,9 @@
 import { copyFile, lstat, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 
+import { assertDirectoriesDoNotOverlap, resolveProjectDirectory } from "@/lib/project/project-path";
 import { commitStagedDirectory } from "@/lib/util/directory-replace";
 import { hasErrorCode } from "@/lib/util/errors";
-import { assertDirectoriesDoNotOverlap, resolveProjectDirectory } from "@/lib/util/project-path";
 
 export type TemplateMode = "overlay" | "replace";
 

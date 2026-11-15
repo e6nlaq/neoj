@@ -1,6 +1,6 @@
 import { toJsonSchema } from "@valibot/to-json-schema";
 
-import { configSchema } from "@/lib/util/config";
+import { configSchema } from "@/lib/project/config";
 
 const schemaId = "https://raw.githubusercontent.com/e6nlaq/neoj/main/schema/neoj.schema.json";
 

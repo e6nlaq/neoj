@@ -12,7 +12,7 @@ import {
     isShareOjLoggedIn,
     parseShareOjLoginMethod,
 } from "@/feature/login/shareoj";
-import { readAuth, replaceAuth } from "@/lib/util/auth";
+import { readAuth, replaceAuth } from "@/lib/auth";
 
 const originalLocalAppData = process.env.LOCALAPPDATA;
 let dataRoot: string | undefined;

@@ -1,4 +1,4 @@
-import { formatBytes } from "./bytes";
+import { formatBytes } from "@/lib/util/bytes";
 
 /**
  * The size of one source file each platform accepts, in UTF-8 bytes.

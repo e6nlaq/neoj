@@ -9,7 +9,7 @@ import {
     parseProblemMetadata,
     readProblemMetadata,
     saveProblemMetadata,
-} from "@/lib/util/problem-metadata";
+} from "@/lib/project/problem-metadata";
 
 let testRoot: string | undefined;
 

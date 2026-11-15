@@ -23,19 +23,7 @@ import { getAtCoderSession, loginToAtCoder } from "@/feature/login/atcoder";
 import { getShareOjAccessToken, loginToShareOj } from "@/feature/login/shareoj";
 import { getYukicoderAuth, isYukicoderLoggedIn, loginToYukicoder } from "@/feature/login/yukicoder";
 import { findProblemSource } from "@/feature/problem-sources";
-import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
-import { readAuth } from "@/lib/util/auth";
-import { openInBrowser } from "@/lib/util/browser";
-import { formatBytes } from "@/lib/util/bytes";
-import { copyToClipboard } from "@/lib/util/clipboard";
-import { runCommand } from "@/lib/util/command-runner";
-import { loadConfig, type Config, type SubmitClipMode } from "@/lib/util/config";
-import { hasErrorCode } from "@/lib/util/errors";
-import type { ProblemMetadata } from "@/lib/util/problem-metadata";
-import { readProblemMetadata } from "@/lib/util/problem-metadata";
-import type { ProgressStream } from "@/lib/util/progress";
-import { requireInitializedProject } from "@/lib/util/project";
-import { formatSourceLimit, sourceLimitBytes } from "@/lib/util/source-limit";
+import { readAuth } from "@/lib/auth";
 import {
     detectLanguage,
     expandTokens,
@@ -43,7 +31,19 @@ import {
     resolveTestSource,
     type ResolvedSource,
     type TestLanguage,
-} from "@/lib/util/test-runner";
+} from "@/lib/judge/test-runner";
+import { loadConfig, type Config, type SubmitClipMode } from "@/lib/project/config";
+import type { ProblemMetadata } from "@/lib/project/problem-metadata";
+import { readProblemMetadata } from "@/lib/project/problem-metadata";
+import { requireInitializedProject } from "@/lib/project/project";
+import { formatSourceLimit, sourceLimitBytes } from "@/lib/source-limit";
+import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
+import { openInBrowser } from "@/lib/util/browser";
+import { formatBytes } from "@/lib/util/bytes";
+import { copyToClipboard } from "@/lib/util/clipboard";
+import { runCommand } from "@/lib/util/command-runner";
+import { hasErrorCode } from "@/lib/util/errors";
+import type { ProgressStream } from "@/lib/util/progress";
 
 export type SubmitPlatform = "atcoder" | "yukicoder" | "shareoj" | "codeforces";
 

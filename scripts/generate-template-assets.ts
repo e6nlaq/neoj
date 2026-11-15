@@ -51,7 +51,7 @@ export async function generateTemplateAssets(
         "",
         ...imports,
         "",
-        'import type { TemplateFile } from "@/lib/util/template";',
+        'import type { TemplateFile } from "@/lib/project/template";',
         "",
         "/** Static imports let Bun bundle these files for npm and standalone CLI builds. */",
         "export const templateFiles: readonly TemplateFile[] = [",

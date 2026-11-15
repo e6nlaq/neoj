@@ -4,7 +4,7 @@ import {
     type CompletionCommand,
     type CompletionModel,
     type CompletionOption,
-} from "@/lib/util/completion";
+} from "@/lib/completion";
 
 function fishQuote(value: string): string {
     return `'${value.replaceAll("\\", "\\\\").replaceAll("'", "\\'")}'`;

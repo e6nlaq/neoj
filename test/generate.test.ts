@@ -4,13 +4,13 @@ import { mkdir, mkdtemp, readdir, readFile, realpath, rm } from "node:fs/promise
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { Config } from "@/lib/util/config";
+import type { Config } from "@/lib/project/config";
 import {
     findFreeCaseSpecs,
     GenerateInterruptedError,
     requireGenerateSettings,
     runGenerate,
-} from "@/lib/util/generate";
+} from "@/lib/project/generate";
 
 let testRoot: string | undefined;
 

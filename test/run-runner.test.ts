@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, readdir, realpath, rm, writeFile } from "node
 import { dirname, join } from "node:path";
 
 import { runSolution } from "@/feature/run";
-import { runProgram, splitRunArguments } from "@/lib/util/run-runner";
+import { runProgram, splitRunArguments } from "@/lib/run-runner";
 
 const originalCwd = process.cwd();
 const originalUserProfile = process.env.USERPROFILE;

@@ -459,8 +459,8 @@ export function formatComparison(
             rows.push({
                 number: index + 1,
                 cells: [
-                    { text: expected ?? "", color: mismatched(index) ? "red" : undefined },
-                    { text: actual ?? "", color: mismatched(index) ? "green" : undefined },
+                    { text: expected ?? "", color: mismatched(index) ? "green" : undefined },
+                    { text: actual ?? "", color: mismatched(index) ? "red" : undefined },
                 ],
             });
         }
@@ -468,11 +468,11 @@ export function formatComparison(
     } else {
         const expectedRows: TableRow[] = result.expectedLines.map((text, index) => ({
             number: index + 1,
-            cells: [{ text, color: mismatched(index) ? "red" : undefined }],
+            cells: [{ text, color: mismatched(index) ? "green" : undefined }],
         }));
         const actualRows: TableRow[] = result.actualLines.map((text, index) => ({
             number: index + 1,
-            cells: [{ text, color: mismatched(index) ? "green" : undefined }],
+            cells: [{ text, color: mismatched(index) ? "red" : undefined }],
         }));
         lines.push(...formatTable(["Expected"], expectedRows, styles, lineNumbers));
         lines.push("");

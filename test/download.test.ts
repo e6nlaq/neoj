@@ -7,9 +7,9 @@ import type { AtCoderProblem } from "@neoj/api/atcoder";
 import { AtCoderProblemRequestError } from "@neoj/api/atcoder";
 
 import { downloadProblem, formatSamples, getProblemWithLoginHint } from "@/feature/download";
+import { readProblemMetadata } from "@/lib/project/problem-metadata";
+import { downloadSamples } from "@/lib/project/testcase";
 import { createAnsiStyles } from "@/lib/util/ansi";
-import { readProblemMetadata } from "@/lib/util/problem-metadata";
-import { downloadSamples } from "@/lib/util/testcase";
 
 let testRoot: string | undefined;
 const originalCwd = process.cwd();
