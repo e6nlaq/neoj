@@ -239,7 +239,9 @@ jobs:
                   # The notices are generated once in the binaries job and
                   # uploaded inside the release/ artifact directory.
                   test -f binaries/release/THIRD_PARTY_NOTICES.txt
-                  cp binaries/release/THIRD_PARTY_NOTICES.txt packages/cli-*/
+                  for platform in linux-x64 linux-arm64 darwin-x64 darwin-arm64 win32-x64; do
+                      cp binaries/release/THIRD_PARTY_NOTICES.txt "packages/cli-$platform/"
+                  done
                   cp binaries/release/THIRD_PARTY_NOTICES.txt .
                   for package in . packages/cli-linux-x64 packages/cli-linux-arm64 packages/cli-darwin-x64 packages/cli-darwin-arm64 packages/cli-win32-x64; do
                       test -f "$package/THIRD_PARTY_NOTICES.txt"
