@@ -668,10 +668,21 @@ export const configSchema = v.pipe(
                         ),
                         true,
                     ),
+                    expire_days: v.optional(
+                        v.pipe(
+                            v.number(),
+                            v.integer(),
+                            v.minValue(0),
+                            v.description(
+                                "Treat stashes saved more than this many days ago as expired: skip and delete them. 0 disables expiration.",
+                            ),
+                        ),
+                        0,
+                    ),
                 }),
                 v.description("How neoj keeps per-problem work in sync with downloads."),
             ),
-            { auto_stash: false, auto_apply: false, force: true },
+            { auto_stash: false, auto_apply: false, force: true, expire_days: 0 },
         ),
         template: v.optional(
             v.pipe(

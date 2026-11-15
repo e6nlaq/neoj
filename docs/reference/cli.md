@@ -196,7 +196,8 @@ Every subcommand except `list` and `clear` works on the problem recorded in
 saved files and removes other files inside the saved directories, so the
 directories match the stash exactly. `drop <id>` (for example
 `neoj stash drop atcoder/abc300_a`) removes a stash without a recorded problem;
-the id is the `platform/slug` shown by `list`. See
+the id is the `platform/slug` shown by `list`. With `stash.expire_days`, expired
+stashes are removed instead of restored and `list` reports the removals. See
 [Stash and restore work per problem](../how-to/stash-work.md).
 
 ### `reset`

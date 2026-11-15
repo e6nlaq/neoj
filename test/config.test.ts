@@ -115,7 +115,7 @@ describe("loadConfig", () => {
             languages: {},
             update: { enabled: true, interval: 259_200 },
             download: { show_sample: false },
-            stash: { auto_stash: false, auto_apply: false, force: true },
+            stash: { auto_stash: false, auto_apply: false, force: true, expire_days: 0 },
             template: { enable: false, exclude: [], mode: "overlay" },
         });
     });
@@ -242,7 +242,7 @@ describe("loadConfig", () => {
             languages: {},
             update: { enabled: true, interval: 259_200 },
             download: { show_sample: false },
-            stash: { auto_stash: false, auto_apply: false, force: true },
+            stash: { auto_stash: false, auto_apply: false, force: true, expire_days: 0 },
             template: { enable: false, exclude: [], mode: "overlay" },
         });
     });
@@ -253,7 +253,7 @@ describe("loadConfig", () => {
         await Bun.write(join(project, "neoj.toml"), "[stash]\nauto_apply = true");
 
         await expect(loadConfig()).resolves.toMatchObject({
-            stash: { auto_stash: true, auto_apply: true, force: true },
+            stash: { auto_stash: true, auto_apply: true, force: true, expire_days: 0 },
         });
     });
 
