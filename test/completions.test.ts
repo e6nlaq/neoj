@@ -29,6 +29,7 @@ describe("buildCompletionModel", () => {
             "logout",
             "status",
             "stash",
+            "reset",
             "test",
             "run",
             "submit",

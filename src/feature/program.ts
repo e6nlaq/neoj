@@ -11,6 +11,7 @@ import { createLoginCommand } from "@/feature/login";
 import { createLogoutCommand } from "@/feature/logout";
 import { createOpenCommand } from "@/feature/open";
 import { createPruneCommand } from "@/feature/prune";
+import { createResetCommand } from "@/feature/reset";
 import { createRunCommand } from "@/feature/run";
 import { createStashCommand } from "@/feature/stash";
 import { createStatusCommand } from "@/feature/status";
@@ -36,6 +37,7 @@ export function createProgram(): Command {
     program.addCommand(createLogoutCommand());
     program.addCommand(createStatusCommand());
     program.addCommand(createStashCommand());
+    program.addCommand(createResetCommand());
     program.addCommand(createTestCommand());
     program.addCommand(createRunCommand());
     program.addCommand(createSubmitCommand());

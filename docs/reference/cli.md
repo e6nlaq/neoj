@@ -13,6 +13,7 @@
 | `neoj logout [--service <name...>]`                        | Log out of the given platforms, or of every platform when no name is given.                                                             |
 | `neoj status [--offline]`                                  | Show the login status of every supported platform.                                                                                      |
 | `neoj stash [save\|list\|apply\|pop\|drop\|clear]`         | Save and restore the working files of the current problem.                                                                              |
+| `neoj reset [-a\|-t]`                                      | Restore `src` from the template, and optionally re-download the test cases.                                                             |
 | `neoj test [source]` (alias: `neoj t`)                     | Build the solution and run it against the sample tests.                                                                                 |
 | `neoj run [source] [args...]` (alias: `neoj r`)            | Build the solution and run it without tests, forwarding `args`.                                                                         |
 | `neoj submit [source]` (aliases: `neoj s`, `neoj submits`) | Submit the solution for the current problem.                                                                                            |
@@ -197,6 +198,25 @@ directories match the stash exactly. `drop <id>` (for example
 `neoj stash drop atcoder/abc300_a`) removes a stash without a recorded problem;
 the id is the `platform/slug` shown by `list`. See
 [Stash and restore work per problem](../how-to/stash-work.md).
+
+### `reset`
+
+Restores the workspace to its initial state. Without flags, `src` is restored
+from `template.folder` using the configured `template.mode`. When the template
+is disabled (`template.enable = false`), the command fails when `src` is the
+only target and skips it with a warning otherwise.
+
+| Option             | Description                                   |
+| ------------------ | --------------------------------------------- |
+| `-a`, `--all`      | Restore `src` and re-download the test cases. |
+| `-t`, `--testcase` | Re-download the test cases only.              |
+| `--yes`            | Skip the confirmation prompt.                 |
+
+With `--testcase` or `--all`, the test-case directory is replaced with the
+samples of the problem recorded in `.neoj/problem.json`, so run
+`neoj download <url>` first. Handmade test cases in the same directory are
+deleted, and the confirmation prompt names them when they exist. A failure
+after the first write restores the previous files.
 
 ### `test`
 
