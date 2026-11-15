@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "bun:test";
+import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -12,6 +12,14 @@ const { readAuth, saveAuth, replaceAuth, removeAuth, clearAuth, setAuthStoreForT
 const originalLocalAppData = process.env.LOCALAPPDATA;
 const originalBackend = process.env.NEOJ_SECRETS_BACKEND;
 let dataRoot: string | undefined;
+
+beforeEach(() => {
+    // Test files share one process and module registry, so a memory store
+    // injected by a previously run file can leak into the first test here.
+    // Reset the injection before every test: this file exercises the real
+    // backends through NEOJ_SECRETS_BACKEND.
+    setAuthStoreForTesting(undefined);
+});
 
 afterEach(async () => {
     setAuthStoreForTesting(undefined);
