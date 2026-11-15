@@ -93,7 +93,7 @@ function createConfig(options: {
         languages: options.languages ?? {},
         update: { enabled: true, interval: 259_200 },
         download: { show_sample: false },
-        stash: { auto_stash: false, auto_apply: false, force: true },
+        stash: { auto_stash: false, auto_apply: false, force: true, expire_days: 0 },
         template: { enable: false, exclude: [], mode: "overlay" },
     };
 }

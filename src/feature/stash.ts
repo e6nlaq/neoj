@@ -15,6 +15,7 @@ import {
     listStashes,
     parseStashId,
     saveStash,
+    sweepExpiredStashes,
     type ApplyStashResult,
     type SaveStashResult,
     type StashEntry,
@@ -30,6 +31,8 @@ interface CurrentProblem {
 export interface StashListResult {
     entries: StashEntry[];
     current?: ProblemKey;
+    /** How many expired stashes the sweep removed before listing. */
+    expired: number;
 }
 
 export interface PopStashResult {
@@ -63,18 +66,25 @@ export async function saveCurrentProblemStash(force: boolean): Promise<SaveStash
         current.projectRoot,
         current.config,
         { url: current.url, key: current.key },
-        { force: force || current.config.stash.force },
+        {
+            force: force || current.config.stash.force,
+            expireDays: current.config.stash.expire_days,
+        },
     );
 }
 
 export async function applyCurrentProblemStash(): Promise<ApplyStashResult> {
     const current = await loadCurrentProblem();
-    return applyStash(current.projectRoot, current.config, current.key);
+    return applyStash(current.projectRoot, current.config, current.key, {
+        expireDays: current.config.stash.expire_days,
+    });
 }
 
 export async function popCurrentProblemStash(): Promise<PopStashResult> {
     const current = await loadCurrentProblem();
-    const applied = await applyStash(current.projectRoot, current.config, current.key);
+    const applied = await applyStash(current.projectRoot, current.config, current.key, {
+        expireDays: current.config.stash.expire_days,
+    });
     const dropped = await dropStash(current.projectRoot, applied.key);
     return { applied, dropped };
 }
@@ -115,6 +125,7 @@ export async function clearProblemStashes(force: boolean): Promise<number> {
 
 export async function listProblemStashes(): Promise<StashListResult> {
     const projectRoot = await requireInitializedProject(process.cwd());
+    const config = await loadConfig();
     const metadata = await readProblemMetadata(projectRoot);
 
     let current: ProblemKey | undefined;
@@ -126,7 +137,10 @@ export async function listProblemStashes(): Promise<StashListResult> {
         }
     }
 
-    return { entries: await listStashes(projectRoot), current };
+    const expired = await sweepExpiredStashes(projectRoot, {
+        expireDays: config.stash.expire_days,
+    });
+    return { entries: await listStashes(projectRoot), current, expired };
 }
 
 function reportSave(result: SaveStashResult): void {
@@ -179,9 +193,16 @@ export function createStashCommand(): Command {
     command.addCommand(
         new Command("list").description("List saved stashes").action(() =>
             run(async () => {
-                const { entries, current } = await listProblemStashes();
+                const { entries, current, expired } = await listProblemStashes();
                 if (entries.length === 0) {
                     consola.info("No stashes.");
+                }
+                if (expired > 0) {
+                    consola.info(
+                        `Expired ${expired} stash(es) and removed ${expired === 1 ? "it" : "them"}.`,
+                    );
+                }
+                if (entries.length === 0) {
                     return;
                 }
 

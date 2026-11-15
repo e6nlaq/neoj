@@ -40,6 +40,25 @@ an error when no problem is recorded or when the current problem has no stash.
 and can be disabled with `stash.force = false`, which makes `save` fail until you
 pass `--force`.
 
+## Expiration
+
+Set `stash.expire_days` to remove old stashes automatically:
+
+```toml
+[stash]
+expire_days = 14
+```
+
+A stash saved more than 14 days ago is then expired. Expired stashes are deleted
+whenever they are found: `stash list` removes them all and reports the count,
+`stash apply` and `stash pop` remove the current problem's one and report an
+error instead of restoring, and `neoj download` with `stash.auto_apply` removes
+it and skips the restore. This keeps `auto_apply` from restoring work you no
+longer want when you re-solve an old problem. Saving over an expired stash never
+requires `--force`, because the stash no longer counts as existing. Expiration
+uses the current setting and each stash's save time, so lowering
+`stash.expire_days` immediately expires older stashes.
+
 ## What is saved
 
 A snapshot contains:
@@ -84,6 +103,7 @@ and removed. The stash itself is kept until you run `pop`, `drop`, or `clear`.
 auto_stash = true
 auto_apply = true
 force = true
+expire_days = 14
 ```
 
 With both options enabled, `neoj download` behaves like this:
@@ -93,7 +113,8 @@ With both options enabled, `neoj download` behaves like this:
    previous problem's working files.
 3. Replace the test-case directory and, when the problem changed, apply the
    template.
-4. Restore the new problem's stash if it has one.
+4. Restore the new problem's stash if it has one; with `stash.expire_days`, an
+   expired stash is removed instead and the restore is skipped.
 
 Both options only run when the problem changes, so re-downloading the same
 problem never replaces fresh samples with an old snapshot. A failed fetch leaves

@@ -662,6 +662,22 @@ Allow `neoj stash save` to replace an existing stash of the same problem. When i
 is `false`, `save` fails until you pass `--force`. `stash.auto_stash` always
 refreshes the stash, and `neoj stash clear` always requires `--force`.
 
+### `stash.expire_days`
+
+| Type           | Default | Scope             |
+| -------------- | ------- | ----------------- |
+| integer (>= 0) | `0`     | global or project |
+
+Treat stashes saved more than this many days ago as expired. A `0` disables
+expiration. An expired stash is not restored: `stash list` removes expired
+stashes and reports how many were removed, `stash apply` and `stash pop` remove
+the expired stash and report an error instead of restoring it, and `neoj
+download` with `stash.auto_apply` removes it and skips the restore. Because
+`neoj stash save` treats an expired stash as if it did not exist, saving over
+one does not require `--force` even when `stash.force` is `false`. Expiration is
+always evaluated against the current setting, not the value stored at save
+time.
+
 ### `template.enable`
 
 | Type    | Default | Scope   |
@@ -807,6 +823,7 @@ show_sample = false
 auto_stash = false
 auto_apply = false
 force = true
+expire_days = 0
 
 [template]
 enable = false
