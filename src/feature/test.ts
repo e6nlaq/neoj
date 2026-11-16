@@ -132,7 +132,8 @@ export function createTestCommand(): Command<[string | undefined]> {
         .option("--no-parallel", "Run the test cases one at a time")
         .option("-t, --timeout <seconds>", "Time limit per test case", parsePositiveSeconds)
         .option("-m, --memory <MiB>", "Memory limit per test case", parsePositiveInteger)
-        .option("-f, --filter <name...>", "Only run the named test cases")
+        .option("-F, --filter <name...>", "Only run the named test cases")
+        .option("-f, --only-fail", "Only show the cases that did not pass")
         .option("-i, --interactive", "Judge with the interactor in [test.interactor]")
         .option("-j, --judge", "Judge with the checker in [test.judge]")
         .option(
@@ -173,6 +174,7 @@ export function createTestCommand(): Command<[string | undefined]> {
                     timeoutSeconds: options.timeout,
                     memoryMiB: options.memory,
                     filters: options.filter,
+                    onlyFail: options.onlyFail,
                     cache: options.cache,
                     errorExponent: options.error === true ? config.test.error : options.error,
                     interactive: options.interactive,

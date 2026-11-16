@@ -127,6 +127,20 @@ describe("buildCompletionModel", () => {
         expect(submit?.takesValue).toBe(false);
     });
 
+    it("keeps the --filter and --only-fail short flags apart on test", () => {
+        const entries = flattenCommands(createModel());
+        const test = entries.find((entry) => commandPathKey(entry.path) === "test");
+        const filter = test?.command.options.find((option) => option.flags.includes("--filter"));
+        const onlyFail = test?.command.options.find((option) =>
+            option.flags.includes("--only-fail"),
+        );
+
+        expect(filter?.flags).toEqual(["-F", "--filter"]);
+        expect(filter?.takesValue).toBe(true);
+        expect(onlyFail?.flags).toEqual(["-f", "--only-fail"]);
+        expect(onlyFail?.takesValue).toBe(false);
+    });
+
     it("attaches supported shell names to the completions argument", () => {
         const completions = createModel().commands.find(
             (command) => command.name === "completions",

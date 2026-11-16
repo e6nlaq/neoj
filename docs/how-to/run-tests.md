@@ -365,11 +365,22 @@ combined with it.
 ## Run selected cases
 
 ```bash
-neoj test -f sample-1 sample-3
+neoj test -F sample-1 sample-3
 ```
 
 The names are the file names without `.in`, and they must match exactly. Unknown
 names are reported with the available cases.
+
+## Show only the failing cases
+
+```bash
+neoj test -f
+```
+
+With `-f`/`--only-fail`, the lines of passing (`AC`) cases are not printed, so a
+long run reports only the failures and the unjudged cases. The progress bar and
+the final summary still count every case. Combining it with `-v`/`--verbose` has
+no visible effect on passing cases.
 
 ## Add a case by hand
 

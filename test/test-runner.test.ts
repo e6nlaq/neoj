@@ -800,6 +800,47 @@ describe("runTests", () => {
         expect(out.text()).not.toContain("Line │");
     });
 
+    it("prints only the cases that did not pass when onlyFail is on", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            filters: ["sample-1", "sample-2"],
+            onlyFail: true,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(result.exitCode).toBe(2);
+        expect(text).not.toContain("sample-1");
+        expect(text).not.toContain("AC");
+        expect(text).toContain("sample-2");
+        expect(text).toContain("WA (line 1)");
+        expect(text).toContain("2 case(s): 1 passed, 1 failed");
+    });
+
+    it("keeps the summary when every case passes under onlyFail", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            filters: ["sample-1"],
+            onlyFail: true,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(result.exitCode).toBe(0);
+        expect(text).not.toContain("sample-1");
+        expect(text).toContain("1 case(s): 1 passed, 0 failed");
+    });
+
     it("prints the input and output tables for a passing case when verbose", async () => {
         const projectRoot = await createRunnerProject();
         const out = createCapture();
