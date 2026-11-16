@@ -47,9 +47,10 @@ $ neoj generate
 ```
 
 Each run takes the next free case numbers in the test-case directory, so
-existing cases are never replaced. Cases are generated in parallel by default;
-a progress bar shows how many are done, plus an estimated remaining time once
-the first case finishes.
+existing cases are never replaced. The generator and the naive solution are
+compiled first, with a spinner naming the file being built. Cases are generated
+in parallel by default; a progress bar shows how many are done, plus an
+estimated remaining time once the first case finishes.
 
 - `-c 20` (`--count`) creates more cases per run. `generate.count` sets the
   default.

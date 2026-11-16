@@ -4,6 +4,8 @@ import { mkdir, readFile, readdir, realpath, rm, stat } from "node:fs/promises";
 import { arch, availableParallelism, platform } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
+import { createConsola, LogLevels } from "consola";
+
 import {
     compareOutput,
     formatComparison,
@@ -25,6 +27,7 @@ import {
 import { hasErrorCode } from "@/lib/util/errors";
 import { maxValue } from "@/lib/util/numbers";
 import { createProgressBar } from "@/lib/util/progress";
+import { createSpinnerSequence } from "@/lib/util/spinner";
 
 const executableBaseName = "a";
 const compileTimeoutMs = 10 * 60 * 1000;
@@ -1444,6 +1447,10 @@ export interface BuildSolutionOptions {
     onCompiled?: (line: string) => void;
     /** Receives the "reused the cached build" line, without a trailing newline. */
     onCached?: (line: string) => void;
+    /** Receives the "compiling" line before the compiler starts. */
+    onCompileStart?: (line: string) => void;
+    /** Called when the compiler exits, before any output or result line is shown. */
+    onCompileEnd?: () => void;
 }
 
 export interface BuiltSolution {
@@ -1558,11 +1565,17 @@ export async function buildSolution(options: BuildSolutionOptions): Promise<Buil
                 await mkdir(buildDirectory, { recursive: true });
                 buildDirectoryCreated = true;
 
-                const compiled = await runCommand({
-                    argv: compileTokens,
-                    cwd: projectRoot,
-                    timeoutMs: compileTimeoutMs,
-                });
+                options.onCompileStart?.(`Compiling ${resolved.relativePath} (${label})…`);
+                let compiled: CommandResult;
+                try {
+                    compiled = await runCommand({
+                        argv: compileTokens,
+                        cwd: projectRoot,
+                        timeoutMs: compileTimeoutMs,
+                    });
+                } finally {
+                    options.onCompileEnd?.();
+                }
                 if (compiled.timedOut || compiled.exitCode !== 0) {
                     if (compiled.stdout.trim() !== "") {
                         options.onCompilerOutput?.(compiled.stdout.trimEnd());
@@ -1628,6 +1641,10 @@ export interface BuildInteractorOptions {
     onCompilerOutput?: (chunk: string) => void;
     onCompiled?: (line: string) => void;
     onCached?: (line: string) => void;
+    /** Receives the "compiling" line before the compiler starts. */
+    onCompileStart?: (line: string) => void;
+    /** Called when the compiler exits, before any output or result line is shown. */
+    onCompileEnd?: () => void;
 }
 
 function requireInteractorSettings(config: Config): NonNullable<Config["test"]["interactor"]> {
@@ -1819,11 +1836,17 @@ async function buildAuxiliary(options: BuildAuxiliaryToolOptions): Promise<Built
                 await mkdir(buildDirectory, { recursive: true });
                 buildDirectoryCreated = true;
 
-                const compiled = await runCommand({
-                    argv: compileTokens,
-                    cwd: projectRoot,
-                    timeoutMs: compileTimeoutMs,
-                });
+                options.onCompileStart?.(`Compiling ${resolved.source.relativePath} (${label})…`);
+                let compiled: CommandResult;
+                try {
+                    compiled = await runCommand({
+                        argv: compileTokens,
+                        cwd: projectRoot,
+                        timeoutMs: compileTimeoutMs,
+                    });
+                } finally {
+                    options.onCompileEnd?.();
+                }
                 if (compiled.timedOut || compiled.exitCode !== 0) {
                     if (compiled.stdout.trim() !== "") {
                         options.onCompilerOutput?.(compiled.stdout.trimEnd());
@@ -1910,6 +1933,15 @@ export function buildJudge(options: BuildInteractorOptions): Promise<BuiltIntera
 export async function runTests(options: RunTestsOptions): Promise<RunTestsResult> {
     const stdout = options.stdout ?? process.stdout;
     const stderr = options.stderr ?? process.stderr;
+    // Compile results are neoj's own logs, so they go through consola on the
+    // same stream as the spinner and keep their check mark and spacing.
+    const logger = createConsola({
+        stdout: stderr as NodeJS.WriteStream,
+        stderr: stderr as NodeJS.WriteStream,
+        // Show informational logs even when NODE_ENV=test lowers the default.
+        level: LogLevels.info,
+        defaults: { level: LogLevels.info },
+    });
     const styles = createAnsiStyles(supportsColor(stdout));
     const columns =
         (stdout as { columns?: number }).columns === undefined
@@ -1940,6 +1972,14 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
           ? await discoverJudgeTestCases(testDirectory, options.filters ?? [])
           : await discoverTestCases(testDirectory, options.filters ?? []);
 
+    // Compile steps run one after another, so a single sequence reports the
+    // solution, the interactor, and the checker in turn.
+    const compileSpinner = createSpinnerSequence(stderr, options.progress ?? true);
+    const compileReport = {
+        onCompileStart: (line: string) => compileSpinner.start(line),
+        onCompileEnd: () => compileSpinner.end(),
+    };
+
     const built = await buildSolution({
         projectRoot,
         config: options.config,
@@ -1950,8 +1990,9 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         cache: options.cache,
         testDirectory,
         onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
-        onCompiled: (line) => stderr.write(`${line}\n`),
+        onCompiled: (line) => logger.success(line),
         onCached: options.verbose === true ? (line) => stderr.write(`${line}\n`) : undefined,
+        ...compileReport,
     });
     const language = built.language;
 
@@ -1986,9 +2027,10 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
                 cache: options.cache,
                 testDirectory,
                 onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
-                onCompiled: (line) => stderr.write(`${line}\n`),
+                onCompiled: (line) => logger.success(line),
                 onCached:
                     options.verbose === true ? (line) => stderr.write(`${line}\n`) : undefined,
+                ...compileReport,
             });
         }
         if (useJudge) {
@@ -1998,9 +2040,10 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
                 cache: options.cache,
                 testDirectory,
                 onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
-                onCompiled: (line) => stderr.write(`${line}\n`),
+                onCompiled: (line) => logger.success(line),
                 onCached:
                     options.verbose === true ? (line) => stderr.write(`${line}\n`) : undefined,
+                ...compileReport,
             });
         }
 

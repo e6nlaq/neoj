@@ -19,6 +19,8 @@ import { applyProjectTemplate } from "@/lib/project/template-apply";
 import { fetchSamples, writeSamples, type DownloadedSamples } from "@/lib/project/testcase";
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
 import { snapshotDirectories } from "@/lib/util/directory-snapshot";
+import type { ProgressStream } from "@/lib/util/progress";
+import { withSpinner } from "@/lib/util/spinner";
 
 export { getProblemWithLoginHint } from "@/feature/problem-sources";
 
@@ -63,7 +65,16 @@ function formatKey(key: { platform: string; slug: string }): string {
     return `${key.platform}/${key.slug}`;
 }
 
-export async function downloadProblem(url: string): Promise<void> {
+export interface DownloadProblemOptions {
+    /** Where the download spinner draws; defaults to standard error. */
+    stderr?: ProgressStream;
+}
+
+export async function downloadProblem(
+    url: string,
+    options: DownloadProblemOptions = {},
+): Promise<void> {
+    const stderr = options.stderr ?? process.stderr;
     const source = findProblemSource(url);
     const projectRoot = await requireInitializedProject(process.cwd());
     const config = await loadConfig();
@@ -79,14 +90,18 @@ export async function downloadProblem(url: string): Promise<void> {
     ]);
 
     const previous = await readProblemMetadata(projectRoot);
-    const fetched = await fetchSamples(
-        url,
-        projectRoot,
-        config.testcase,
-        {
-            getProblem: (problemUrl) => source.fetchProblem(problemUrl),
-        },
-        config.src,
+    const fetched = await withSpinner(
+        { text: `Downloading the problem from ${source.displayName}…`, stream: stderr },
+        () =>
+            fetchSamples(
+                url,
+                projectRoot,
+                config.testcase,
+                {
+                    getProblem: (problemUrl) => source.fetchProblem(problemUrl),
+                },
+                config.src,
+            ),
     );
 
     const currentKey = fetched.problem.key ?? deriveProblemKey(fetched.problem.url);

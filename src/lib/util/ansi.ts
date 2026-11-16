@@ -7,6 +7,7 @@ export interface AnsiStyles {
     green(text: string): string;
     yellow(text: string): string;
     cyan(text: string): string;
+    blue(text: string): string;
 }
 
 const escape = "\u001B[";
@@ -52,6 +53,7 @@ export function createAnsiStyles(enabled: boolean): AnsiStyles {
         green: (text) => wrap(enabled, [32], text),
         yellow: (text) => wrap(enabled, [33], text),
         cyan: (text) => wrap(enabled, [36], text),
+        blue: (text) => wrap(enabled, [34], text),
     };
 }
 

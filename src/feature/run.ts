@@ -5,6 +5,7 @@ import { buildSolution, cleanupBuild } from "@/lib/judge/test-runner";
 import { loadConfig } from "@/lib/project/config";
 import { requireInitializedProject } from "@/lib/project/project";
 import { runProgram, splitRunArguments } from "@/lib/run-runner";
+import { createSpinnerSequence } from "@/lib/util/spinner";
 
 export interface RunSolutionOptions {
     source?: string;
@@ -56,6 +57,7 @@ export async function runSolution(options: RunSolutionOptions): Promise<RunSolut
     // error is redirected to a file or a pipe, keep the build quiet by default.
     const silent = options.silent ?? (config.run.silent || stderr.isTTY !== true);
 
+    const compileSpinner = createSpinnerSequence(stderr, !silent);
     const built = await buildSolution({
         projectRoot,
         config,
@@ -67,6 +69,8 @@ export async function runSolution(options: RunSolutionOptions): Promise<RunSolut
         onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
         onCompiled: silent ? undefined : (line) => logger.success(line),
         onCached: silent ? undefined : (line) => logger.info(line),
+        onCompileStart: (line) => compileSpinner.start(line),
+        onCompileEnd: () => compileSpinner.end(),
     });
 
     try {

@@ -11,6 +11,7 @@ import type { LoginSession } from "@/feature/platforms";
 import { readAuth, replaceAuth } from "@/lib/auth";
 import { loadConfig } from "@/lib/project/config";
 import { openInBrowser } from "@/lib/util/browser";
+import { createSpinner, withSpinner } from "@/lib/util/spinner";
 
 const tokenAuthSchema = v.strictObject({
     method: v.literal("token"),
@@ -79,7 +80,10 @@ export async function isYukicoderLoggedIn(auth: unknown): Promise<boolean> {
     }
 
     const credential = parsedAuth.method === "token" ? parsedAuth.token : parsedAuth.apiKey;
-    return new YukicoderClient().checkCredential(credential);
+    return await withSpinner(
+        { text: "Checking the yukicoder session…", stream: process.stderr },
+        () => new YukicoderClient().checkCredential(credential),
+    );
 }
 
 export async function loginToYukicoder(
@@ -106,7 +110,10 @@ export async function loginToYukicoder(
             validate: (value) => value.trim().length > 0 || "API key cannot be empty.",
         });
         const credential = normalizeYukicoderCredential(apiKey);
-        const user = await client.getAuthUser(credential);
+        const user = await withSpinner(
+            { text: "Checking the yukicoder API key…", stream: process.stderr },
+            () => client.getAuthUser(credential),
+        );
         if (user === undefined) {
             throw new Error("yukicoder API key is invalid.");
         }
@@ -126,11 +133,17 @@ export async function loginToYukicoder(
         }
     }
 
-    consola.info("Waiting for authorization in the browser...");
-    const token = await client.pollDeviceToken(deviceCode, {
-        sleep: options.sleep,
-        now: options.now,
+    const waiting = createSpinner({
+        text: "Waiting for authorization in the browser…",
+        stream: process.stderr,
     });
+    if (!waiting.enabled) {
+        consola.info("Waiting for authorization in the browser...");
+    }
+
+    const token = await client
+        .pollDeviceToken(deviceCode, { sleep: options.sleep, now: options.now })
+        .finally(() => waiting.stop());
     await replaceAuth("yukicoder", {
         method: "token",
         token: token.accessToken,

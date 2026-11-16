@@ -4,6 +4,7 @@ import * as v from "valibot";
 
 import type { LoginSession } from "@/feature/platforms";
 import { readAuth, saveAuth } from "@/lib/auth";
+import { withSpinner } from "@/lib/util/spinner";
 
 const atCoderAuthSchema = v.object({
     revelSession: v.pipe(v.string(), v.nonEmpty()),
@@ -34,7 +35,10 @@ export async function isAtCoderLoggedIn(auth: unknown): Promise<boolean> {
         return false;
     }
 
-    return new AtCoderClient().login(savedSession);
+    return await withSpinner(
+        { text: "Checking the AtCoder session…", stream: process.stderr },
+        () => new AtCoderClient().login(savedSession),
+    );
 }
 
 export async function loginToAtCoder(): Promise<LoginSession | undefined> {
@@ -58,7 +62,11 @@ export async function loginToAtCoder(): Promise<LoginSession | undefined> {
 
     const session = normalizeRevelSession(revelSession);
     const client = new AtCoderClient();
-    if (!(await client.login(session))) {
+    const accepted = await withSpinner(
+        { text: "Verifying the AtCoder session…", stream: process.stderr },
+        () => client.login(session),
+    );
+    if (!accepted) {
         throw new Error("AtCoder login failed. Check that the REVEL_SESSION cookie is valid.");
     }
 

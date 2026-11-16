@@ -15,6 +15,7 @@ import { collectExistingCaseNames } from "@/lib/project/handmade";
 import { resolveTestcaseDirectory } from "@/lib/project/testcase";
 import { defaultOutputLimitBytes, runCommand, type CommandResult } from "@/lib/util/command-runner";
 import { createProgressBar } from "@/lib/util/progress";
+import { createSpinnerSequence } from "@/lib/util/spinner";
 
 /** One test case picked for generation, with its free case number. */
 export interface GenerateCaseSpec {
@@ -233,6 +234,7 @@ async function buildTool(
     testDirectory: string,
 ): Promise<BuiltInteractor> {
     const stderr = options.stderr ?? process.stderr;
+    const compileSpinner = createSpinnerSequence(stderr, options.progress ?? true);
     return buildAuxiliaryTool({
         projectRoot: options.projectRoot,
         config: options.config,
@@ -243,6 +245,8 @@ async function buildTool(
         testDirectory,
         onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
         onCompiled: (line) => stderr.write(`${line}\n`),
+        onCompileStart: (line) => compileSpinner.start(line),
+        onCompileEnd: () => compileSpinner.end(),
     });
 }
 

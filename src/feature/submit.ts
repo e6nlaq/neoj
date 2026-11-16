@@ -44,6 +44,7 @@ import { copyToClipboard } from "@/lib/util/clipboard";
 import { runCommand } from "@/lib/util/command-runner";
 import { hasErrorCode } from "@/lib/util/errors";
 import type { ProgressStream } from "@/lib/util/progress";
+import { withSpinner } from "@/lib/util/spinner";
 
 export type SubmitPlatform = "atcoder" | "yukicoder" | "shareoj" | "codeforces";
 
@@ -101,6 +102,8 @@ export interface PrepareSubmissionOptions {
     timeoutSeconds: number;
     platform: string;
     problemUrl: string;
+    /** Where the presubmit spinner draws; defaults to standard error. */
+    stderr?: ProgressStream;
 }
 
 const presubmitOutputLimitBytes = 8 * 1024 * 1024;
@@ -303,18 +306,25 @@ export async function prepareSubmissionSource(options: PrepareSubmissionOptions)
             },
             `languages.${options.language.key}.presubmit`,
         );
-        const result = await runCommand({
-            argv,
-            cwd: options.projectRoot,
-            timeoutMs: options.timeoutSeconds * 1000,
-            outputLimitBytes: presubmitOutputLimitBytes,
-            env: {
-                ...process.env,
-                NEOJ_PLATFORM: options.platform,
-                NEOJ_PROBLEM_URL: options.problemUrl,
-                NEOJ_LANGUAGE: options.language.key,
+        const result = await withSpinner(
+            {
+                text: "Running the presubmit command…",
+                stream: options.stderr ?? process.stderr,
             },
-        });
+            () =>
+                runCommand({
+                    argv,
+                    cwd: options.projectRoot,
+                    timeoutMs: options.timeoutSeconds * 1000,
+                    outputLimitBytes: presubmitOutputLimitBytes,
+                    env: {
+                        ...process.env,
+                        NEOJ_PLATFORM: options.platform,
+                        NEOJ_PROBLEM_URL: options.problemUrl,
+                        NEOJ_LANGUAGE: options.language.key,
+                    },
+                }),
+        );
 
         if (result.outputLimitExceeded) {
             throw new Error("The presubmit command produced too much output.");
@@ -817,6 +827,7 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
                   timeoutSeconds: options.config.submit.presubmit_timeout,
                   platform,
                   problemUrl: metadata.url,
+                  stderr,
               });
     if (isEmptyOutput(content)) {
         throw new Error(`"${resolved.relativePath}" is empty, so there is nothing to submit.`);
@@ -921,18 +932,28 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
         return { status: "cancelled" };
     }
 
-    for (const warning of await target.prepare()) {
+    const prepared = await withSpinner(
+        { text: `Preparing the submission to ${target.displayName}…`, stream: stderr },
+        () => target.prepare(),
+    );
+    for (const warning of prepared) {
         warn(warning);
     }
 
     try {
-        const languageId = await resolveSubmitLanguage(
-            language,
-            target.platform,
-            platformLanguage,
-            () => target.getLanguages(),
+        const result = await withSpinner(
+            { text: `Submitting to ${target.displayName}…`, stream: stderr },
+            async () => {
+                const languageId = await resolveSubmitLanguage(
+                    language,
+                    target.platform,
+                    platformLanguage,
+                    () => target.getLanguages(),
+                );
+
+                return await target.submit(content, languageId);
+            },
         );
-        const result = await target.submit(content, languageId);
 
         info(
             result.submissionId === undefined

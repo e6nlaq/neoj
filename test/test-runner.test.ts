@@ -607,6 +607,7 @@ describe("buildSolution", () => {
 
         const output: string[] = [];
         const compiled: string[] = [];
+        const phases: string[] = [];
         await expect(
             buildSolution({
                 projectRoot,
@@ -629,11 +630,48 @@ describe("buildSolution", () => {
                 }),
                 onCompilerOutput: (chunk) => output.push(chunk),
                 onCompiled: (line) => compiled.push(line),
+                onCompileStart: () => phases.push("start"),
+                onCompileEnd: () => phases.push("end"),
             }),
         ).rejects.toThrow("Compilation failed for languages.ts");
 
         expect(output.join("\n")).toContain("error:");
         expect(compiled).toEqual([]);
+        // The spinner must be removed even though the compiler failed.
+        expect(phases).toEqual(["start", "end"]);
+    });
+
+    it("reports the compile start and end around the compiler", async () => {
+        const projectRoot = await createProject();
+        await writeFile(join(projectRoot, "main.ts"), "0");
+        await writeFile(
+            join(projectRoot, "compile.mjs"),
+            'import { writeFileSync } from "node:fs";\nwriteFileSync(process.argv[2], "");\n',
+        );
+
+        const events: string[] = [];
+        const built = await buildSolution({
+            projectRoot,
+            command: "run",
+            config: createConfig({
+                source: "main.ts",
+                languages: {
+                    ts: {
+                        source: "main.ts",
+                        compile: [process.execPath, "compile.mjs", "{outfile}"],
+                        run: [process.execPath, "{outfile}"],
+                    },
+                },
+            }),
+            onCompileStart: (line) => events.push(`start:${line}`),
+            onCompileEnd: () => events.push("end"),
+            onCompiled: (line) => events.push(`compiled:${line}`),
+        });
+
+        expect(events[0]).toContain("Compiling main.ts (languages.ts)");
+        expect(events[1]).toBe("end");
+        expect(events[2]).toContain("Compiled main.ts (languages.ts)");
+        await cleanupBuild(built);
     });
 });
 
@@ -1000,6 +1038,10 @@ describe("runTests", () => {
 
         await run();
         expect(await readFile(join(projectRoot, "compile.log"), "utf8")).toBe("x");
+        // The compile result is a consola success line, like `neoj run` prints;
+        // the basic reporter used for a non-TTY stream labels it `[success]`.
+        expect(err.text()).toMatch(/\[success\]|✔/);
+        expect(err.text()).toContain("Compiled main.ts (languages.ts)");
 
         await run();
         expect(await readFile(join(projectRoot, "compile.log"), "utf8")).toBe("x");
