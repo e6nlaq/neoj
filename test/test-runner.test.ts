@@ -1038,6 +1038,10 @@ describe("runTests", () => {
 
         await run();
         expect(await readFile(join(projectRoot, "compile.log"), "utf8")).toBe("x");
+        // The compile result is a consola success line, like `neoj run` prints;
+        // the basic reporter used for a non-TTY stream labels it `[success]`.
+        expect(err.text()).toMatch(/\[success\]|✔/);
+        expect(err.text()).toContain("Compiled main.ts (languages.ts)");
 
         await run();
         expect(await readFile(join(projectRoot, "compile.log"), "utf8")).toBe("x");

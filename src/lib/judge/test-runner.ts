@@ -4,6 +4,8 @@ import { mkdir, readFile, readdir, realpath, rm, stat } from "node:fs/promises";
 import { arch, availableParallelism, platform } from "node:os";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
 
+import { createConsola, LogLevels } from "consola";
+
 import {
     compareOutput,
     formatComparison,
@@ -1931,6 +1933,15 @@ export function buildJudge(options: BuildInteractorOptions): Promise<BuiltIntera
 export async function runTests(options: RunTestsOptions): Promise<RunTestsResult> {
     const stdout = options.stdout ?? process.stdout;
     const stderr = options.stderr ?? process.stderr;
+    // Compile results are neoj's own logs, so they go through consola on the
+    // same stream as the spinner and keep their check mark and spacing.
+    const logger = createConsola({
+        stdout: stderr as NodeJS.WriteStream,
+        stderr: stderr as NodeJS.WriteStream,
+        // Show informational logs even when NODE_ENV=test lowers the default.
+        level: LogLevels.info,
+        defaults: { level: LogLevels.info },
+    });
     const styles = createAnsiStyles(supportsColor(stdout));
     const columns =
         (stdout as { columns?: number }).columns === undefined
@@ -1979,7 +1990,7 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
         cache: options.cache,
         testDirectory,
         onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
-        onCompiled: (line) => stderr.write(`${line}\n`),
+        onCompiled: (line) => logger.success(line),
         onCached: options.verbose === true ? (line) => stderr.write(`${line}\n`) : undefined,
         ...compileReport,
     });
@@ -2016,7 +2027,7 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
                 cache: options.cache,
                 testDirectory,
                 onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
-                onCompiled: (line) => stderr.write(`${line}\n`),
+                onCompiled: (line) => logger.success(line),
                 onCached:
                     options.verbose === true ? (line) => stderr.write(`${line}\n`) : undefined,
                 ...compileReport,
@@ -2029,7 +2040,7 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
                 cache: options.cache,
                 testDirectory,
                 onCompilerOutput: (chunk) => stderr.write(`${chunk}\n`),
-                onCompiled: (line) => stderr.write(`${line}\n`),
+                onCompiled: (line) => logger.success(line),
                 onCached:
                     options.verbose === true ? (line) => stderr.write(`${line}\n`) : undefined,
                 ...compileReport,
