@@ -423,14 +423,52 @@ describe("discoverTestCases", () => {
         const projectRoot = await createProject();
         const directory = join(projectRoot, "test");
         await writeCase(directory, "sample-1", "a", "a");
-        await writeCase(directory, "sample-2", "b", "b");
+        await writeCase(directory, "sample-10", "b", "b");
+        await writeCase(directory, "sample-2", "c", "c");
 
         expect((await discoverTestCases(directory, ["sample-2"])).map((item) => item.name)).toEqual(
             ["sample-2"],
         );
+        // An exact match does not also pull in a name that merely contains it.
+        expect((await discoverTestCases(directory, ["sample-1"])).map((item) => item.name)).toEqual(
+            ["sample-1"],
+        );
         await expect(discoverTestCases(directory, ["sample-3"])).rejects.toThrow(
             "No test case matches",
         );
+    });
+
+    it("matches a partial name when no exact name exists", async () => {
+        const projectRoot = await createProject();
+        const directory = join(projectRoot, "test");
+        await writeCase(directory, "sample-1", "a", "a");
+        await writeCase(directory, "sample-10", "b", "b");
+        await writeCase(directory, "handmade-1", "c", "c");
+
+        expect((await discoverTestCases(directory, ["sample"])).map((item) => item.name)).toEqual([
+            "sample-1",
+            "sample-10",
+        ]);
+        expect((await discoverTestCases(directory, ["-1"])).map((item) => item.name)).toEqual([
+            "handmade-1",
+            "sample-1",
+            "sample-10",
+        ]);
+    });
+
+    it("matches partial names case-sensitively and merges several filters", async () => {
+        const projectRoot = await createProject();
+        const directory = join(projectRoot, "test");
+        await writeCase(directory, "sample-1", "a", "a");
+        await writeCase(directory, "sample-2", "b", "b");
+        await writeCase(directory, "sample-10", "c", "c");
+
+        await expect(discoverTestCases(directory, ["SAMPLE"])).rejects.toThrow(
+            "No test case matches",
+        );
+        expect(
+            (await discoverTestCases(directory, ["10", "sample-2", "1"])).map((item) => item.name),
+        ).toEqual(["sample-1", "sample-2", "sample-10"]);
     });
 
     it("explains an empty or missing directory", async () => {
@@ -798,6 +836,47 @@ describe("runTests", () => {
         });
 
         expect(out.text()).not.toContain("Line │");
+    });
+
+    it("prints only the cases that did not pass when onlyFail is on", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            filters: ["sample-1", "sample-2"],
+            onlyFail: true,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(result.exitCode).toBe(2);
+        expect(text).not.toContain("sample-1");
+        expect(text).not.toContain("AC");
+        expect(text).toContain("sample-2");
+        expect(text).toContain("WA (line 1)");
+        expect(text).toContain("2 case(s): 1 passed, 1 failed");
+    });
+
+    it("keeps the summary when every case passes under onlyFail", async () => {
+        const projectRoot = await createRunnerProject();
+        const out = createCapture();
+
+        const result = await runTests({
+            projectRoot,
+            config: runnerConfig({}),
+            filters: ["sample-1"],
+            onlyFail: true,
+            stdout: out.stream,
+            stderr: createCapture().stream,
+        });
+
+        const text = out.text();
+        expect(result.exitCode).toBe(0);
+        expect(text).not.toContain("sample-1");
+        expect(text).toContain("1 case(s): 1 passed, 0 failed");
     });
 
     it("prints the input and output tables for a passing case when verbose", async () => {

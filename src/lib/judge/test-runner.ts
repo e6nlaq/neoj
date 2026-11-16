@@ -109,6 +109,8 @@ export interface RunTestsOptions {
     timeoutSeconds?: number;
     memoryMiB?: number;
     filters?: readonly string[];
+    /** Print only the cases that did not pass; the summary still counts every case. */
+    onlyFail?: boolean;
     cache?: boolean;
     ignoreTrailingSpace?: boolean;
     ignoreTrailingNewline?: boolean;
@@ -527,10 +529,21 @@ function selectCaseNames(names: readonly string[], filters: readonly string[]): 
         return [...names];
     }
 
-    const selected = names.filter((name) => filters.includes(name));
+    // An exact name wins over partial matches; a term without one selects every
+    // name that contains it. The name order never changes.
+    const wanted = new Set<string>();
+    for (const filter of filters) {
+        const exact = names.filter((name) => name === filter);
+        const matches = exact.length > 0 ? exact : names.filter((name) => name.includes(filter));
+        for (const name of matches) {
+            wanted.add(name);
+        }
+    }
+
+    const selected = names.filter((name) => wanted.has(name));
     if (selected.length === 0) {
         throw new Error(
-            `No test case matches ${filters.map((filter) => `"${filter}"`).join(", ")}. Available: ${names.map((name) => `"${name}"`).join(", ")}.`,
+            `No test case matches ${filters.map((filter) => `"${filter}"`).join(", ")}. Names match exactly when one exists, otherwise as a case-sensitive substring. Available: ${names.map((name) => `"${name}"`).join(", ")}.`,
         );
     }
 
@@ -2121,14 +2134,18 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
             lineNumbers: options.lineNumbers ?? options.config.test.show_line_numbers,
             displayLines: options.config.test.display_lines,
         };
-        for (const [index, result] of results.entries()) {
+        const printed =
+            options.onlyFail === true
+                ? results.filter((result) => result.verdict !== "AC")
+                : results;
+        for (const [index, result] of printed.entries()) {
             stdout.write(
                 `${formatCaseLine(result, nameWidth, timeoutSeconds, memoryMiB, styles)}\n`,
             );
             for (const line of buildCaseDetails(result, detailOptions, styles, columns)) {
                 stdout.write(`${line}\n`);
             }
-            if (result.verdict !== "AC" && index < results.length - 1) {
+            if (result.verdict !== "AC" && index < printed.length - 1) {
                 // Separate a failing case from the next one with two blank lines.
                 stdout.write("\n\n");
             }

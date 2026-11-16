@@ -39,7 +39,7 @@ up:
 
 ```bash
 neoj test
-neoj test -f handmade-1     # only the handmade case
+neoj test -F handmade-1     # only the handmade case
 ```
 
 ## Choose the file name
