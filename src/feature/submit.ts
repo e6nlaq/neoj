@@ -32,6 +32,7 @@ import {
     type ResolvedSource,
     type TestLanguage,
 } from "@/lib/judge/test-runner";
+import { isPlatformName, type PlatformName } from "@/lib/platform";
 import { loadConfig, type Config, type SubmitClipMode } from "@/lib/project/config";
 import type { ProblemMetadata } from "@/lib/project/problem-metadata";
 import { readProblemMetadata } from "@/lib/project/problem-metadata";
@@ -46,7 +47,7 @@ import { hasErrorCode } from "@/lib/util/errors";
 import type { ProgressStream } from "@/lib/util/progress";
 import { withSpinner } from "@/lib/util/spinner";
 
-export type SubmitPlatform = "atcoder" | "yukicoder" | "shareoj" | "codeforces";
+export type SubmitPlatform = PlatformName;
 
 export interface SubmitLanguageCandidate {
     id: string;
@@ -373,7 +374,7 @@ export async function prepareSubmissionSource(options: PrepareSubmissionOptions)
 }
 
 function toSubmitPlatform(name: string): SubmitPlatform {
-    if (name === "atcoder" || name === "yukicoder" || name === "shareoj" || name === "codeforces") {
+    if (isPlatformName(name)) {
         return name;
     }
 

@@ -15,6 +15,7 @@ import {
 } from "@/feature/login/codeforces";
 import { findProblemSource } from "@/feature/problem-sources";
 import { readAuth } from "@/lib/auth";
+import { isPlatformName, platformNames, type PlatformName } from "@/lib/platform";
 import { loadConfig, type Config } from "@/lib/project/config";
 import { readProblemMetadata, type ProblemMetadata } from "@/lib/project/problem-metadata";
 import { findProjectConfig } from "@/lib/project/project";
@@ -25,7 +26,7 @@ import type { ProgressStream } from "@/lib/util/progress";
 export const fallbackAtCoderContestId = "abc100";
 export const fallbackCodeforcesContestId = "1";
 
-export type LanguagePlatform = "atcoder" | "yukicoder" | "shareoj" | "codeforces";
+export type LanguagePlatform = PlatformName;
 
 /** One selectable language on a platform. */
 export interface PlatformLanguage {
@@ -83,12 +84,12 @@ export interface LanguageListing {
 
 export function parseLanguagePlatform(value: string): LanguagePlatform {
     const name = value.trim();
-    if (name === "atcoder" || name === "yukicoder" || name === "shareoj" || name === "codeforces") {
+    if (isPlatformName(name)) {
         return name;
     }
 
     throw new Error(
-        `Unsupported platform "${value}". Supported platforms: atcoder, yukicoder, shareoj, codeforces.`,
+        `Unsupported platform "${value}". Supported platforms: ${platformNames.join(", ")}.`,
     );
 }
 

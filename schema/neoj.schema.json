@@ -476,14 +476,14 @@
                     "submit": {
                         "type": "object",
                         "propertyNames": {
-                            "type": "string",
-                            "minLength": 1
+                            "enum": ["atcoder", "yukicoder", "shareoj", "codeforces"],
+                            "type": "string"
                         },
                         "additionalProperties": {
                             "type": "string",
                             "minLength": 1
                         },
-                        "description": "Platform language ID used by neoj submit, keyed by platform name such as atcoder, codeforces, or yukicoder."
+                        "description": "Platform language ID used by neoj submit, keyed by platform name (atcoder, yukicoder, shareoj, codeforces)."
                     }
                 },
                 "required": ["source", "run"],

@@ -4,6 +4,7 @@ import { join } from "node:path";
 import * as v from "valibot";
 
 import { errorExponentBounds } from "@/lib/judge/judge";
+import { platformNames } from "@/lib/platform";
 import { findProjectConfig } from "@/lib/project/project";
 
 function createFilenamePatternSchema(description: string) {
@@ -113,9 +114,9 @@ const languageSchema = v.pipe(
         ),
         submit: v.optional(
             v.pipe(
-                v.record(v.pipe(v.string(), v.minLength(1)), v.pipe(v.string(), v.minLength(1))),
+                v.record(v.picklist(platformNames), v.pipe(v.string(), v.minLength(1))),
                 v.description(
-                    "Platform language ID used by neoj submit, keyed by platform name such as atcoder, codeforces, or yukicoder.",
+                    `Platform language ID used by neoj submit, keyed by platform name (${platformNames.join(", ")}).`,
                 ),
             ),
         ),

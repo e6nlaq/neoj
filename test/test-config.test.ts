@@ -125,6 +125,35 @@ describe("test configuration", () => {
         expect(config.languages.py?.cache_files).toBeUndefined();
     });
 
+    it("accepts only supported platforms as language submit keys", () => {
+        const submit = {
+            atcoder: "6017",
+            yukicoder: "cpp23_gcc16",
+            shareoj: "cpp23",
+            codeforces: "91",
+        };
+        const config = parse({
+            languages: { cpp: { source: "*.cpp", run: ["{outfile}"], submit } },
+        });
+
+        expect(config.languages.cpp?.submit).toEqual(submit);
+
+        for (const platform of ["aoj", "AtCoder", "unknown", ""]) {
+            expect(
+                v.safeParse(configSchema, {
+                    languages: {
+                        cpp: { source: "*.cpp", run: ["x"], submit: { [platform]: "1" } },
+                    },
+                }).success,
+            ).toBe(false);
+        }
+        expect(
+            v.safeParse(configSchema, {
+                languages: { cpp: { source: "*.cpp", run: ["x"], submit: { atcoder: "" } } },
+            }).success,
+        ).toBe(false);
+    });
+
     it("rejects empty runs, zero limits, and unknown keys", () => {
         expect(v.safeParse(configSchema, { test: { timeout: 0 } }).success).toBe(false);
         expect(v.safeParse(configSchema, { test: { memory: 0 } }).success).toBe(false);

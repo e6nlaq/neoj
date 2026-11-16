@@ -191,6 +191,18 @@ describe("loadConfig", () => {
         );
     });
 
+    it("rejects unsupported languages.submit keys", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(
+            join(project, "neoj.toml"),
+            '[languages.cpp]\nsource = "*.cpp"\nrun = ["{outfile}"]\n\n[languages.cpp.submit]\naoj = "1"',
+        );
+
+        await expect(loadConfig()).rejects.toThrow(
+            'languages.cpp.submit.aoj: Expected ("atcoder" | "yukicoder" | "shareoj" | "codeforces"). (actual type: string)',
+        );
+    });
+
     it("merges global and project testcase settings", async () => {
         const { home, project } = await setTemporaryPaths();
         await Bun.write(
