@@ -143,7 +143,7 @@ the cases completed before the failure stay on disk.
 | `-J`, `--jobs <count>`         | Number of cases to generate at once.                       |
 | `--no-parallel`                | Generate one case at a time.                               |
 | `--cache` / `--no-cache`       | Keep or delete the compiled programs under `.neoj/build/`. |
-| `--progress` / `--no-progress` | Draw or hide the progress bar.                             |
+| `--progress` / `--no-progress` | Draw or hide the progress bar and the compile spinner.     |
 
 See [Generate random test cases](../how-to/generate-random-tests.md).
 
@@ -252,7 +252,7 @@ status. A failed submission is reported as an error, so the exit status is `1`.
 | `-S`, `--ignore-trailing-space`                  | Ignore trailing whitespace on each line.                     |
 | `-N`, `--ignore-trailing-newline`                | Ignore newlines at the end of the output.                    |
 | `--show-stderr <mode>`                           | Print the program's stderr: `always`, `failure`, or `never`. |
-| `--progress` / `--no-progress`                   | Draw or hide the progress bar.                               |
+| `--progress` / `--no-progress`                   | Draw or hide the progress bar and the compile spinner.       |
 | `--show-line-numbers` / `--no-show-line-numbers` | Number the rows of the input and output tables.              |
 | `-v`, `--verbose`                                | Print input and output for passing cases too.                |
 | `-s`, `--submit`                                 | Submit the solution when every test case passes.             |

@@ -10,6 +10,7 @@ import * as v from "valibot";
 
 import type { LoginSession } from "@/feature/platforms";
 import { readAuth, replaceAuth } from "@/lib/auth";
+import { withSpinner } from "@/lib/util/spinner";
 
 const shareOjAuthSchema = v.strictObject({
     method: v.literal("password"),
@@ -115,20 +116,25 @@ async function refreshShareOjTokens(
 }
 
 export async function isShareOjLoggedIn(auth: unknown): Promise<boolean> {
-    const client = new ShareOjClient();
-    const token = await getShareOjAccessToken(auth, client);
-    if (token === undefined) {
-        return false;
-    }
+    return await withSpinner(
+        { text: "Checking the ShareOJ session…", stream: process.stderr },
+        async () => {
+            const client = new ShareOjClient();
+            const token = await getShareOjAccessToken(auth, client);
+            if (token === undefined) {
+                return false;
+            }
 
-    try {
-        return (await client.getMe(token)) !== undefined;
-    } catch (error) {
-        if (error instanceof ShareOjApiError && error.status === 401) {
-            return false;
-        }
-        throw error;
-    }
+            try {
+                return (await client.getMe(token)) !== undefined;
+            } catch (error) {
+                if (error instanceof ShareOjApiError && error.status === 401) {
+                    return false;
+                }
+                throw error;
+            }
+        },
+    );
 }
 
 /** Store tokens, omitting fields the server did not return. */
@@ -276,14 +282,20 @@ export async function loginToShareOj(
         validate: (value) => value.length > 0 || "Password cannot be empty.",
     });
 
-    let result = await client.login(username, accountPassword);
+    let result = await withSpinner({ text: "Logging in to ShareOJ…", stream: process.stderr }, () =>
+        client.login(username, accountPassword),
+    );
     if ("name" in result) {
         consola.info(`Additional verification required (${result.name}).`);
         result = await resolveChallenges(client, username, result);
     }
 
     // Confirm the tokens work before they replace the saved session.
-    if ((await client.getMe(result.accessToken)) === undefined) {
+    const accepted = await withSpinner(
+        { text: "Verifying the ShareOJ session…", stream: process.stderr },
+        () => client.getMe(result.accessToken),
+    );
+    if (accepted === undefined) {
         throw new Error("ShareOJ login did not produce a usable session. Try again.");
     }
     await saveShareOjTokens(result);
