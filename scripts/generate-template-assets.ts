@@ -77,7 +77,7 @@ export async function generateTemplateAssets(
 if (import.meta.main) {
     const repositoryRoot = resolve(import.meta.dir, "..");
     const templateDirectory = join(repositoryRoot, "src", "assets", "template");
-    const outputFile = join(repositoryRoot, "src", "lib", "util", "template-assets.ts");
+    const outputFile = join(repositoryRoot, "src", "lib", "project", "template-assets.ts");
 
     await generateTemplateAssets(templateDirectory, outputFile);
 }

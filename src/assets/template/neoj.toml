@@ -30,8 +30,8 @@ run = ["{outfile}", "{infile}"]
 timeout = 10
 
 # Random test cases (`neoj generate`) run the generator with the case number
-# as its first argument, and feed its output to the naive solution. A Python
-# skeleton is bundled as judge/gen.py.
+# as its first argument, and feed its output to the naive solution. Python and
+# C++ skeletons are bundled as judge/gen.py and judge/naive.cpp.
 [generate]
 gen = "judge/gen.py"
 naive = "judge/naive.cpp"
@@ -42,7 +42,7 @@ naive = "judge/naive.cpp"
 # main = "src/main.cpp"
 
 [languages.cpp]
-source = "src/**/*.cpp"
+source = ["src/**/*.cpp", "judge/*.cpp"]
 compile = ["g++", "-std=c++23", "-O2", "-o", "{outfile}", "{source}"]
 run = ["{outfile}"]
 # Platform language IDs for `neoj submit`, keyed by platform name.

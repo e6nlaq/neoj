@@ -4,9 +4,10 @@ import asset0 from "@/assets/template/.gitignore" with { type: "file" };
 import asset1 from "@/assets/template/judge/checker.cpp" with { type: "file" };
 import asset2 from "@/assets/template/judge/gen.py" with { type: "file" };
 import asset3 from "@/assets/template/judge/interactor.cpp" with { type: "file" };
-import asset4 from "@/assets/template/neoj.toml" with { type: "file" };
-import asset5 from "@/assets/template/src/main.cpp" with { type: "file" };
-import asset6 from "@/assets/template/template/main.cpp" with { type: "file" };
+import asset4 from "@/assets/template/judge/naive.cpp" with { type: "file" };
+import asset5 from "@/assets/template/neoj.toml" with { type: "file" };
+import asset6 from "@/assets/template/src/main.cpp" with { type: "file" };
+import asset7 from "@/assets/template/template/main.cpp" with { type: "file" };
 import type { TemplateFile } from "@/lib/project/template";
 
 /** Static imports let Bun bundle these files for npm and standalone CLI builds. */
@@ -15,7 +16,8 @@ export const templateFiles: readonly TemplateFile[] = [
     { path: "judge/checker.cpp", source: resolve(import.meta.dir, asset1) },
     { path: "judge/gen.py", source: resolve(import.meta.dir, asset2) },
     { path: "judge/interactor.cpp", source: resolve(import.meta.dir, asset3) },
-    { path: "neoj.toml", source: resolve(import.meta.dir, asset4) },
-    { path: "src/main.cpp", source: resolve(import.meta.dir, asset5) },
-    { path: "template/main.cpp", source: resolve(import.meta.dir, asset6) },
+    { path: "judge/naive.cpp", source: resolve(import.meta.dir, asset4) },
+    { path: "neoj.toml", source: resolve(import.meta.dir, asset5) },
+    { path: "src/main.cpp", source: resolve(import.meta.dir, asset6) },
+    { path: "template/main.cpp", source: resolve(import.meta.dir, asset7) },
 ];
