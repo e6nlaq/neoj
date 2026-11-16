@@ -1,6 +1,6 @@
 import { type OutputStream, Spinner as PicoSpinner } from "picospinner";
 
-import { createAnsiStyles } from "@/lib/util/ansi";
+import { createAnsiStyles, supportsColor } from "@/lib/util/ansi";
 import type { ProgressStream } from "@/lib/util/progress";
 
 export interface SpinnerOptions {
@@ -33,10 +33,12 @@ export function createSpinner(options: SpinnerOptions): Spinner {
         return { enabled: false, stop() {} };
     }
 
-    const styles = createAnsiStyles(true);
+    const styles = createAnsiStyles(supportsColor(stream));
     const spinner = new PicoSpinner(
         {
             text: styles.dim(options.text),
+            // Color the animated frame blue instead of picospinner's default cyan.
+            symbolFormatter: (symbol: string) => styles.blue(symbol),
             // picospinner types the stream as a Writable; writing is all neoj needs.
             stream: stream as unknown as OutputStream,
         },
