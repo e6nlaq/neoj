@@ -244,7 +244,7 @@ status. A failed submission is reported as an error, so the exit status is `1`.
 | `--no-parallel`                                  | Run one test case at a time.                                 |
 | `-t`, `--timeout <seconds>`                      | Time limit per test case.                                    |
 | `-m`, `--memory <MiB>`                           | Memory limit per test case.                                  |
-| `-F`, `--filter <name...>`                       | Run only the named cases (`sample-1` for `sample-1.in`).     |
+| `-F`, `--filter <name...>`                       | Run only the matching cases (`sample-1` for `sample-1.in`).  |
 | `-f`, `--only-fail`                              | Show only the cases that did not pass.                       |
 | `-i`, `--interactive`                            | Judge with the interactor in `[test.interactor]`.            |
 | `-j`, `--judge`                                  | Judge with the checker in `[test.judge]`.                    |

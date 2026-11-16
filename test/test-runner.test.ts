@@ -423,14 +423,52 @@ describe("discoverTestCases", () => {
         const projectRoot = await createProject();
         const directory = join(projectRoot, "test");
         await writeCase(directory, "sample-1", "a", "a");
-        await writeCase(directory, "sample-2", "b", "b");
+        await writeCase(directory, "sample-10", "b", "b");
+        await writeCase(directory, "sample-2", "c", "c");
 
         expect((await discoverTestCases(directory, ["sample-2"])).map((item) => item.name)).toEqual(
             ["sample-2"],
         );
+        // An exact match does not also pull in a name that merely contains it.
+        expect((await discoverTestCases(directory, ["sample-1"])).map((item) => item.name)).toEqual(
+            ["sample-1"],
+        );
         await expect(discoverTestCases(directory, ["sample-3"])).rejects.toThrow(
             "No test case matches",
         );
+    });
+
+    it("matches a partial name when no exact name exists", async () => {
+        const projectRoot = await createProject();
+        const directory = join(projectRoot, "test");
+        await writeCase(directory, "sample-1", "a", "a");
+        await writeCase(directory, "sample-10", "b", "b");
+        await writeCase(directory, "handmade-1", "c", "c");
+
+        expect((await discoverTestCases(directory, ["sample"])).map((item) => item.name)).toEqual([
+            "sample-1",
+            "sample-10",
+        ]);
+        expect((await discoverTestCases(directory, ["-1"])).map((item) => item.name)).toEqual([
+            "handmade-1",
+            "sample-1",
+            "sample-10",
+        ]);
+    });
+
+    it("matches partial names case-sensitively and merges several filters", async () => {
+        const projectRoot = await createProject();
+        const directory = join(projectRoot, "test");
+        await writeCase(directory, "sample-1", "a", "a");
+        await writeCase(directory, "sample-2", "b", "b");
+        await writeCase(directory, "sample-10", "c", "c");
+
+        await expect(discoverTestCases(directory, ["SAMPLE"])).rejects.toThrow(
+            "No test case matches",
+        );
+        expect(
+            (await discoverTestCases(directory, ["10", "sample-2", "1"])).map((item) => item.name),
+        ).toEqual(["sample-1", "sample-2", "sample-10"]);
     });
 
     it("explains an empty or missing directory", async () => {

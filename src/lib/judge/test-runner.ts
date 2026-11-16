@@ -529,10 +529,21 @@ function selectCaseNames(names: readonly string[], filters: readonly string[]): 
         return [...names];
     }
 
-    const selected = names.filter((name) => filters.includes(name));
+    // An exact name wins over partial matches; a term without one selects every
+    // name that contains it. The name order never changes.
+    const wanted = new Set<string>();
+    for (const filter of filters) {
+        const exact = names.filter((name) => name === filter);
+        const matches = exact.length > 0 ? exact : names.filter((name) => name.includes(filter));
+        for (const name of matches) {
+            wanted.add(name);
+        }
+    }
+
+    const selected = names.filter((name) => wanted.has(name));
     if (selected.length === 0) {
         throw new Error(
-            `No test case matches ${filters.map((filter) => `"${filter}"`).join(", ")}. Available: ${names.map((name) => `"${name}"`).join(", ")}.`,
+            `No test case matches ${filters.map((filter) => `"${filter}"`).join(", ")}. Names match exactly when one exists, otherwise as a case-sensitive substring. Available: ${names.map((name) => `"${name}"`).join(", ")}.`,
         );
     }
 

@@ -368,8 +368,11 @@ combined with it.
 neoj test -F sample-1 sample-3
 ```
 
-The names are the file names without `.in`, and they must match exactly. Unknown
-names are reported with the available cases.
+The names are the file names without `.in`. Each name first matches exactly; when
+no case has that name, every case that contains the text is selected, so
+`-F handmade` runs all handmade cases. Matching is case-sensitive. Several names
+are merged without duplicates and the cases keep their usual order. Names that
+match nothing are reported with the available cases.
 
 ## Show only the failing cases
 
