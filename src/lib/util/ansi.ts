@@ -1,3 +1,15 @@
+/** Colors used by the output comparison highlight. */
+export type AnsiHighlightColor = "green" | "red";
+
+/** One combined style for a comparison segment. */
+export interface AnsiPaintOptions {
+    /** Highlight foreground; green marks expected output, red marks actual output. */
+    fg?: AnsiHighlightColor;
+    /** Highlight background; green marks expected output, red marks actual output. */
+    bg?: AnsiHighlightColor;
+    bold?: boolean;
+}
+
 /** Terminal styling that can be switched off for pipes and dumb terminals. */
 export interface AnsiStyles {
     readonly enabled: boolean;
@@ -8,9 +20,28 @@ export interface AnsiStyles {
     yellow(text: string): string;
     cyan(text: string): string;
     blue(text: string): string;
+    /**
+     * Apply one combined style in a single SGR sequence.
+     *
+     * Nested `bold(red(...))` calls cannot be tinted afterwards: the inner
+     * reset also clears the background. Combining the codes here keeps a
+     * background continuous across marked and unmarked segments.
+     */
+    paint(text: string, options: AnsiPaintOptions): string;
 }
 
 const escape = "\u001B[";
+
+// 256-color palette entries that stay readable on both dark and light
+// terminals: a dark foreground on a very light background.
+const highlightForeground: Record<AnsiHighlightColor, readonly number[]> = {
+    green: [38, 5, 28],
+    red: [38, 5, 124],
+};
+const highlightBackground: Record<AnsiHighlightColor, readonly number[]> = {
+    green: [48, 5, 194],
+    red: [48, 5, 224],
+};
 
 function wrap(enabled: boolean, codes: readonly number[], text: string): string {
     if (!enabled) {
@@ -54,6 +85,27 @@ export function createAnsiStyles(enabled: boolean): AnsiStyles {
         yellow: (text) => wrap(enabled, [33], text),
         cyan: (text) => wrap(enabled, [36], text),
         blue: (text) => wrap(enabled, [34], text),
+        paint: (text, options) => {
+            if (!enabled || text === "") {
+                return text;
+            }
+
+            const codes: number[] = [];
+            if (options.bold === true) {
+                codes.push(1);
+            }
+            if (options.fg !== undefined) {
+                codes.push(...highlightForeground[options.fg]);
+            }
+            if (options.bg !== undefined) {
+                codes.push(...highlightBackground[options.bg]);
+            }
+            if (codes.length === 0) {
+                return text;
+            }
+
+            return wrap(enabled, codes, text);
+        },
     };
 }
 

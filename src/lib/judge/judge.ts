@@ -59,9 +59,19 @@ export interface LinesTableOptions {
 
 const lineNumberHeader = "Line";
 
-interface TableCell {
+interface CellSegment {
     text: string;
-    color?: "red" | "green";
+    /** Render with bold and the cell foreground; only used on a tinted row. */
+    marked?: boolean;
+}
+
+interface TableCell {
+    /** Visible text; `segments` must join into exactly this value. */
+    text: string;
+    /** Rich rendering used by the comparison table. */
+    segments?: readonly CellSegment[];
+    /** Tint the cell, padding included, and pick the marked foreground. */
+    background?: "green" | "red";
 }
 
 interface TableRow {
@@ -336,6 +346,25 @@ function padCell(text: string, width: number): string {
     return text + " ".repeat(Math.max(0, width - displayWidth(text)));
 }
 
+/**
+ * Render a tinted comparison cell: marked segments are bold and colored, the
+ * rest of the row keeps only the light background so the text stays readable.
+ */
+function formatTintedCell(cell: TableCell, width: number, styles: AnsiStyles): string {
+    const background = cell.background!;
+    const segments = cell.segments ?? [{ text: cell.text }];
+    let rendered = "";
+    for (const segment of segments) {
+        rendered +=
+            segment.marked === true
+                ? styles.paint(segment.text, { fg: background, bg: background, bold: true })
+                : styles.paint(segment.text, { bg: background });
+    }
+
+    const padding = " ".repeat(Math.max(0, width - displayWidth(cell.text)));
+    return rendered + styles.paint(padding, { bg: background });
+}
+
 function formatTableRow(
     number: string | undefined,
     cells: readonly TableCell[],
@@ -348,9 +377,14 @@ function formatTableRow(
         parts.push(styles.dim(number.padStart(numberWidth)));
     }
     for (const [index, cell] of cells.entries()) {
-        const padded =
-            index === cells.length - 1 ? cell.text : padCell(cell.text, widths[index] ?? 0);
-        parts.push(cell.color === undefined ? padded : styles[cell.color](padded));
+        const width = widths[index] ?? 0;
+        if (cell.background !== undefined) {
+            // Tint to the full column width so a marked row reads as one band.
+            parts.push(formatTintedCell(cell, width, styles));
+        } else {
+            const last = index === cells.length - 1;
+            parts.push(last ? cell.text : padCell(cell.text, width));
+        }
     }
 
     return parts.join(` ${styles.dim("│")} `).trimEnd();
@@ -437,9 +471,211 @@ function fitsSideBySide(result: ComparisonResult, columns: number, lineNumbers: 
     return gutterWidth + textWidth + reportIndentWidth <= columns;
 }
 
+/** A range of UTF-16 code units inside one output line. */
+interface CharacterSpan {
+    start: number;
+    end: number;
+}
+
+/** Code-unit ranges of each code point, so marks never split a surrogate pair. */
+function codePointSpans(text: string): CharacterSpan[] {
+    const spans: CharacterSpan[] = [];
+    let index = 0;
+    for (const character of text) {
+        spans.push({ start: index, end: index + character.length });
+        index += character.length;
+    }
+
+    return spans;
+}
+
+/** ASCII whitespace runs are separators, matching how judges split tokens. */
+function tokenSpans(text: string): CharacterSpan[] {
+    const spans: CharacterSpan[] = [];
+    let index = 0;
+    while (index < text.length) {
+        if (isTokenSeparator(text[index]!)) {
+            index += 1;
+            continue;
+        }
+
+        const start = index;
+        while (index < text.length && !isTokenSeparator(text[index]!)) {
+            index += 1;
+        }
+        spans.push({ start, end: index });
+    }
+
+    return spans;
+}
+
+/** Merge adjacent code-point ranges so one run of changes is one segment. */
+function mergeSpans(spans: readonly CharacterSpan[]): CharacterSpan[] {
+    const merged: CharacterSpan[] = [];
+    for (const span of spans) {
+        const last = merged.at(-1);
+        if (last !== undefined && last.end === span.start) {
+            last.end = span.end;
+        } else {
+            merged.push({ ...span });
+        }
+    }
+
+    return merged;
+}
+
+function segmentsFromSpans(text: string, marked: readonly CharacterSpan[]): CellSegment[] {
+    if (text === "") {
+        return [];
+    }
+    if (marked.length === 0) {
+        return [{ text }];
+    }
+
+    const segments: CellSegment[] = [];
+    let cursor = 0;
+    for (const span of marked) {
+        if (span.start > cursor) {
+            segments.push({ text: text.slice(cursor, span.start) });
+        }
+        segments.push({ text: text.slice(span.start, span.end), marked: true });
+        cursor = span.end;
+    }
+    if (cursor < text.length) {
+        segments.push({ text: text.slice(cursor) });
+    }
+
+    return segments;
+}
+
+function wholeLine(text: string): CellSegment[] {
+    return text === "" ? [] : [{ text, marked: true }];
+}
+
+function isSameSpanText(
+    left: string,
+    leftSpan: CharacterSpan,
+    right: string,
+    rightSpan: CharacterSpan,
+): boolean {
+    return left.slice(leftSpan.start, leftSpan.end) === right.slice(rightSpan.start, rightSpan.end);
+}
+
+interface LineComparison {
+    expected: readonly CellSegment[];
+    actual: readonly CellSegment[];
+}
+
+/** Compare one character at a time, never splitting a surrogate pair. */
+function diffCharacters(expected: string, actual: string): LineComparison | undefined {
+    const expectedSpans = codePointSpans(expected);
+    const actualSpans = codePointSpans(actual);
+    if (expectedSpans.length !== actualSpans.length) {
+        return undefined;
+    }
+
+    const expectedMarked: CharacterSpan[] = [];
+    const actualMarked: CharacterSpan[] = [];
+    for (let index = 0; index < expectedSpans.length; index += 1) {
+        const left = expectedSpans[index]!;
+        const right = actualSpans[index]!;
+        if (!isSameSpanText(expected, left, actual, right)) {
+            expectedMarked.push(left);
+            actualMarked.push(right);
+        }
+    }
+
+    return {
+        expected: segmentsFromSpans(expected, mergeSpans(expectedMarked)),
+        actual: segmentsFromSpans(actual, mergeSpans(actualMarked)),
+    };
+}
+
+/**
+ * Mark the smallest useful unit of two differing lines.
+ *
+ * Token counts are compared first; only a single non-numeric token falls back
+ * to a character-by-character comparison.
+ */
+function diffLine(expected: string, actual: string): LineComparison {
+    const expectedTokens = tokenSpans(expected);
+    const actualTokens = tokenSpans(actual);
+    if (expectedTokens.length !== actualTokens.length) {
+        return { expected: wholeLine(expected), actual: wholeLine(actual) };
+    }
+
+    const tokensMatch = expectedTokens.every((span, index) =>
+        isSameSpanText(expected, span, actual, actualTokens[index]!),
+    );
+    if (tokensMatch) {
+        // Only the whitespace differs, so there is no token to point at.
+        return { expected: wholeLine(expected), actual: wholeLine(actual) };
+    }
+
+    if (expectedTokens.length === 1) {
+        const token = expectedTokens[0]!;
+        if (!numericTokenPattern.test(expected.slice(token.start, token.end))) {
+            const characters = diffCharacters(expected, actual);
+            if (characters !== undefined) {
+                return characters;
+            }
+
+            return { expected: wholeLine(expected), actual: wholeLine(actual) };
+        }
+    }
+
+    const expectedMarked: CharacterSpan[] = [];
+    const actualMarked: CharacterSpan[] = [];
+    for (let index = 0; index < expectedTokens.length; index += 1) {
+        const left = expectedTokens[index]!;
+        const right = actualTokens[index]!;
+        if (!isSameSpanText(expected, left, actual, right)) {
+            expectedMarked.push(left);
+            actualMarked.push(right);
+        }
+    }
+
+    return {
+        expected: segmentsFromSpans(expected, expectedMarked),
+        actual: segmentsFromSpans(actual, actualMarked),
+    };
+}
+
+interface ComparisonCells {
+    expected: TableCell;
+    actual: TableCell;
+}
+
+function comparisonCells(
+    expected: string | undefined,
+    actual: string | undefined,
+): ComparisonCells {
+    if (expected === undefined) {
+        return {
+            expected: { text: "", background: "green" },
+            actual: { text: actual!, background: "red", segments: wholeLine(actual!) },
+        };
+    }
+    if (actual === undefined) {
+        return {
+            expected: { text: expected, background: "green", segments: wholeLine(expected) },
+            actual: { text: "", background: "red" },
+        };
+    }
+    if (expected === actual) {
+        return { expected: { text: expected }, actual: { text: actual } };
+    }
+
+    const diff = diffLine(expected, actual);
+    return {
+        expected: { text: expected, background: "green", segments: diff.expected },
+        actual: { text: actual, background: "red", segments: diff.actual },
+    };
+}
+
 /**
  * Render both outputs as a table: side by side when it fits, otherwise as two
- * stacked tables that keep the headers. Differing rows stay colored.
+ * stacked tables that keep the headers. Differing details stay highlighted.
  */
 export function formatComparison(
     result: ComparisonResult,
@@ -448,32 +684,24 @@ export function formatComparison(
     const { styles, lineNumbers } = options;
     const lines: string[] = [];
     const rowCount = Math.max(result.expectedLines.length, result.actualLines.length);
-    const mismatched = (index: number): boolean =>
-        result.expectedLines[index] !== result.actualLines[index];
+    const pairs: ComparisonCells[] = [];
+    for (let index = 0; index < rowCount; index += 1) {
+        pairs.push(comparisonCells(result.expectedLines[index], result.actualLines[index]));
+    }
 
     if (options.sideBySide && fitsSideBySide(result, options.columns, lineNumbers)) {
-        const rows: TableRow[] = [];
-        for (let index = 0; index < rowCount; index += 1) {
-            const expected = result.expectedLines[index];
-            const actual = result.actualLines[index];
-            rows.push({
-                number: index + 1,
-                cells: [
-                    { text: expected ?? "", color: mismatched(index) ? "green" : undefined },
-                    { text: actual ?? "", color: mismatched(index) ? "red" : undefined },
-                ],
-            });
-        }
+        const rows: TableRow[] = pairs.map((pair, index) => ({
+            number: index + 1,
+            cells: [pair.expected, pair.actual],
+        }));
         lines.push(...formatTable(["Expected", "Output"], rows, styles, lineNumbers));
     } else {
-        const expectedRows: TableRow[] = result.expectedLines.map((text, index) => ({
-            number: index + 1,
-            cells: [{ text, color: mismatched(index) ? "green" : undefined }],
-        }));
-        const actualRows: TableRow[] = result.actualLines.map((text, index) => ({
-            number: index + 1,
-            cells: [{ text, color: mismatched(index) ? "red" : undefined }],
-        }));
+        const expectedRows: TableRow[] = pairs
+            .slice(0, result.expectedLines.length)
+            .map((pair, index) => ({ number: index + 1, cells: [pair.expected] }));
+        const actualRows: TableRow[] = pairs
+            .slice(0, result.actualLines.length)
+            .map((pair, index) => ({ number: index + 1, cells: [pair.actual] }));
         lines.push(...formatTable(["Expected"], expectedRows, styles, lineNumbers));
         lines.push("");
         lines.push(...formatTable(["Output"], actualRows, styles, lineNumbers));

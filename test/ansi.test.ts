@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import { supportsColor } from "@/lib/util/ansi";
+import { createAnsiStyles, supportsColor } from "@/lib/util/ansi";
 
 const originalNoColor = process.env.NO_COLOR;
 const originalForceColor = process.env.FORCE_COLOR;
@@ -16,6 +16,26 @@ function restoreEnvironmentVariable(name: string, value: string | undefined): vo
 afterEach(() => {
     restoreEnvironmentVariable("NO_COLOR", originalNoColor);
     restoreEnvironmentVariable("FORCE_COLOR", originalForceColor);
+});
+
+describe("paint", () => {
+    it("combines bold, foreground, and background into one sequence", () => {
+        const styles = createAnsiStyles(true);
+
+        expect(styles.paint("x", { fg: "green", bg: "green", bold: true })).toBe(
+            "\u001B[1;38;5;28;48;5;194mx\u001B[0m",
+        );
+        expect(styles.paint("x", { fg: "red", bg: "red" })).toBe(
+            "\u001B[38;5;124;48;5;224mx\u001B[0m",
+        );
+        expect(styles.paint("  ", { bg: "green" })).toBe("\u001B[48;5;194m  \u001B[0m");
+    });
+
+    it("leaves text untouched when styling is disabled or there is nothing to paint", () => {
+        expect(createAnsiStyles(false).paint("x", { fg: "green", bold: true })).toBe("x");
+        expect(createAnsiStyles(true).paint("", { fg: "green" })).toBe("");
+        expect(createAnsiStyles(true).paint("x", {})).toBe("x");
+    });
 });
 
 describe("supportsColor", () => {
