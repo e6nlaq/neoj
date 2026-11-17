@@ -102,6 +102,7 @@ function createConfig(overrides: Partial<Config["submit"]> = {}): Config {
             show_stderr: "always",
             display_lines: 30,
             show_line_numbers: true,
+            diff_background: "none",
         },
         languages: {
             cpp: {

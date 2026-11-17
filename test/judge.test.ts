@@ -295,6 +295,68 @@ describe("formatComparison", () => {
         expect(colored[4]).toContain(`${actualMark}😁${reset}`);
     });
 
+    it("tints differing rows with the light palette", () => {
+        const colored = formatComparison(compareOutput("1 2 3\n", "1 9 3\n", strict), {
+            ...coloredStacked,
+            background: "light",
+        });
+
+        expect(colored[1]).toContain(
+            "\u001B[48;5;194m1 \u001B[0m\u001B[1;38;5;28;48;5;194m2\u001B[0m\u001B[48;5;194m 3\u001B[0m",
+        );
+        expect(colored[4]).toContain(
+            "\u001B[48;5;224m1 \u001B[0m\u001B[1;38;5;124;48;5;224m9\u001B[0m\u001B[48;5;224m 3\u001B[0m",
+        );
+    });
+
+    it("tints differing rows with the dark palette", () => {
+        const colored = formatComparison(compareOutput("1 2 3\n", "1 9 3\n", strict), {
+            ...coloredStacked,
+            background: "dark",
+        });
+
+        expect(colored[1]).toContain(
+            "\u001B[48;2;24;38;30m1 \u001B[0m\u001B[1;38;2;150;200;160;48;2;24;38;30m2\u001B[0m\u001B[48;2;24;38;30m 3\u001B[0m",
+        );
+        expect(colored[4]).toContain(
+            "\u001B[48;2;40;26;26m1 \u001B[0m\u001B[1;38;2;220;160;160;48;2;40;26;26m9\u001B[0m\u001B[48;2;40;26;26m 3\u001B[0m",
+        );
+    });
+
+    it("extends the tint across the spaces around the column bar", () => {
+        const colored = formatComparison(compareOutput("a\n", "b\n", strict), {
+            ...coloredSideBySide,
+            background: "light",
+        });
+
+        expect(colored[1]).toContain(
+            "\u001B[48;5;194m \u001B[0m\u001B[2m│\u001B[0m\u001B[48;5;224m \u001B[0m",
+        );
+    });
+
+    it("tints the spaces around the bar in the stacked layout", () => {
+        const colored = formatComparison(compareOutput("a\nb\n", "a\nx\n", strict), {
+            ...coloredStacked,
+            lineNumbers: true,
+            background: "light",
+        });
+
+        expect(colored[2]).toContain(
+            "\u001B[48;5;194m \u001B[0m\u001B[2m│\u001B[0m\u001B[48;5;194m \u001B[0m",
+        );
+    });
+
+    it("tints the missing cell when one side has no line", () => {
+        const colored = formatComparison(compareOutput("a\n", "a\nb\n", strict), {
+            ...coloredSideBySide,
+            background: "light",
+        });
+
+        // The left column is as wide as "Expected" (8 cells).
+        expect(colored[2]).toContain("\u001B[48;5;194m        \u001B[0m");
+        expect(colored[2]).toContain("\u001B[1;38;5;124;48;5;224mb\u001B[0m");
+    });
+
     it("keeps the line-number gutter dim on differing rows", () => {
         const colored = formatComparison(compareOutput("a\nb\n", "a\nx\n", strict), {
             ...coloredSideBySide,

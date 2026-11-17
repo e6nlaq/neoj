@@ -18,6 +18,11 @@ export interface ComparisonOptions {
 /** Range accepted by `neoj test --error` and `test.error`. */
 export const errorExponentBounds = { min: 0, max: 15 } as const;
 
+/** Background tint used by the comparison report. */
+export const diffBackgroundModes = ["dark", "light", "none"] as const;
+
+export type DiffBackgroundMode = (typeof diffBackgroundModes)[number];
+
 /** The pair of numeric tokens behind a tolerance failure, kept for the report. */
 export interface NumericMismatch {
     expected: string;
@@ -45,6 +50,8 @@ export interface ComparisonFormatOptions {
     sideBySide: boolean;
     /** Prefix every row with a right-aligned line number. */
     lineNumbers: boolean;
+    /** Tint differing rows for a dark or light terminal; defaults to no tint. */
+    background?: DiffBackgroundMode;
 }
 
 export interface LinesTableOptions {
@@ -342,29 +349,57 @@ export function displayWidth(text: string): number {
     return width;
 }
 
-function padCell(text: string, width: number): string {
-    return text + " ".repeat(Math.max(0, width - displayWidth(text)));
-}
-
 /**
  * Render a comparison cell: marked segments are bold and colored, and the cell
  * is padded to the column width so the table stays aligned.
  */
-function formatCell(cell: TableCell, width: number, last: boolean, styles: AnsiStyles): string {
+function formatCell(
+    cell: TableCell,
+    width: number,
+    last: boolean,
+    styles: AnsiStyles,
+    background: DiffBackgroundMode,
+): string {
+    const color = cell.color;
+    const theme = background === "none" ? undefined : background;
+    const tinted = theme !== undefined && color !== undefined;
+    const padding = " ".repeat(Math.max(0, width - displayWidth(cell.text)));
+
     if (cell.segments === undefined) {
-        return last ? cell.text : padCell(cell.text, width);
+        if (!tinted) {
+            return last ? cell.text : cell.text + padding;
+        }
+        return styles.paint(cell.text + padding, { bg: color, theme });
     }
 
-    const color = cell.color ?? "red";
     let rendered = "";
     for (const segment of cell.segments) {
-        rendered +=
-            segment.marked === true
-                ? styles.paint(segment.text, { fg: color, bold: true })
-                : segment.text;
+        if (segment.marked === true) {
+            rendered += styles.paint(
+                segment.text,
+                tinted
+                    ? { fg: color, bg: color, theme, bold: true }
+                    : { fg: color ?? "red", bold: true },
+            );
+        } else {
+            rendered += tinted ? styles.paint(segment.text, { bg: color, theme }) : segment.text;
+        }
     }
 
-    return rendered + " ".repeat(Math.max(0, width - displayWidth(cell.text)));
+    return tinted ? rendered + styles.paint(padding, { bg: color, theme }) : rendered + padding;
+}
+
+/** Tint the space around a `│` with the adjacent cell's background. */
+function separatorSpace(
+    color: "green" | "red" | undefined,
+    styles: AnsiStyles,
+    background: DiffBackgroundMode,
+): string {
+    if (color === undefined || background === "none") {
+        return " ";
+    }
+
+    return styles.paint(" ", { bg: color, theme: background });
 }
 
 function formatTableRow(
@@ -373,16 +408,36 @@ function formatTableRow(
     widths: readonly number[],
     numberWidth: number,
     styles: AnsiStyles,
+    background: DiffBackgroundMode,
 ): string {
-    const parts: string[] = [];
+    let line = "";
     if (number !== undefined) {
-        parts.push(styles.dim(number.padStart(numberWidth)));
-    }
-    for (const [index, cell] of cells.entries()) {
-        parts.push(formatCell(cell, widths[index] ?? 0, index === cells.length - 1, styles));
+        line += styles.dim(number.padStart(numberWidth));
     }
 
-    return parts.join(` ${styles.dim("│")} `).trimEnd();
+    let previousTint: "green" | "red" | undefined;
+    for (const [index, cell] of cells.entries()) {
+        const tint = background === "none" ? undefined : cell.color;
+        if (index > 0 || number !== undefined) {
+            // The space before the bar belongs to the previous cell and the one
+            // after it to this cell, so a tinted row stays one continuous band
+            // while the bar itself stays dim. In the stacked layout, the first
+            // cell owns the space between the gutter and the bar.
+            line += separatorSpace(index === 0 ? tint : previousTint, styles, background);
+            line += styles.dim("│");
+            line += separatorSpace(tint, styles, background);
+        }
+        line += formatCell(
+            cell,
+            widths[index] ?? 0,
+            index === cells.length - 1,
+            styles,
+            background,
+        );
+        previousTint = tint;
+    }
+
+    return line.trimEnd();
 }
 
 /**
@@ -396,6 +451,7 @@ function formatTable(
     rows: readonly TableRow[],
     styles: AnsiStyles,
     lineNumbers: boolean,
+    background: DiffBackgroundMode,
 ): string[] {
     const numberWidth = lineNumbers
         ? Math.max(lineNumberHeader.length, String(rows.length).length)
@@ -415,6 +471,7 @@ function formatTable(
                 widths,
                 numberWidth,
                 styles,
+                background,
             ),
         ),
     ];
@@ -426,6 +483,7 @@ function formatTable(
                 widths,
                 numberWidth,
                 styles,
+                background,
             ),
         );
     }
@@ -647,14 +705,14 @@ function comparisonCells(
 ): ComparisonCells {
     if (expected === undefined) {
         return {
-            expected: { text: "" },
+            expected: { text: "", color: "green" },
             actual: { text: actual!, color: "red", segments: wholeLine(actual!) },
         };
     }
     if (actual === undefined) {
         return {
             expected: { text: expected, color: "green", segments: wholeLine(expected) },
-            actual: { text: "" },
+            actual: { text: "", color: "red" },
         };
     }
     if (expected === actual) {
@@ -677,6 +735,7 @@ export function formatComparison(
     options: ComparisonFormatOptions,
 ): string[] {
     const { styles, lineNumbers } = options;
+    const background = options.background ?? "none";
     const lines: string[] = [];
     const rowCount = Math.max(result.expectedLines.length, result.actualLines.length);
     const pairs: ComparisonCells[] = [];
@@ -689,7 +748,7 @@ export function formatComparison(
             number: index + 1,
             cells: [pair.expected, pair.actual],
         }));
-        lines.push(...formatTable(["Expected", "Output"], rows, styles, lineNumbers));
+        lines.push(...formatTable(["Expected", "Output"], rows, styles, lineNumbers, background));
     } else {
         const expectedRows: TableRow[] = pairs
             .slice(0, result.expectedLines.length)
@@ -703,9 +762,9 @@ export function formatComparison(
                 number: index + 1,
                 cells: [pair.actual],
             }));
-        lines.push(...formatTable(["Expected"], expectedRows, styles, lineNumbers));
+        lines.push(...formatTable(["Expected"], expectedRows, styles, lineNumbers, background));
         lines.push("");
-        lines.push(...formatTable(["Output"], actualRows, styles, lineNumbers));
+        lines.push(...formatTable(["Output"], actualRows, styles, lineNumbers, background));
     }
 
     if (result.trailingNewlineOnly) {
@@ -728,6 +787,7 @@ export function formatLinesTable(lines: readonly string[], options: LinesTableOp
         toRows(lines),
         options.styles,
         options.lineNumbers,
+        "none",
     );
     const omitted = options.omitted ?? 0;
     if (omitted > 0) {

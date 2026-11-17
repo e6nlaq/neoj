@@ -23,6 +23,7 @@ describe("test configuration", () => {
             show_stderr: "always",
             display_lines: 30,
             show_line_numbers: true,
+            diff_background: "none",
         });
         expect(config.languages).toEqual({});
         expect(config.alias).toEqual({});
@@ -64,6 +65,17 @@ describe("test configuration", () => {
         }
 
         expect(v.safeParse(configSchema, { test: { show_stderr: "sometimes" } }).success).toBe(
+            false,
+        );
+    });
+
+    it("defaults diff_background to none and accepts dark, light, or none", () => {
+        expect(parse({}).test.diff_background).toBe("none");
+        for (const mode of ["dark", "light", "none"] as const) {
+            expect(parse({ test: { diff_background: mode } }).test.diff_background).toBe(mode);
+        }
+
+        expect(v.safeParse(configSchema, { test: { diff_background: "auto" } }).success).toBe(
             false,
         );
     });

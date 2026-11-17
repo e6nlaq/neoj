@@ -3,7 +3,7 @@ import { dirname, join, resolve } from "node:path";
 
 import * as v from "valibot";
 
-import { errorExponentBounds } from "@/lib/judge/judge";
+import { diffBackgroundModes, errorExponentBounds } from "@/lib/judge/judge";
 import { platformNames } from "@/lib/platform";
 import { findProjectConfig } from "@/lib/project/project";
 import { isWithin } from "@/lib/project/project-path";
@@ -463,6 +463,15 @@ export const configSchema = v.pipe(
                         ),
                         true,
                     ),
+                    diff_background: v.optional(
+                        v.pipe(
+                            v.picklist(diffBackgroundModes),
+                            v.description(
+                                'Tint rows in the comparison table that differ: "dark" and "light" match a dark or light terminal background, "none" disables the tint.',
+                            ),
+                        ),
+                        "none",
+                    ),
                 }),
                 v.description("How neoj builds and runs test cases."),
             ),
@@ -476,6 +485,7 @@ export const configSchema = v.pipe(
                 show_stderr: "always",
                 display_lines: 30,
                 show_line_numbers: true,
+                diff_background: "none",
             },
         ),
         run: v.optional(
