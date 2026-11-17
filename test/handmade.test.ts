@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PassThrough } from "node:stream";
 
-import { runHandmade } from "@/feature/handmade";
+import { createHandmadePrompt, runHandmade } from "@/feature/handmade";
 import {
     findNextHandmadeTarget,
     formatHandmadeContents,
@@ -196,6 +197,54 @@ describe("saveHandmadeCase", () => {
             'Test case "handmade-1" already exists',
         );
         expect(await Bun.file(target.inputPath).exists()).toBe(false);
+    });
+});
+
+function createTerminal() {
+    const source = new PassThrough() as PassThrough & {
+        isTTY: boolean;
+        setRawMode: () => void;
+    };
+    source.isTTY = true;
+    source.setRawMode = () => {};
+    const sink = new PassThrough() as PassThrough & { isTTY: boolean };
+    sink.isTTY = true;
+    const chunks: Buffer[] = [];
+    sink.on("data", (chunk: Buffer) => {
+        chunks.push(chunk);
+    });
+
+    return { source, sink, chunks };
+}
+
+describe("createHandmadePrompt", () => {
+    it("keeps the numbered gutter when a block is pasted at once", async () => {
+        const root = await createRoot();
+        const { source, sink, chunks } = createTerminal();
+        const session = createHandmadePrompt(source, sink);
+
+        try {
+            const run = runHandmade({
+                projectRoot: root,
+                folder: "test",
+                filename: "handmade-{}",
+                prompt: session.prompt,
+            });
+            source.write("1 2\r\n3 4\r\n\r\n5\r\n\r\n");
+            await run;
+        } finally {
+            session.close();
+        }
+
+        const output = Buffer.concat(chunks)
+            .toString("utf8")
+            .replace(/\r\n/gu, "\n")
+            // oxlint-disable-next-line no-control-regex -- terminal sequences start with ESC
+            .replace(/\u001B\[[0-9;?]*[ -/]*[@-~]/gu, "");
+        expect(output).toContain("Input (handmade-1.in)\n  1 │ 1 2\n  2 │ 3 4\n");
+        expect(output).toContain("Output (handmade-1.out)\n  1 │ 5\n");
+        expect(await Bun.file(join(root, "test", "handmade-1.in")).text()).toBe("1 2\n3 4\n");
+        expect(await Bun.file(join(root, "test", "handmade-1.out")).text()).toBe("5\n");
     });
 });
 

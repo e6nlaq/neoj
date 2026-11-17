@@ -29,7 +29,8 @@ The block header is shown in bold, and each line is prompted with its line
 number like the `neoj test` report. Type the input one line at a time and press
 Enter on an empty line to finish the block. Do the same for the expected output;
 a blank line separates the two blocks. To create an empty input or output, press
-Enter immediately.
+Enter immediately. Pasting several lines at once also works: each pasted line is
+placed in order and keeps its numbered gutter.
 
 The files are written only after both blocks are complete. Ctrl-C, or Ctrl-D
 (Ctrl-Z on Windows), cancels the command and leaves the directory untouched, so a
