@@ -18,8 +18,9 @@ You need an initialized project with `neoj.toml`, a downloaded problem, and the
 same `[languages.<key>]` section that `neoj test` uses:
 
 ```toml
-[test]
-source = "src/main.cpp"
+[source]
+folder = "src"
+default = "src/main.cpp"
 
 [languages.cpp]
 source = "src/**/*.cpp"

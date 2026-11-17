@@ -83,7 +83,9 @@ export async function downloadProblem(
     // any file replacement.
     const projectDirectories = await resolveProjectDirectories(projectRoot, [
         { folder: config.testcase.folder, name: "testcase.folder" },
-        ...(config.src === undefined ? [] : [{ folder: config.src, name: "src" }]),
+        ...(config.source.folder === undefined
+            ? []
+            : [{ folder: config.source.folder, name: "source.folder" }]),
         ...(config.template.folder === undefined
             ? []
             : [{ folder: config.template.folder, name: "template.folder" }]),
@@ -100,7 +102,7 @@ export async function downloadProblem(
                 {
                     getProblem: (problemUrl) => source.fetchProblem(problemUrl),
                 },
-                config.src,
+                config.source.folder,
             ),
     );
 
@@ -136,11 +138,11 @@ export async function downloadProblem(
         }
     }
 
-    const sourceDirectory = projectDirectories.get("src");
+    const sourceDirectory = projectDirectories.get("source.folder");
     const snapshot = await snapshotDirectories([
         { path: fetched.directory, name: "testcase.folder" },
         ...(sourceDirectory !== undefined && (config.template.enable || config.stash.auto_apply)
-            ? [{ path: sourceDirectory, name: "src" }]
+            ? [{ path: sourceDirectory, name: "source.folder" }]
             : []),
     ]);
 
@@ -150,10 +152,10 @@ export async function downloadProblem(
 
         if (problemChanged && config.template.enable) {
             const templateFolder = config.template.folder;
-            const sourcePath = config.src;
+            const sourcePath = config.source.folder;
             if (templateFolder === undefined || sourcePath === undefined) {
                 throw new Error(
-                    "Configuration requires src and template.folder when template.enable is true.",
+                    "Configuration requires source.folder and template.folder when template.enable is true.",
                 );
             }
             await applyProjectTemplate(

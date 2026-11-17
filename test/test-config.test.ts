@@ -13,7 +13,6 @@ describe("test configuration", () => {
         const config = parse({});
 
         expect(config.test).toEqual({
-            source: undefined,
             timeout: 10,
             memory: 1024,
             parallel: true,
@@ -27,6 +26,20 @@ describe("test configuration", () => {
         });
         expect(config.languages).toEqual({});
         expect(config.alias).toEqual({});
+    });
+
+    it("defaults source to an empty section and rejects the old keys", () => {
+        expect(parse({}).source).toEqual({});
+        expect(parse({ source: { folder: "src", default: "src/main.cpp" } }).source).toEqual({
+            folder: "src",
+            default: "src/main.cpp",
+        });
+
+        expect(v.safeParse(configSchema, { source: { folder: "" } }).success).toBe(false);
+        expect(v.safeParse(configSchema, { source: { default: "" } }).success).toBe(false);
+        expect(v.safeParse(configSchema, { source: { folder: 1 } }).success).toBe(false);
+        expect(v.safeParse(configSchema, { src: "src" }).success).toBe(false);
+        expect(v.safeParse(configSchema, { test: { source: "src/main.cpp" } }).success).toBe(false);
     });
 
     it("accepts aliases and rejects path-like names", () => {
@@ -90,7 +103,8 @@ describe("test configuration", () => {
 
     it("accepts a language with compile, run, limits, and extra cache inputs", () => {
         const config = parse({
-            test: { source: "src/main.cpp", cache: true, ignore_trailing_space: true },
+            source: { folder: "src", default: "src/main.cpp" },
+            test: { cache: true, ignore_trailing_space: true },
             languages: {
                 cpp: {
                     source: ["src/*.cpp", "src/lib/*.cpp"],
@@ -103,7 +117,7 @@ describe("test configuration", () => {
             },
         });
 
-        expect(config.test.source).toBe("src/main.cpp");
+        expect(config.source).toEqual({ folder: "src", default: "src/main.cpp" });
         expect(config.test.cache).toBe(true);
         expect(config.test.ignore_trailing_space).toBe(true);
         expect(config.languages.cpp).toEqual({
@@ -123,6 +137,35 @@ describe("test configuration", () => {
 
         expect(config.languages.py?.compile).toBeUndefined();
         expect(config.languages.py?.cache_files).toBeUndefined();
+    });
+
+    it("accepts only supported platforms as language submit keys", () => {
+        const submit = {
+            atcoder: "6017",
+            yukicoder: "cpp23_gcc16",
+            shareoj: "cpp23",
+            codeforces: "91",
+        };
+        const config = parse({
+            languages: { cpp: { source: "*.cpp", run: ["{outfile}"], submit } },
+        });
+
+        expect(config.languages.cpp?.submit).toEqual(submit);
+
+        for (const platform of ["aoj", "AtCoder", "unknown", ""]) {
+            expect(
+                v.safeParse(configSchema, {
+                    languages: {
+                        cpp: { source: "*.cpp", run: ["x"], submit: { [platform]: "1" } },
+                    },
+                }).success,
+            ).toBe(false);
+        }
+        expect(
+            v.safeParse(configSchema, {
+                languages: { cpp: { source: "*.cpp", run: ["x"], submit: { atcoder: "" } } },
+            }).success,
+        ).toBe(false);
     });
 
     it("rejects empty runs, zero limits, and unknown keys", () => {

@@ -32,6 +32,7 @@ import {
     type ResolvedSource,
     type TestLanguage,
 } from "@/lib/judge/test-runner";
+import { isPlatformName, type PlatformName } from "@/lib/platform";
 import { loadConfig, type Config, type SubmitClipMode } from "@/lib/project/config";
 import type { ProblemMetadata } from "@/lib/project/problem-metadata";
 import { readProblemMetadata } from "@/lib/project/problem-metadata";
@@ -46,7 +47,7 @@ import { hasErrorCode } from "@/lib/util/errors";
 import type { ProgressStream } from "@/lib/util/progress";
 import { withSpinner } from "@/lib/util/spinner";
 
-export type SubmitPlatform = "atcoder" | "yukicoder" | "shareoj" | "codeforces";
+export type SubmitPlatform = PlatformName;
 
 export interface SubmitLanguageCandidate {
     id: string;
@@ -373,7 +374,7 @@ export async function prepareSubmissionSource(options: PrepareSubmissionOptions)
 }
 
 function toSubmitPlatform(name: string): SubmitPlatform {
-    if (name === "atcoder" || name === "yukicoder" || name === "shareoj" || name === "codeforces") {
+    if (isPlatformName(name)) {
         return name;
     }
 
@@ -803,10 +804,10 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
         );
     }
 
-    const spec = options.source ?? options.config.test.source;
+    const spec = options.source ?? options.config.source.default;
     if (spec === undefined || spec.trim() === "") {
         throw new Error(
-            'No source file to submit. Set test.source in neoj.toml or run "neoj submit <source>".',
+            'No source file to submit. Set source.default in neoj.toml or run "neoj submit <source>".',
         );
     }
 
@@ -1009,7 +1010,7 @@ export function createSubmitCommand(): Command<[string | undefined]> {
         .alias("s")
         .alias("submits")
         .description("Submit the solution for the current problem")
-        .argument("[source]", "Source file to submit (defaults to test.source)")
+        .argument("[source]", "Source file to submit (defaults to source.default)")
         .option("-l, --language <key>", "Language definition to use")
         .option("-p, --platform-language <id>", "Platform language ID to submit as")
         .option("--yes", "Skip the confirmation prompt")

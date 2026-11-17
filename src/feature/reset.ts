@@ -15,7 +15,7 @@ import { snapshotDirectories } from "@/lib/util/directory-snapshot";
 import { hasErrorCode } from "@/lib/util/errors";
 
 export interface ResetOptions {
-    /** Restore both `src` and the test cases. */
+    /** Restore both `source.folder` and the test cases. */
     all?: boolean;
     /** Re-download the test cases only. */
     testcase?: boolean;
@@ -76,11 +76,12 @@ function buildConfirmMessage(actions: readonly string[], handmadeWarning?: strin
 }
 
 /**
- * Restore the workspace to its initial state: re-apply the template to `src`
- * and optionally re-download the samples recorded by the last `neoj download`.
+ * Restore the workspace to its initial state: re-apply the template to
+ * `source.folder` and optionally re-download the samples recorded by the last
+ * `neoj download`.
  *
- * Without flags only `src` is restored. `--testcase` re-downloads the test
- * cases only, and `--all` restores both. Nothing is written before the
+ * Without flags only the source folder is restored. `--testcase` re-downloads
+ * the test cases only, and `--all` restores both. Nothing is written before the
  * confirmation prompt, and a failure after the first write restores the
  * snapshot taken before the reset.
  */
@@ -89,21 +90,25 @@ export async function resetWorkspace(
     dependencies: ResetDependencies = {},
 ): Promise<void> {
     const testcaseRequested = options.all === true || options.testcase === true;
-    const srcRequested = options.all === true || !testcaseRequested;
+    const sourceRequested = options.all === true || !testcaseRequested;
 
     const projectRoot = await requireInitializedProject(process.cwd());
     const config = await loadConfig();
 
     const templateUsable =
-        config.template.enable && config.template.folder !== undefined && config.src !== undefined;
+        config.template.enable &&
+        config.template.folder !== undefined &&
+        config.source.folder !== undefined;
 
-    if (srcRequested && !templateUsable) {
+    if (sourceRequested && !templateUsable) {
         if (!testcaseRequested) {
-            throw new Error('Cannot restore "src": template.enable is false in this project.');
+            throw new Error(
+                'Cannot restore "source.folder": template.enable is false in this project.',
+            );
         }
         consola.warn("Skipping the template restore: template.enable is false in this project.");
     }
-    const srcRestore = srcRequested && templateUsable;
+    const sourceRestore = sourceRequested && templateUsable;
 
     let problemUrl: string | undefined;
     if (testcaseRequested) {
@@ -118,16 +123,18 @@ export async function resetWorkspace(
     const testcaseRestore = problemUrl !== undefined;
 
     const resolved = await resolveProjectDirectories(projectRoot, [
-        ...(srcRestore && config.src !== undefined ? [{ folder: config.src, name: "src" }] : []),
-        ...(srcRestore && config.template.folder !== undefined
+        ...(sourceRestore && config.source.folder !== undefined
+            ? [{ folder: config.source.folder, name: "source.folder" }]
+            : []),
+        ...(sourceRestore && config.template.folder !== undefined
             ? [{ folder: config.template.folder, name: "template.folder" }]
             : []),
         ...(testcaseRestore ? [{ folder: config.testcase.folder, name: "testcase.folder" }] : []),
     ]);
 
     const actions: string[] = [];
-    if (srcRestore) {
-        actions.push('overwrite "src" with the template');
+    if (sourceRestore) {
+        actions.push('overwrite "source.folder" with the template');
     }
     let handmadeWarning: string | undefined;
     if (testcaseRestore) {
@@ -154,7 +161,7 @@ export async function resetWorkspace(
     }
 
     const snapshot = await snapshotDirectories([
-        ...(srcRestore ? [{ path: resolved.get("src")!, name: "src" }] : []),
+        ...(sourceRestore ? [{ path: resolved.get("source.folder")!, name: "source.folder" }] : []),
         ...(testcaseRestore
             ? [{ path: resolved.get("testcase.folder")!, name: "testcase.folder" }]
             : []),
@@ -162,12 +169,12 @@ export async function resetWorkspace(
 
     let downloadedCount: number | undefined;
     try {
-        if (srcRestore) {
+        if (sourceRestore) {
             const templateFolder = config.template.folder;
-            const sourcePath = config.src;
+            const sourcePath = config.source.folder;
             if (templateFolder === undefined || sourcePath === undefined) {
                 throw new Error(
-                    "Configuration requires src and template.folder when template.enable is true.",
+                    "Configuration requires source.folder and template.folder when template.enable is true.",
                 );
             }
             await applyProjectTemplate(
@@ -188,7 +195,7 @@ export async function resetWorkspace(
                 {
                     getProblem: (url) => source.fetchProblem(url),
                 },
-                config.src,
+                config.source.folder,
             );
             const result = await writeSamples(fetched.directory, fetched.problem, config.testcase);
             downloadedCount = result.count;
@@ -207,8 +214,10 @@ export async function resetWorkspace(
         await snapshot.dispose();
     }
 
-    if (srcRestore) {
-        consola.success(`Restored "src" from the template (mode: ${config.template.mode}).`);
+    if (sourceRestore) {
+        consola.success(
+            `Restored "source.folder" from the template (mode: ${config.template.mode}).`,
+        );
     }
     if (testcaseRestore) {
         if (downloadedCount === 0) {
@@ -225,8 +234,8 @@ export async function resetWorkspace(
 
 export function createResetCommand(): Command {
     return new Command("reset")
-        .description("Restore src, and optionally the test cases, to the initial state")
-        .option("-a, --all", "Restore both src and the test cases")
+        .description("Restore source.folder, and optionally the test cases, to the initial state")
+        .option("-a, --all", "Restore both source.folder and the test cases")
         .option("-t, --testcase", "Re-download the test cases only")
         .option("-y, --yes", "Skip the confirmation prompt")
         .action(async ({ all, testcase, yes }) => {

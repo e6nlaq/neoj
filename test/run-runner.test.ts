@@ -197,10 +197,11 @@ describe("runProgram", () => {
 });
 
 describe("runSolution", () => {
-    it("runs test.source with the program arguments and forwards them verbatim", async () => {
+    it("runs source.default with the program arguments and forwards them verbatim", async () => {
         const project = await createProject(`
-[test]
-source = "src/main.ts"
+[source]
+folder = "src"
+default = "src/main.ts"
 ${interpretedLanguage}
 `);
 
@@ -241,8 +242,9 @@ ${interpretedLanguage}
     it("returns the program's exit code", async () => {
         await createProject(
             `
-[test]
-source = "src/main.ts"
+[source]
+folder = "src"
+default = "src/main.ts"
 ${interpretedLanguage}
 `,
             "process.exit(5);",
@@ -259,8 +261,9 @@ ${interpretedLanguage}
 
     it("prints the compile result, hides it when silent, and reuses the cache", async () => {
         const project = await createProject(`
-[test]
-source = "src/main.ts"
+[source]
+folder = "src"
+default = "src/main.ts"
 ${compiledLanguage}
 `);
 
@@ -306,8 +309,9 @@ ${compiledLanguage}
 
     it("hides informational logs when the log stream is not a terminal", async () => {
         await createProject(`
-[test]
-source = "src/main.ts"
+[source]
+folder = "src"
+default = "src/main.ts"
 ${compiledLanguage}
 `);
 
@@ -325,8 +329,9 @@ ${compiledLanguage}
     it("still prints compiler diagnostics when the log stream is not a terminal", async () => {
         await createProject(
             `
-[test]
-source = "src/main.ts"
+[source]
+folder = "src"
+default = "src/main.ts"
 [languages.ts]
 source = "src/*.ts"
 compile = [{execPath}, "build", "missing.ts", "--outfile", "{outfile}"]
@@ -346,8 +351,9 @@ run = [{execPath}, "{outfile}"]
     it("reads silent from [run] and still prints compiler diagnostics", async () => {
         await createProject(
             `
-[test]
-source = "src/main.ts"
+[source]
+folder = "src"
+default = "src/main.ts"
 [run]
 silent = true
 [languages.ts]

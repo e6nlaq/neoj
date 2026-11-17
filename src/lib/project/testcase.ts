@@ -33,10 +33,10 @@ export async function resolveTestcaseDirectory(
 ): Promise<string> {
     const target = await resolveProjectDirectory(projectRoot, folder, "testcase.folder");
     if (sourceFolder !== undefined) {
-        const source = await resolveProjectDirectory(projectRoot, sourceFolder, "src");
+        const source = await resolveProjectDirectory(projectRoot, sourceFolder, "source.folder");
         assertDirectoriesDoNotOverlap(
             { path: target, name: "testcase.folder" },
-            { path: source, name: "src" },
+            { path: source, name: "source.folder" },
         );
     }
 

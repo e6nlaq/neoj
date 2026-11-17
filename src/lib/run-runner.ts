@@ -14,7 +14,7 @@ export interface SplitRunArguments {
  *
  * Everything after the first positional argument goes to the program, so
  * `neoj run main -x` forwards `-x`. A `--` before the source selects
- * `test.source` and forwards everything after it: `neoj run -- -x`.
+ * `source.default` and forwards everything after it: `neoj run -- -x`.
  */
 export function splitRunArguments(argv: readonly string[]): SplitRunArguments {
     let index = 0;

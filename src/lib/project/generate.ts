@@ -265,7 +265,7 @@ export async function runGenerate(options: RunGenerateOptions): Promise<RunGener
     const directory = await resolveTestcaseDirectory(
         projectRoot,
         options.config.testcase.folder,
-        options.config.src,
+        options.config.source.folder,
     );
     const specs = await findFreeCaseSpecs(directory, options.config.generate.filename, count);
     await mkdir(directory, { recursive: true });

@@ -1,13 +1,14 @@
 #:schema https://raw.githubusercontent.com/e6nlaq/neoj/main/schema/neoj.schema.json
 
 # neoj config file
-src = "src"
+[source]
+folder = "src"
+default = "src/main.cpp"
 
 [testcase]
 folder = "test"
 
 [test]
-source = "src/main.cpp"
 cache = true
 
 # Exponent of the floating-point tolerance accepted by `neoj test -e`:
@@ -16,44 +17,46 @@ cache = true
 
 # Interactive judging (`neoj test --interactive`) reads this section. The
 # interactor and the solution run at the same time and talk over pipes.
-# [test.interactor]
-# source = "judge/interactor.cpp"
-# run = ["{outfile}", "{infile}"]
-# timeout = 15
+[test.interactor]
+source = "judge/interactor.cpp"
+run = ["{outfile}", "{infile}"]
+timeout = 15
 
 # Special judge (`neoj test --judge`) reads this section. The solution's
 # standard output arrives on the checker's standard input. Add {infile} to
 # pass the test case path to the checker.
-# [test.judge]
-# source = "judge/checker.cpp"
-# run = ["{outfile}", "{infile}"]
-# timeout = 10
+[test.judge]
+source = "judge/checker.cpp"
+run = ["{outfile}", "{infile}"]
+timeout = 10
 
 # Random test cases (`neoj generate`) run the generator with the case number
-# as its first argument, and feed its output to the naive solution. A Python
-# skeleton is bundled as judge/gen.py.
-# [generate]
-# gen = "judge/gen.py"
-# naive = "judge/naive.cpp"
+# as its first argument, and feed its output to the naive solution. Python and
+# C++ skeletons are bundled as judge/gen.py and judge/naive.cpp.
+[generate]
+gen = "judge/gen.py"
+naive = "judge/naive.cpp"
 
 
 # Extra names for source files: `neoj test main` builds src/main.cpp.
 # [alias]
 # main = "src/main.cpp"
 
+# C++
 [languages.cpp]
-source = "src/**/*.cpp"
+source = ["src/**/*.cpp", "judge/*.cpp"]
 compile = ["g++", "-std=c++23", "-O2", "-o", "{outfile}", "{source}"]
 run = ["{outfile}"]
 # Platform language IDs for `neoj submit`, keyed by platform name.
-submit = { atcoder = "6017", yukicoder = "cpp23_gcc16" }
+submit = { atcoder = "6017", yukicoder = "cpp23_gcc16", shareoj = "cpp23-gcc" }
 # Convert the source into the submitted text before submitting.
 # presubmit = ["python", "tools/expand.py", "{source}", "{outfile}"]
 
+# Python
 [languages.python]
 source = "**/*.py"
 run = ["python", "{source}"]
-submit = { atcoder = "6082", yukicoder = "python3" }
+submit = { atcoder = "6082", yukicoder = "python3", shareoj = "python314" }
 
 [submit]
 confirm = true

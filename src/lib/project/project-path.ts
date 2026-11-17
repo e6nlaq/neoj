@@ -97,7 +97,7 @@ export interface ProjectDirectorySpec {
 /**
  * Resolve several configured directories and reject any pair that overlaps.
  *
- * `src`, `template.folder`, and `testcase.folder` are replaced independently,
+ * `source.folder`, `template.folder`, and `testcase.folder` are replaced independently,
  * so allowing one to contain another would let one operation destroy a
  * directory another operation is about to use.
  */

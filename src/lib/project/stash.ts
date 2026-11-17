@@ -21,7 +21,7 @@ import { commitStagedDirectory } from "@/lib/util/directory-replace";
 import { snapshotDirectories } from "@/lib/util/directory-snapshot";
 import { hasErrorCode } from "@/lib/util/errors";
 
-export const stashSlots = ["src", "testcase"] as const;
+export const stashSlots = ["source", "testcase"] as const;
 
 export type StashSlot = (typeof stashSlots)[number];
 
@@ -68,7 +68,7 @@ export interface ApplyStashResult {
 
 export class EmptyStashError extends Error {
     constructor() {
-        super('There is nothing to stash: "src" and "testcase.folder" contain no files.');
+        super('There is nothing to stash: "source.folder" and "testcase.folder" contain no files.');
         this.name = "EmptyStashError";
     }
 }
@@ -86,7 +86,7 @@ const stashMetaSchema = v.strictObject({
     slug: v.pipe(v.string(), v.minLength(1)),
     saved_at: v.pipe(v.string(), v.minLength(1)),
     slots: v.strictObject({
-        src: v.optional(v.pipe(v.string(), v.minLength(1))),
+        source: v.optional(v.pipe(v.string(), v.minLength(1))),
         testcase: v.optional(v.pipe(v.string(), v.minLength(1))),
     }),
     file_count: v.pipe(v.number(), v.integer(), v.minValue(0)),
@@ -248,7 +248,7 @@ async function readStashMeta(directory: string): Promise<StashMeta | undefined> 
     if (!result.success) {
         throw new Error(`Stash metadata "${metaPath}" is invalid.`, { cause: result.issues });
     }
-    if (result.output.slots.src === undefined && result.output.slots.testcase === undefined) {
+    if (result.output.slots.source === undefined && result.output.slots.testcase === undefined) {
         throw new Error(`Stash metadata "${metaPath}" does not record any saved directory.`);
     }
 
@@ -401,8 +401,8 @@ interface SlotSource {
 
 function getSlotSources(config: Config): SlotSource[] {
     const sources: SlotSource[] = [];
-    if (config.src !== undefined) {
-        sources.push({ slot: "src", name: "src", folder: config.src });
+    if (config.source.folder !== undefined) {
+        sources.push({ slot: "source", name: "source.folder", folder: config.source.folder });
     }
     sources.push({ slot: "testcase", name: "testcase.folder", folder: config.testcase.folder });
     return sources;
@@ -567,10 +567,12 @@ export async function applyStash(
             continue;
         }
 
-        const name = slot === "src" ? "src" : "testcase.folder";
-        const configured = slot === "src" ? config.src : config.testcase.folder;
+        const name = slot === "source" ? "source.folder" : "testcase.folder";
+        const configured = slot === "source" ? config.source.folder : config.testcase.folder;
         if (configured === undefined) {
-            warnings.push(`The stash contains "src", but src is not configured. Skipped it.`);
+            warnings.push(
+                'The stash contains "source", but source.folder is not configured. Skipped it.',
+            );
             continue;
         }
         if (configured !== savedFolder) {

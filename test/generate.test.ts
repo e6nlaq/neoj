@@ -39,7 +39,7 @@ function createConfig(options: {
     testcase?: Partial<Config["testcase"]>;
 }): Config {
     return {
-        src: undefined,
+        source: {},
         alias: {},
         login: { open_browser: true, auto_login: true },
         submit: {
@@ -65,7 +65,6 @@ function createConfig(options: {
         },
         run: { silent: false },
         test: {
-            source: undefined,
             timeout: 10,
             memory: 1024,
             parallel: true,

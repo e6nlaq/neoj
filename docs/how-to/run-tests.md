@@ -26,8 +26,9 @@ Each `[languages.<key>]` section describes one language. The key is any name you
 like; `neoj` uses it in messages and for cache entries.
 
 ```toml
-[test]
-source = "src/main.cpp"
+[source]
+folder = "src"
+default = "src/main.cpp"
 
 [languages.cpp]
 source = "src/**/*.cpp"
@@ -63,9 +64,9 @@ that file exists, because some compilers add the extension themselves.
 ## Choose the source file
 
 `neoj test` uses the `[source]` argument when you pass one, otherwise
-`test.source`. The path must exist and must be a file inside the project; globs
-are not accepted here. The file is then matched against the `source` globs of
-every language, and exactly one language must match. When several match, pass
+`source.default`. The path must exist and must be a file inside the project;
+globs are not accepted here. The file is then matched against the `source` globs
+of every language, and exactly one language must match. When several match, pass
 `--language`:
 
 ```bash
@@ -90,7 +91,7 @@ neoj t old         # builds archive/2019/a.cpp
 The target is resolved from the project root, so the same alias works from a
 subdirectory. An alias wins if a file with that name also exists (`neoj test
 ./main` reaches the file), an alias cannot point at another alias, and
-`test.source` is never expanded. An unknown name is reported with the aliases
+`source.default` is never expanded. An unknown name is reported with the aliases
 you have defined.
 
 ## What a run does

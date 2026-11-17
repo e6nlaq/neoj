@@ -285,7 +285,7 @@ function sourceError(reason: SourceResolveFailure, spec: string): Error {
         }
         case "missing": {
             return new Error(
-                `Source file "${spec}" does not exist. Pass a file path, not a glob, or fix test.source.`,
+                `Source file "${spec}" does not exist. Pass a file path, not a glob, or fix source.default.`,
             );
         }
         case "resolves-outside": {
@@ -351,9 +351,9 @@ export function describeAliases(aliases: Readonly<Record<string, string>>): stri
 }
 
 /**
- * Pick the source file to test: an alias, then a path, then `test.source`.
+ * Pick the source file to test: an alias, then a path, then `source.default`.
  *
- * Only the positional argument is matched against `[alias]`; `test.source` is
+ * Only the positional argument is matched against `[alias]`; `source.default` is
  * always a literal path.
  */
 export async function resolveTestSource(
@@ -1503,10 +1503,10 @@ export async function buildSolution(options: BuildSolutionOptions): Promise<Buil
         );
     }
 
-    const spec = options.source ?? options.config.test.source;
+    const spec = options.source ?? options.config.source.default;
     if (spec === undefined || spec.trim() === "") {
         throw new Error(
-            `No source file to ${options.command}. Set test.source in neoj.toml or run "neoj ${options.command} <source>".`,
+            `No source file to ${options.command}. Set source.default in neoj.toml or run "neoj ${options.command} <source>".`,
         );
     }
 
@@ -1519,7 +1519,7 @@ export async function buildSolution(options: BuildSolutionOptions): Promise<Buil
             ? await resolveTestcaseDirectory(
                   projectRoot,
                   options.config.testcase.folder,
-                  options.config.src,
+                  options.config.source.folder,
               )
             : undefined);
 
@@ -1795,7 +1795,7 @@ async function buildAuxiliary(options: BuildAuxiliaryToolOptions): Promise<Built
             ? await resolveTestcaseDirectory(
                   projectRoot,
                   options.config.testcase.folder,
-                  options.config.src,
+                  options.config.source.folder,
               )
             : undefined);
 
@@ -1965,7 +1965,7 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
     const testDirectory = await resolveTestcaseDirectory(
         projectRoot,
         options.config.testcase.folder,
-        options.config.src,
+        options.config.source.folder,
     );
     const interactive = options.interactive === true;
     const useJudge = options.judge === true;

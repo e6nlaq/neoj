@@ -16,8 +16,9 @@ You need a project with a `neoj.toml` and a `[languages.<key>]` section; the
 same one `neoj test` uses:
 
 ```toml
-[test]
-source = "src/main.cpp"
+[source]
+folder = "src"
+default = "src/main.cpp"
 
 [languages.cpp]
 source = "src/**/*.cpp"
@@ -64,7 +65,7 @@ neoj run --cache src/main.cpp 5 7
 neoj run --silent src/main.cpp
 ```
 
-To use `test.source` and still pass arguments, put `--` before them:
+To use `source.default` and still pass arguments, put `--` before them:
 
 ```bash
 neoj run -- 5 7
@@ -77,7 +78,7 @@ The first `--` is a separator: everything after it goes to the program. A second
 ## Choose the source file
 
 The source is resolved exactly like `neoj test`: the `[source]` argument, an
-`[alias]` name, or `test.source`, matched against the language `source` globs.
+`[alias]` name, or `source.default`, matched against the language `source` globs.
 `-l`, `--language <key>` selects the language when several match.
 
 ```toml

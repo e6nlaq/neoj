@@ -1,10 +1,12 @@
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 import * as v from "valibot";
 
 import { errorExponentBounds } from "@/lib/judge/judge";
+import { platformNames } from "@/lib/platform";
 import { findProjectConfig } from "@/lib/project/project";
+import { isWithin } from "@/lib/project/project-path";
 
 function createFilenamePatternSchema(description: string) {
     return v.pipe(
@@ -113,9 +115,9 @@ const languageSchema = v.pipe(
         ),
         submit: v.optional(
             v.pipe(
-                v.record(v.pipe(v.string(), v.minLength(1)), v.pipe(v.string(), v.minLength(1))),
+                v.record(v.picklist(platformNames), v.pipe(v.string(), v.minLength(1))),
                 v.description(
-                    "Platform language ID used by neoj submit, keyed by platform name such as atcoder, codeforces, or yukicoder.",
+                    `Platform language ID used by neoj submit, keyed by platform name (${platformNames.join(", ")}).`,
                 ),
             ),
         ),
@@ -125,14 +127,31 @@ const languageSchema = v.pipe(
 
 export const configSchema = v.pipe(
     v.strictObject({
-        src: v.optional(
+        source: v.optional(
             v.pipe(
-                v.string(),
-                v.minLength(1),
-                v.description(
-                    "Destination directory for the solution template, relative to the project root. Required when template.enable is true.",
-                ),
+                v.strictObject({
+                    folder: v.optional(
+                        v.pipe(
+                            v.string(),
+                            v.minLength(1),
+                            v.description(
+                                "Directory that holds the solution source files, relative to the project root. Required when template.enable is true.",
+                            ),
+                        ),
+                    ),
+                    default: v.optional(
+                        v.pipe(
+                            v.string(),
+                            v.minLength(1),
+                            v.description(
+                                "Source file that neoj test, neoj run, and neoj submit use when no source is passed, relative to the project root. Must be inside source.folder.",
+                            ),
+                        ),
+                    ),
+                }),
+                v.description("Where solution sources live and which one is the default."),
             ),
+            {},
         ),
         alias: v.optional(
             v.pipe(
@@ -271,15 +290,6 @@ export const configSchema = v.pipe(
         test: v.optional(
             v.pipe(
                 v.strictObject({
-                    source: v.optional(
-                        v.pipe(
-                            v.string(),
-                            v.minLength(1),
-                            v.description(
-                                "Source file that neoj test builds by default, relative to the project root.",
-                            ),
-                        ),
-                    ),
                     interactor: v.optional(
                         v.pipe(
                             v.strictObject({
@@ -691,7 +701,7 @@ export const configSchema = v.pipe(
                         v.pipe(
                             v.boolean(),
                             v.description(
-                                "Apply the template to src after each successful download. Requires src and template.folder.",
+                                "Apply the template to source.folder after each successful download. Requires source.folder and template.folder.",
                             ),
                         ),
                         false,
@@ -721,18 +731,18 @@ export const configSchema = v.pipe(
                                 evenBetterToml: {
                                     docs: {
                                         enumValues: [
-                                            "Copy the template over src, replacing files that exist in both places.",
-                                            "Remove the contents of src before copying the template.",
+                                            "Copy the template over source.folder, replacing files that exist in both places.",
+                                            "Remove the contents of source.folder before copying the template.",
                                         ],
                                     },
                                 },
                             }),
-                            v.description("How the template is applied to src."),
+                            v.description("How the template is applied to source.folder."),
                         ),
                         "overlay",
                     ),
                 }),
-                v.description("Template files applied to src after a download."),
+                v.description("Template files applied to source.folder after a download."),
             ),
             { enable: false, exclude: [], mode: "overlay" },
         ),
@@ -859,7 +869,7 @@ export async function loadConfig(): Promise<Config> {
     const projectConfigPath = await findProjectConfig(process.cwd());
     const globalConfig = await readConfigFile(globalConfigPath);
     const projectConfig = projectConfigPath ? await readConfigFile(projectConfigPath) : {};
-    const projectOnlyKeys = ["src", "template"].filter((key) => key in globalConfig);
+    const projectOnlyKeys = ["source", "template"].filter((key) => key in globalConfig);
     if (projectOnlyKeys.length > 0) {
         throw new Error(
             `Configuration keys ${projectOnlyKeys.map((key) => `"${key}"`).join(", ")} may only be set in a project neoj.toml ("${globalConfigPath}").`,
@@ -893,10 +903,26 @@ export async function loadConfig(): Promise<Config> {
         throw new Error(message, { cause: result.issues });
     }
 
+    if (result.output.source.default !== undefined) {
+        if (result.output.source.folder === undefined) {
+            throw new Error("source.default requires source.folder.");
+        }
+
+        const projectRoot =
+            projectConfigPath === undefined ? process.cwd() : dirname(projectConfigPath);
+        const folder = resolve(projectRoot, result.output.source.folder);
+        const defaultSource = resolve(projectRoot, result.output.source.default);
+        if (folder === defaultSource || !isWithin(folder, defaultSource)) {
+            throw new Error(
+                `source.default "${result.output.source.default}" must be inside source.folder "${result.output.source.folder}".`,
+            );
+        }
+    }
+
     if (result.output.template.enable) {
         const missingKeys = [];
-        if (result.output.src === undefined) {
-            missingKeys.push("src");
+        if (result.output.source.folder === undefined) {
+            missingKeys.push("source.folder");
         }
         if (result.output.template.folder === undefined) {
             missingKeys.push("template.folder");

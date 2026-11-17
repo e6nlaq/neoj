@@ -75,7 +75,7 @@ describe("loadConfig", () => {
         await setTemporaryPaths();
 
         await expect(loadConfig()).resolves.toEqual({
-            src: undefined,
+            source: {},
             alias: {},
             run: { silent: false },
             login: { open_browser: true, auto_login: true },
@@ -100,7 +100,6 @@ describe("loadConfig", () => {
                 parallel: true,
             },
             test: {
-                source: undefined,
                 timeout: 10,
                 memory: 1024,
                 parallel: true,
@@ -120,13 +119,59 @@ describe("loadConfig", () => {
         });
     });
 
-    it("requires src and template.folder when template is enabled", async () => {
+    it("requires source.folder and template.folder when template is enabled", async () => {
         const { project } = await setTemporaryPaths();
         await Bun.write(join(project, "neoj.toml"), "[template]\nenable = true\n");
 
         await expect(loadConfig()).rejects.toThrow(
-            "requires src and template.folder when template.enable is true",
+            "requires source.folder and template.folder when template.enable is true",
         );
+    });
+
+    it("requires source.folder when source.default is set", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), '[source]\ndefault = "src/main.cpp"\n');
+
+        await expect(loadConfig()).rejects.toThrow("source.default requires source.folder.");
+    });
+
+    it("requires source.default to be inside source.folder", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(
+            join(project, "neoj.toml"),
+            '[source]\nfolder = "src"\ndefault = "main.cpp"\n',
+        );
+
+        await expect(loadConfig()).rejects.toThrow(
+            'source.default "main.cpp" must be inside source.folder "src".',
+        );
+    });
+
+    it("rejects source.default that is source.folder itself", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), '[source]\nfolder = "src"\ndefault = "src"\n');
+
+        await expect(loadConfig()).rejects.toThrow(
+            'source.default "src" must be inside source.folder "src".',
+        );
+    });
+
+    it("allows source settings only in the project config", async () => {
+        const { home } = await setTemporaryPaths();
+        await Bun.write(join(home, ".neoj.toml"), '[source]\nfolder = "src"\n');
+
+        await expect(loadConfig()).rejects.toThrow("may only be set in a project neoj.toml");
+    });
+
+    it("rejects the old src and test.source keys as unknown", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(join(project, "neoj.toml"), 'src = "src"\n[test]\nsource = "main.cpp"\n');
+
+        const message = await loadConfig().catch((error: unknown) =>
+            error instanceof Error ? error.message : String(error),
+        );
+        expect(message).toContain("src: Unknown configuration key.");
+        expect(message).toContain("test.source: Unknown configuration key.");
     });
 
     it("rejects template.path as an unknown key", async () => {
@@ -191,6 +236,18 @@ describe("loadConfig", () => {
         );
     });
 
+    it("rejects unsupported languages.submit keys", async () => {
+        const { project } = await setTemporaryPaths();
+        await Bun.write(
+            join(project, "neoj.toml"),
+            '[languages.cpp]\nsource = "*.cpp"\nrun = ["{outfile}"]\n\n[languages.cpp.submit]\naoj = "1"',
+        );
+
+        await expect(loadConfig()).rejects.toThrow(
+            'languages.cpp.submit.aoj: Expected ("atcoder" | "yukicoder" | "shareoj" | "codeforces"). (actual type: string)',
+        );
+    });
+
     it("merges global and project testcase settings", async () => {
         const { home, project } = await setTemporaryPaths();
         await Bun.write(
@@ -203,6 +260,7 @@ describe("loadConfig", () => {
         );
 
         await expect(loadConfig()).resolves.toEqual({
+            source: {},
             alias: {},
             run: { silent: false },
             login: { open_browser: true, auto_login: true },
@@ -227,7 +285,6 @@ describe("loadConfig", () => {
                 parallel: true,
             },
             test: {
-                source: undefined,
                 timeout: 10,
                 memory: 1024,
                 parallel: true,

@@ -13,7 +13,7 @@
 | `neoj logout [--service <name...>]`                        | Log out of the given platforms, or of every platform when no name is given.                                                             |
 | `neoj status [--offline]`                                  | Show the login status of every supported platform.                                                                                      |
 | `neoj stash [save\|list\|apply\|pop\|drop\|clear]`         | Save and restore the working files of the current problem.                                                                              |
-| `neoj reset [-a\|-t]`                                      | Restore `src` from the template, and optionally re-download the test cases.                                                             |
+| `neoj reset [-a\|-t]`                                      | Restore `source.folder` from the template, and optionally re-download the test cases.                                                   |
 | `neoj test [source]` (alias: `neoj t`)                     | Build the solution and run it against the sample tests.                                                                                 |
 | `neoj run [source] [args...]` (alias: `neoj r`)            | Build the solution and run it without tests, forwarding `args`.                                                                         |
 | `neoj submit [source]` (aliases: `neoj s`, `neoj submits`) | Submit the solution for the current problem.                                                                                            |
@@ -105,8 +105,8 @@ an initialized project. See
 [Create a test case by hand](../how-to/create-handmade-tests.md).
 
 `neoj download` replaces the whole test-case directory, so handmade files placed
-there are removed by the next download. The directory must not be `src` or
-`.neoj`, and it must not contain or live inside `src`.
+there are removed by the next download. The directory must not be `source.folder`
+or `.neoj`, and it must not contain or live inside `source.folder`.
 
 ### `generate`
 
@@ -177,7 +177,7 @@ See [Log in, check status, and log out](../how-to/manage-sessions.md).
 
 | Subcommand       | Description                                                                             |
 | ---------------- | --------------------------------------------------------------------------------------- |
-| `save` (default) | Save `src` and the test-case directory.                                                 |
+| `save` (default) | Save `source.folder` and the test-case directory.                                       |
 | `list`           | List saved stashes; the current problem is marked with `*`.                             |
 | `apply`          | Restore the current problem's stash.                                                    |
 | `pop`            | Restore the current problem's stash and remove it.                                      |
@@ -202,16 +202,16 @@ stashes are removed instead of restored and `list` reports the removals. See
 
 ### `reset`
 
-Restores the workspace to its initial state. Without flags, `src` is restored
-from `template.folder` using the configured `template.mode`. When the template
-is disabled (`template.enable = false`), the command fails when `src` is the
-only target and skips it with a warning otherwise.
+Restores the workspace to its initial state. Without flags, `source.folder` is
+restored from `template.folder` using the configured `template.mode`. When the
+template is disabled (`template.enable = false`), the command fails when
+`source.folder` is the only target and skips it with a warning otherwise.
 
-| Option             | Description                                   |
-| ------------------ | --------------------------------------------- |
-| `-a`, `--all`      | Restore `src` and re-download the test cases. |
-| `-t`, `--testcase` | Re-download the test cases only.              |
-| `--yes`            | Skip the confirmation prompt.                 |
+| Option             | Description                                             |
+| ------------------ | ------------------------------------------------------- |
+| `-a`, `--all`      | Restore `source.folder` and re-download the test cases. |
+| `-t`, `--testcase` | Re-download the test cases only.                        |
+| `--yes`            | Skip the confirmation prompt.                           |
 
 With `--testcase` or `--all`, the test-case directory is replaced with the
 samples of the problem recorded in `.neoj/problem.json`, so run
@@ -221,9 +221,9 @@ after the first write restores the previous files.
 
 ### `test`
 
-| Argument   | Description                                                                    |
-| ---------- | ------------------------------------------------------------------------------ |
-| `[source]` | Source file to test. An `[alias]` name is accepted. Defaults to `test.source`. |
+| Argument   | Description                                                                       |
+| ---------- | --------------------------------------------------------------------------------- |
+| `[source]` | Source file to test. An `[alias]` name is accepted. Defaults to `source.default`. |
 
 Runs every `*.in` file in the test-case directory against the built program. With
 `--interactive`, the interactor named by `[test.interactor]` judges each case
@@ -262,10 +262,10 @@ See [Build and run the sample tests](../how-to/run-tests.md).
 
 ### `run`
 
-| Argument    | Description                                                                   |
-| ----------- | ----------------------------------------------------------------------------- |
-| `[source]`  | Source file to run. An `[alias]` name is accepted. Defaults to `test.source`. |
-| `[args...]` | Arguments passed to the program verbatim.                                     |
+| Argument    | Description                                                                      |
+| ----------- | -------------------------------------------------------------------------------- |
+| `[source]`  | Source file to run. An `[alias]` name is accepted. Defaults to `source.default`. |
+| `[args...]` | Arguments passed to the program verbatim.                                        |
 
 Builds the source and runs it with the terminal attached: standard input,
 output, and error belong to the program, and no time limit, memory limit, or
@@ -279,12 +279,12 @@ without `test/`.
 | `--silent`               | Hide informational logs such as `Compiled ... in N ms.`.     |
 
 Everything after the source goes to the program, so `neoj` options must come
-first. `--` before the source keeps `test.source` and forwards everything after
+first. `--` before the source keeps `source.default` and forwards everything after
 it:
 
 ```bash
 neoj run src/main.cpp -x 1       # -x 1 goes to the program
-neoj run -l cpp -- -x 1          # test.source + -x 1
+neoj run -l cpp -- -x 1          # source.default + -x 1
 neoj run --silent src/main.cpp   # neoj parses --silent
 neoj run src/main.cpp --silent   # --silent goes to the program
 ```
@@ -297,13 +297,13 @@ redirected output stays clean. See
 
 ### `submit`
 
-| Argument   | Description                                                                      |
-| ---------- | -------------------------------------------------------------------------------- |
-| `[source]` | Source file to submit. An `[alias]` name is accepted. Defaults to `test.source`. |
+| Argument   | Description                                                                         |
+| ---------- | ----------------------------------------------------------------------------------- |
+| `[source]` | Source file to submit. An `[alias]` name is accepted. Defaults to `source.default`. |
 
 Submits the solution to the problem recorded in `.neoj/problem.json`, so run
 `neoj download <url>` first. The source is resolved like `neoj test`: an `[alias]`
-name, a path, or `test.source`; `-l`, `--language <key>` chooses among several
+name, a path, or `source.default`; `-l`, `--language <key>` chooses among several
 matching `[languages.<key>]` entries. The file is not compiled before submission.
 
 AtCoder, yukicoder, and ShareOJ accept automated submissions. Codeforces does not:
@@ -455,7 +455,7 @@ examples. PowerShell completion requires `pwsh` 7.2 or later.
 | `<testcase.folder>/` | Sample and handmade inputs and outputs; `test/` by default.                                                                        |
 | `.neoj/build/`       | Compiled programs, one directory per cache key when `test.cache` is enabled; shared by `test` and `run`. Delete with `neoj prune`. |
 | `.neoj/problem.json` | URL of the last successful download. AtCoder also stores its contest window; yukicoder stores only the URL.                        |
-| `.neoj/stash/`       | Per-problem snapshots of `src` and the test-case directory.                                                                        |
+| `.neoj/stash/`       | Per-problem snapshots of `source.folder` and the test-case directory.                                                              |
 | `neoj.toml`          | Project configuration.                                                                                                             |
 | `~/.neoj.toml`       | Global configuration.                                                                                                              |
 

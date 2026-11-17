@@ -7,8 +7,8 @@
 | Global  | `~/.neoj.toml`                                                                          |
 | Project | `neoj.toml` in the current directory or the nearest ancestor, up to the repository root |
 
-Project values win over global values. `src` and `[template]` are project-only;
-setting either in the global file is an error.
+Project values win over global values. `[source]` and `[template]` are
+project-only; setting either in the global file is an error.
 
 ## Control the browser during login
 
@@ -34,7 +34,7 @@ filename = "handmade-{}"
 
 - `folder` must be a relative path inside the project, must not pass through a
   symbolic link, and must not target `.git` or `.neoj`. It must also not overlap
-  `src` (neither directory may contain the other).
+  `source.folder` (neither directory may contain the other).
 - `filename` must be a plain file name containing exactly one `{}`, which is
   replaced by the 1-based sample number.
 - `handmade.filename` names the cases created by `neoj handmade`. They use the
@@ -64,17 +64,32 @@ auto_apply = true
 force = true
 ```
 
-`auto_stash` saves the previous problem's `src` and test-case directory before a
-download replaces them, and `auto_apply` restores the downloaded problem's stash
-after the download. Both only run when the downloaded problem differs from the
-one in `.neoj/problem.json`. `stash.force` (default `true`) controls whether
-`neoj stash save` may replace an existing stash. See
+`auto_stash` saves the previous problem's `source.folder` and test-case directory
+before a download replaces them, and `auto_apply` restores the downloaded
+problem's stash after the download. Both only run when the downloaded problem
+differs from the one in `.neoj/problem.json`. `stash.force` (default `true`)
+controls whether `neoj stash save` may replace an existing stash. See
 [Stash and restore work per problem](stash-work.md).
+
+## Set the default source file
+
+```toml
+[source]
+folder = "src"
+default = "src/main.cpp"
+```
+
+`source.folder` holds the solution sources and is required when a template is
+enabled. `source.default` is the file `neoj test`, `neoj run`, and `neoj submit`
+use when no source is passed; it must be strictly inside `source.folder`. Both
+keys are project-only, and no default file is derived when `default` is unset.
 
 ## Apply a template
 
 ```toml
-src = "src"
+[source]
+folder = "src"
+default = "src/main.cpp"
 
 [template]
 enable = true
@@ -83,8 +98,9 @@ exclude = ["*.md", ".gitkeep"]
 mode = "overlay"
 ```
 
-With `enable = true`, both `src` and `template.folder` are required. After a
-download that changes the problem, `neoj` copies the template into `src`:
+With `enable = true`, both `source.folder` and `template.folder` are required.
+After a download that changes the problem, `neoj` copies the template into
+`source.folder`:
 
 - `template.exclude` lists globs for files that must not be copied. Patterns
   match the path relative to `template.folder` and the entry name, so `*.md`
@@ -93,12 +109,12 @@ download that changes the problem, `neoj` copies the template into `src`:
 
 - `mode = "overlay"` (default) replaces files that exist in both places and keeps
   the rest.
-- `mode = "replace"` removes the contents of `src` first.
+- `mode = "replace"` removes the contents of `source.folder` first.
 
 Hidden files are included, symbolic links inside the template are rejected, and
 the two directories must not overlap. A missing template directory is an error;
 an empty one is allowed. Downloading the same problem again does not reapply the
-template, so it never overwrites edits in `src`.
+template, so it never overwrites edits in `source.folder`.
 
 ## Related
 
