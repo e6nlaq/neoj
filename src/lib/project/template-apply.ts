@@ -80,11 +80,11 @@ export async function applyProjectTemplate(
         templatePath,
         "template.folder",
     );
-    const sourceDirectory = await resolveProjectDirectory(projectRoot, sourcePath, "src");
+    const sourceDirectory = await resolveProjectDirectory(projectRoot, sourcePath, "source.folder");
 
     assertDirectoriesDoNotOverlap(
         { path: templateDirectory, name: "template.folder" },
-        { path: sourceDirectory, name: "src" },
+        { path: sourceDirectory, name: "source.folder" },
     );
 
     try {
@@ -107,7 +107,7 @@ export async function applyProjectTemplate(
     try {
         const sourceStats = await lstat(sourceDirectory);
         if (!sourceStats.isDirectory()) {
-            throw new Error(`src "${sourceDirectory}" is not a directory.`);
+            throw new Error(`source.folder "${sourceDirectory}" is not a directory.`);
         }
         sourceExists = true;
     } catch (error) {

@@ -98,7 +98,7 @@ export function createRunCommand(): Command<[string | undefined, string[]]> {
     return new Command("run")
         .alias("r")
         .description("Build the solution and run it without tests")
-        .argument("[source]", "Source file to run (defaults to test.source)")
+        .argument("[source]", "Source file to run (defaults to source.default)")
         .argument("[args...]", "Arguments passed to the program")
         .option("-l, --language <key>", "Language definition to use")
         .option("--cache", "Keep compiled binaries in .neoj/build and reuse them")

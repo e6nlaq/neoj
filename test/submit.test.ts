@@ -66,7 +66,7 @@ function createLanguage(overrides: Partial<TestLanguage> = {}): TestLanguage {
 
 function createConfig(overrides: Partial<Config["submit"]> = {}): Config {
     return {
-        src: undefined,
+        source: { default: "src/main.cpp" },
         alias: {},
         login: { open_browser: true, auto_login: true },
         submit: {
@@ -92,7 +92,6 @@ function createConfig(overrides: Partial<Config["submit"]> = {}): Config {
         },
         run: { silent: false },
         test: {
-            source: "src/main.cpp",
             timeout: 10,
             memory: 1024,
             parallel: true,

@@ -59,7 +59,7 @@ resolved from the TOML file:
 - The URL points at `main`, so the schema describes the latest development
   state. A key added after your installed release is completed in the editor
   but rejected by `neoj`.
-- `src` and every `[template]` key are project-only. Both files share one
+- `[source]` and every `[template]` key are project-only. Both files share one
   schema, so the editor accepts them in `~/.neoj.toml`; `neoj` reports an error
   when they are set there.
 - The schema is not registered in the JSON Schema Store yet, so a file picks it

@@ -57,9 +57,9 @@ async function createProject(): Promise<string> {
     return testRoot;
 }
 
-function createConfig(options: { src?: string; folder?: string } = {}): Config {
+function createConfig(options: { sourceFolder?: string; folder?: string } = {}): Config {
     return {
-        src: options.src,
+        source: options.sourceFolder === undefined ? {} : { folder: options.sourceFolder },
         alias: {},
         run: { silent: false },
         login: { open_browser: true, auto_login: true },
@@ -84,7 +84,6 @@ function createConfig(options: { src?: string; folder?: string } = {}): Config {
             parallel: true,
         },
         test: {
-            source: undefined,
             timeout: 10,
             memory: 1024,
             parallel: true,
@@ -140,13 +139,13 @@ describe("deriveProblemKey", () => {
 });
 
 describe("saveStash", () => {
-    it("saves src and the test-case directory with metadata", async () => {
+    it("saves source.folder and the test-case directory with metadata", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
 
         const result = await saveStash(
             projectRoot,
-            createConfig({ src: "src" }),
+            createConfig({ sourceFolder: "src" }),
             { url, key },
             { force: true, now: new Date("2026-10-30T12:00:00Z") },
         );
@@ -155,7 +154,7 @@ describe("saveStash", () => {
         expect(result.replacedAt).toBeUndefined();
         await expect(
             readdir(stashDirectory(projectRoot)).then((entries) => entries.sort()),
-        ).resolves.toEqual(["meta.json", "src", "testcase"]);
+        ).resolves.toEqual(["meta.json", "source", "testcase"]);
         await expect(
             Bun.file(join(stashDirectory(projectRoot), "meta.json")).json(),
         ).resolves.toEqual({
@@ -163,12 +162,29 @@ describe("saveStash", () => {
             platform: "atcoder",
             slug: "abc300_a",
             saved_at: "2026-10-30T12:00:00.000Z",
-            slots: { src: "src", testcase: "test" },
+            slots: { source: "src", testcase: "test" },
             file_count: 2,
         });
         await expect(
             Bun.file(join(stashDirectory(projectRoot), "testcase", "sample-1.in")).text(),
         ).resolves.toBe("1 2");
+    });
+
+    it("rejects metadata written with the old src slot", async () => {
+        const projectRoot = await createProject();
+        await writeProblemFiles(projectRoot);
+        await saveStash(
+            projectRoot,
+            createConfig({ sourceFolder: "src" }),
+            { url, key },
+            { force: true },
+        );
+        const metaPath = join(stashDirectory(projectRoot), "meta.json");
+        const meta = (await Bun.file(metaPath).json()) as { slots: Record<string, string> };
+        meta.slots = { src: meta.slots.source! };
+        await Bun.write(metaPath, `${JSON.stringify(meta, null, 2)}\n`);
+
+        await expect(findStash(projectRoot, key)).rejects.toThrow("is invalid");
     });
 
     it("saves only the slots that exist", async () => {
@@ -181,13 +197,13 @@ describe("saveStash", () => {
         await expect(findStash(projectRoot, key)).resolves.toMatchObject({
             meta: { slots: { testcase: "test" }, file_count: 1 },
         });
-        await expect(readdir(stashDirectory(projectRoot))).resolves.not.toContain("src");
+        await expect(readdir(stashDirectory(projectRoot))).resolves.not.toContain("source");
     });
 
     it("refuses to replace an existing stash without force", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        const config = createConfig({ src: "src" });
+        const config = createConfig({ sourceFolder: "src" });
         await saveStash(projectRoot, config, { url, key }, { force: true });
 
         await expect(
@@ -212,7 +228,12 @@ describe("saveStash", () => {
         await mkdir(join(projectRoot, "test"));
 
         await expect(
-            saveStash(projectRoot, createConfig({ src: "src" }), { url, key }, { force: true }),
+            saveStash(
+                projectRoot,
+                createConfig({ sourceFolder: "src" }),
+                { url, key },
+                { force: true },
+            ),
         ).rejects.toBeInstanceOf(EmptyStashError);
     });
 
@@ -230,7 +251,12 @@ describe("saveStash", () => {
         ).rejects.toThrow("must resolve to a directory inside the project");
 
         await expect(
-            saveStash(projectRoot, createConfig({ src: "test" }), { url, key }, { force: true }),
+            saveStash(
+                projectRoot,
+                createConfig({ sourceFolder: "test" }),
+                { url, key },
+                { force: true },
+            ),
         ).rejects.toThrow("must not overlap");
     });
 });
@@ -239,7 +265,7 @@ describe("applyStash", () => {
     it("restores an exact mirror and counts removed files", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        const config = createConfig({ src: "src" });
+        const config = createConfig({ sourceFolder: "src" });
         await saveStash(projectRoot, config, { url, key }, { force: true });
 
         await writeFile(join(projectRoot, "src", "main.cpp"), "edited");
@@ -263,11 +289,16 @@ describe("applyStash", () => {
     it("restores into the current configuration and warns about renamed folders", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveStash(projectRoot, createConfig({ src: "src" }), { url, key }, { force: true });
+        await saveStash(
+            projectRoot,
+            createConfig({ sourceFolder: "src" }),
+            { url, key },
+            { force: true },
+        );
 
         const applied = await applyStash(
             projectRoot,
-            createConfig({ src: "app", folder: "tests" }),
+            createConfig({ sourceFolder: "app", folder: "tests" }),
             key,
         );
 
@@ -282,16 +313,21 @@ describe("applyStash", () => {
         );
     });
 
-    it("skips a saved src slot when src is no longer configured", async () => {
+    it("skips a saved source slot when source.folder is no longer configured", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveStash(projectRoot, createConfig({ src: "src" }), { url, key }, { force: true });
+        await saveStash(
+            projectRoot,
+            createConfig({ sourceFolder: "src" }),
+            { url, key },
+            { force: true },
+        );
 
         const applied = await applyStash(projectRoot, createConfig(), key);
 
         expect(applied.written).toBe(1);
         expect(applied.warnings).toEqual([
-            'The stash contains "src", but src is not configured. Skipped it.',
+            'The stash contains "source", but source.folder is not configured. Skipped it.',
         ]);
         await expect(Bun.file(join(projectRoot, "src", "main.cpp")).text()).resolves.toBe(
             "solution",
@@ -303,14 +339,14 @@ describe("applyStash", () => {
         await writeProblemFiles(projectRoot);
         await saveStash(
             projectRoot,
-            createConfig({ src: "src", folder: "test" }),
+            createConfig({ sourceFolder: "src", folder: "test" }),
             { url, key },
             { force: true },
         );
 
         await expect(
-            applyStash(projectRoot, createConfig({ src: "test", folder: "test" }), key),
-        ).rejects.toThrow("src and testcase.folder must not overlap");
+            applyStash(projectRoot, createConfig({ sourceFolder: "test", folder: "test" }), key),
+        ).rejects.toThrow("source.folder and testcase.folder must not overlap");
 
         await expect(Bun.file(join(projectRoot, "test", "sample-1.in")).text()).resolves.toBe(
             "1 2",
@@ -323,9 +359,9 @@ describe("applyStash", () => {
     it("fails when the problem has no stash", async () => {
         const projectRoot = await createProject();
 
-        await expect(applyStash(projectRoot, createConfig({ src: "src" }), key)).rejects.toThrow(
-            'No stash found for "atcoder/abc300_a".',
-        );
+        await expect(
+            applyStash(projectRoot, createConfig({ sourceFolder: "src" }), key),
+        ).rejects.toThrow('No stash found for "atcoder/abc300_a".');
     });
 });
 
@@ -333,10 +369,15 @@ describe("stash bookkeeping", () => {
     it("lists stashes in a stable order", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveStash(projectRoot, createConfig({ src: "src" }), { url, key }, { force: true });
         await saveStash(
             projectRoot,
-            createConfig({ src: "src" }),
+            createConfig({ sourceFolder: "src" }),
+            { url, key },
+            { force: true },
+        );
+        await saveStash(
+            projectRoot,
+            createConfig({ sourceFolder: "src" }),
             {
                 url: "https://yukicoder.me/problems/no/480",
                 key: { platform: "yukicoder", slug: "no480" },
@@ -354,10 +395,15 @@ describe("stash bookkeeping", () => {
     it("drops one stash and clears the rest", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveStash(projectRoot, createConfig({ src: "src" }), { url, key }, { force: true });
         await saveStash(
             projectRoot,
-            createConfig({ src: "src" }),
+            createConfig({ sourceFolder: "src" }),
+            { url, key },
+            { force: true },
+        );
+        await saveStash(
+            projectRoot,
+            createConfig({ sourceFolder: "src" }),
             {
                 url: "https://yukicoder.me/problems/no/480",
                 key: { platform: "yukicoder", slug: "no480" },
@@ -403,7 +449,7 @@ describe("stash expiration", () => {
     it("removes an expired stash on lookup and reports it", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+        await saveBackdatedStash(projectRoot, createConfig({ sourceFolder: "src" }));
 
         const lookup = await lookupStash(projectRoot, key, {
             expireDays: 14,
@@ -420,7 +466,7 @@ describe("stash expiration", () => {
     it("keeps a stash that is not yet expired", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+        await saveBackdatedStash(projectRoot, createConfig({ sourceFolder: "src" }));
 
         const lookup = await lookupStash(projectRoot, key, {
             expireDays: 14,
@@ -434,7 +480,7 @@ describe("stash expiration", () => {
     it("ignores expiration when expireDays is 0", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+        await saveBackdatedStash(projectRoot, createConfig({ sourceFolder: "src" }));
 
         const lookup = await lookupStash(projectRoot, key, {
             expireDays: 0,
@@ -446,11 +492,11 @@ describe("stash expiration", () => {
     it("replaces an expired stash without --force", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+        await saveBackdatedStash(projectRoot, createConfig({ sourceFolder: "src" }));
 
         const saved = await saveStash(
             projectRoot,
-            createConfig({ src: "src" }),
+            createConfig({ sourceFolder: "src" }),
             { url, key },
             {
                 force: false,
@@ -467,12 +513,12 @@ describe("stash expiration", () => {
     it("still requires --force for a stash that is not expired", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+        await saveBackdatedStash(projectRoot, createConfig({ sourceFolder: "src" }));
 
         await expect(
             saveStash(
                 projectRoot,
-                createConfig({ src: "src" }),
+                createConfig({ sourceFolder: "src" }),
                 { url, key },
                 {
                     force: false,
@@ -486,10 +532,10 @@ describe("stash expiration", () => {
     it("fails apply of an expired stash after removing it", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+        await saveBackdatedStash(projectRoot, createConfig({ sourceFolder: "src" }));
 
         await expect(
-            applyStash(projectRoot, createConfig({ src: "src" }), key, {
+            applyStash(projectRoot, createConfig({ sourceFolder: "src" }), key, {
                 expireDays: 14,
                 now: new Date("2026-10-20T00:00:00Z"),
             }),
@@ -502,11 +548,11 @@ describe("stash expiration", () => {
     it("sweeps only expired stashes", async () => {
         const projectRoot = await createProject();
         await writeProblemFiles(projectRoot);
-        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+        await saveBackdatedStash(projectRoot, createConfig({ sourceFolder: "src" }));
         const recentKey = { platform: "yukicoder", slug: "no480" as const };
         await saveStash(
             projectRoot,
-            createConfig({ src: "src" }),
+            createConfig({ sourceFolder: "src" }),
             { url: "https://yukicoder.me/problems/no/480", key: recentKey },
             { force: true, now: new Date("2026-10-19T00:00:00Z") },
         );
@@ -527,10 +573,10 @@ describe("stash expiration", () => {
 
     it("sweeps expired stashes during list and reports the count", async () => {
         const projectRoot = await createConfiguredProject(
-            'src = "src"\n\n[stash]\nexpire_days = 1\n',
+            '[source]\nfolder = "src"\n\n[stash]\nexpire_days = 1\n',
         );
         await writeProblemFiles(projectRoot);
-        await saveBackdatedStash(projectRoot, createConfig({ src: "src" }));
+        await saveBackdatedStash(projectRoot, createConfig({ sourceFolder: "src" }));
         const metaPath = join(stashDirectory(projectRoot), "meta.json");
         const meta = (await Bun.file(metaPath).json()) as Record<string, unknown>;
         meta.saved_at = "2026-10-01T00:00:00.000Z";
@@ -544,9 +590,11 @@ describe("stash expiration", () => {
     });
 
     it("replaces an expired stash without --force at the command level", async () => {
-        await createConfiguredProject('src = "src"\n\n[stash]\nforce = false\nexpire_days = 14\n');
+        await createConfiguredProject(
+            '[source]\nfolder = "src"\n\n[stash]\nforce = false\nexpire_days = 14\n',
+        );
         await writeProblemFiles(testRoot!);
-        await saveBackdatedStash(testRoot!, createConfig({ src: "src" }));
+        await saveBackdatedStash(testRoot!, createConfig({ sourceFolder: "src" }));
         const metaPath = join(stashDirectory(testRoot!), "meta.json");
         const meta = (await Bun.file(metaPath).json()) as Record<string, unknown>;
         meta.saved_at = "2020-01-01T00:00:00.000Z";
@@ -558,9 +606,9 @@ describe("stash expiration", () => {
     });
 
     it("fails apply of an expired stash at the command level", async () => {
-        await createConfiguredProject('src = "src"\n\n[stash]\nexpire_days = 14\n');
+        await createConfiguredProject('[source]\nfolder = "src"\n\n[stash]\nexpire_days = 14\n');
         await writeProblemFiles(testRoot!);
-        await saveBackdatedStash(testRoot!, createConfig({ src: "src" }));
+        await saveBackdatedStash(testRoot!, createConfig({ sourceFolder: "src" }));
         const metaPath = join(stashDirectory(testRoot!), "meta.json");
         const meta = (await Bun.file(metaPath).json()) as Record<string, unknown>;
         meta.saved_at = "2020-01-01T00:00:00.000Z";
@@ -612,7 +660,7 @@ async function createConfiguredProject(
 describe("stash commands", () => {
     it("honours stash.force before replacing a stash", async () => {
         const projectRoot = await createConfiguredProject(
-            'src = "src"\n\n[stash]\nforce = false\n',
+            '[source]\nfolder = "src"\n\n[stash]\nforce = false\n',
         );
         await writeProblemFiles(projectRoot);
 
@@ -624,7 +672,7 @@ describe("stash commands", () => {
     });
 
     it("requires force to clear every stash", async () => {
-        const projectRoot = await createConfiguredProject('src = "src"\n');
+        const projectRoot = await createConfiguredProject('[source]\nfolder = "src"\n');
         await writeProblemFiles(projectRoot);
         await saveCurrentProblemStash(false);
 
@@ -634,7 +682,7 @@ describe("stash commands", () => {
     });
 
     it("drops the current problem's stash when no id is given", async () => {
-        const projectRoot = await createConfiguredProject('src = "src"\n');
+        const projectRoot = await createConfiguredProject('[source]\nfolder = "src"\n');
         await writeProblemFiles(projectRoot);
         await saveCurrentProblemStash(false);
 
@@ -643,14 +691,19 @@ describe("stash commands", () => {
     });
 
     it("drops a stash by id without a recorded problem", async () => {
-        const projectRoot = await createConfiguredProject('src = "src"\n', {
+        const projectRoot = await createConfiguredProject('[source]\nfolder = "src"\n', {
             withProblem: false,
         });
         await writeProblemFiles(projectRoot);
-        await saveStash(projectRoot, createConfig({ src: "src" }), { url, key }, { force: true });
         await saveStash(
             projectRoot,
-            createConfig({ src: "src" }),
+            createConfig({ sourceFolder: "src" }),
+            { url, key },
+            { force: true },
+        );
+        await saveStash(
+            projectRoot,
+            createConfig({ sourceFolder: "src" }),
             {
                 url: "https://yukicoder.me/problems/no/480",
                 key: { platform: "yukicoder", slug: "no480" },
@@ -668,7 +721,7 @@ describe("stash commands", () => {
     });
 
     it("fails when the stash id does not exist", async () => {
-        await createConfiguredProject('src = "src"\n', { withProblem: false });
+        await createConfiguredProject('[source]\nfolder = "src"\n', { withProblem: false });
 
         await expect(dropProblemStash("atcoder/abc300_z")).rejects.toThrow(
             'No stash found for "atcoder/abc300_z".',

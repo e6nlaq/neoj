@@ -63,7 +63,7 @@ uses the current setting and each stash's save time, so lowering
 
 A snapshot contains:
 
-- `src` when it is configured, with every file and subdirectory.
+- `source.folder` when it is configured, with every file and subdirectory.
 - The `testcase.folder` directory.
 
 Symbolic links and other special files are rejected with an error. Two logical
@@ -72,7 +72,7 @@ directories are stored with fixed names inside the stash:
 ```
 .neoj/stash/atcoder/abc300_a/
 ├── meta.json
-├── src/
+├── source/
 │   └── main.cpp
 └── testcase/
     ├── sample-1.in
@@ -88,9 +88,9 @@ the configured folder names at save time. The slug comes from the problem URL
 
 `apply` restores into the directories from your current configuration, not the
 paths recorded at save time. Renaming `testcase.folder` between `save` and
-`apply` therefore still works, and `neoj` warns when the name changed. When `src`
-is no longer configured but the stash contains it, that part is skipped with a
-warning.
+`apply` therefore still works, and `neoj` warns when the name changed. When
+`source.folder` is no longer configured but the stash contains it, that part is
+skipped with a warning.
 
 Restoring is exact: files in the stash are written, and files that exist locally
 but not in the stash are removed. The command reports how many files were written

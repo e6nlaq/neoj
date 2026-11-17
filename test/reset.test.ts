@@ -54,7 +54,8 @@ async function createProject(config: string): Promise<string> {
     return testRoot;
 }
 
-const templateConfig = `src = "src"
+const templateConfig = `[source]
+folder = "src"
 [testcase]
 folder = "test"
 
@@ -115,7 +116,7 @@ async function readText(path: string): Promise<string | undefined> {
 }
 
 describe("resetWorkspace", () => {
-    it("restores src from the template with the replace mode", async () => {
+    it("restores source.folder from the template with the replace mode", async () => {
         const projectRoot = await createProject(templateConfig);
         await writeSeedFiles(projectRoot);
 
@@ -127,7 +128,7 @@ describe("resetWorkspace", () => {
         expect(await readText(join(projectRoot, "test", "sample-1.in"))).toBe("old\n");
         expect(confirmPrompt).toHaveBeenCalledTimes(1);
         expect(confirmPrompt.mock.calls[0]?.[0]?.message).toContain(
-            'This will overwrite "src" with the template.',
+            'This will overwrite "source.folder" with the template.',
         );
     });
 
@@ -165,7 +166,7 @@ describe("resetWorkspace", () => {
         expect(await readText(join(projectRoot, "src", "main.cpp"))).toBe("template\n");
     });
 
-    it("fails when src is requested but the template is disabled", async () => {
+    it("fails when source.folder is requested but the template is disabled", async () => {
         const projectRoot = await createProject(`[testcase]
 folder = "test"
 `);
@@ -173,7 +174,7 @@ folder = "test"
 
         const { resetWorkspace } = await import("@/feature/reset");
         await expect(resetWorkspace({}, { confirm: confirmPrompt })).rejects.toThrow(
-            'Cannot restore "src": template.enable is false in this project.',
+            'Cannot restore "source.folder": template.enable is false in this project.',
         );
         expect(await readText(join(projectRoot, "src", "main.cpp"))).toBe("modified\n");
     });
@@ -216,7 +217,7 @@ folder = "test"
         expect(await readText(join(projectRoot, "src", "extra.txt"))).toBeUndefined();
         expect(await readText(join(projectRoot, "test", "sample-1.in"))).toBe("all input\n");
         expect(confirmPrompt.mock.calls[0]?.[0]?.message).toContain(
-            'This will overwrite "src" with the template and replace every file in "test" with the freshly downloaded samples.',
+            'This will overwrite "source.folder" with the template and replace every file in "test" with the freshly downloaded samples.',
         );
     });
 
@@ -233,7 +234,7 @@ folder = "test"
         expect(await readText(join(projectRoot, "test", "sample-1.in"))).toBe("old\n");
     });
 
-    it("restores src when the test-case download fails with --all", async () => {
+    it("restores source.folder when the test-case download fails with --all", async () => {
         const projectRoot = await createProject(templateConfig);
         await writeSeedFiles(projectRoot);
         await writeProblemMetadata(projectRoot, "https://example.com/unsupported");

@@ -4,10 +4,24 @@
     "title": "neoj configuration",
     "type": "object",
     "properties": {
-        "src": {
-            "type": "string",
-            "minLength": 1,
-            "description": "Destination directory for the solution template, relative to the project root. Required when template.enable is true."
+        "source": {
+            "type": "object",
+            "properties": {
+                "folder": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Directory that holds the solution source files, relative to the project root. Required when template.enable is true."
+                },
+                "default": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "Source file that neoj test, neoj run, and neoj submit use when no source is passed, relative to the project root. Must be inside source.folder."
+                }
+            },
+            "required": [],
+            "additionalProperties": false,
+            "description": "Where solution sources live and which one is the default.",
+            "default": {}
         },
         "alias": {
             "type": "object",
@@ -138,11 +152,6 @@
         "test": {
             "type": "object",
             "properties": {
-                "source": {
-                    "type": "string",
-                    "minLength": 1,
-                    "description": "Source file that neoj test builds by default, relative to the project root."
-                },
                 "interactor": {
                     "type": "object",
                     "properties": {
@@ -549,7 +558,7 @@
             "properties": {
                 "enable": {
                     "type": "boolean",
-                    "description": "Apply the template to src after each successful download. Requires src and template.folder.",
+                    "description": "Apply the template to source.folder after each successful download. Requires source.folder and template.folder.",
                     "default": false
                 },
                 "folder": {
@@ -572,18 +581,18 @@
                     "evenBetterToml": {
                         "docs": {
                             "enumValues": [
-                                "Copy the template over src, replacing files that exist in both places.",
-                                "Remove the contents of src before copying the template."
+                                "Copy the template over source.folder, replacing files that exist in both places.",
+                                "Remove the contents of source.folder before copying the template."
                             ]
                         }
                     },
-                    "description": "How the template is applied to src.",
+                    "description": "How the template is applied to source.folder.",
                     "default": "overlay"
                 }
             },
             "required": [],
             "additionalProperties": false,
-            "description": "Template files applied to src after a download.",
+            "description": "Template files applied to source.folder after a download.",
             "default": {
                 "enable": false,
                 "exclude": [],

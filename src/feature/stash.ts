@@ -181,7 +181,7 @@ export function createStashCommand(): Command {
 
     command.addCommand(
         new Command("save")
-            .description("Save src and the test-case directory of the current problem")
+            .description("Save source.folder and the test-case directory of the current problem")
             .option("-f, --force", "Replace an existing stash")
             .action(({ force }) =>
                 run(async () => {

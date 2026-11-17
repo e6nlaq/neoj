@@ -126,7 +126,7 @@ export function createTestCommand(): Command<[string | undefined]> {
     return new Command("test")
         .alias("t")
         .description("Build the solution and run it against the sample tests")
-        .argument("[source]", "Source file to test (defaults to test.source)")
+        .argument("[source]", "Source file to test (defaults to source.default)")
         .option("-l, --language <key>", "Language definition to use")
         .option("-J, --jobs <count>", "Number of test cases to run at once", parsePositiveInteger)
         .option("--no-parallel", "Run the test cases one at a time")

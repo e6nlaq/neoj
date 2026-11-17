@@ -5,7 +5,7 @@ validates the result against a strict schema. Unknown keys are errors. The merge
 is table by table: a key set in the project file replaces the same key from the
 global file, and every other key is kept.
 
-Each key may only be set in the scope listed below. Setting `src` or any
+Each key may only be set in the scope listed below. Setting `[source]` or any
 `[template]` key in the global file is an error.
 
 Editors can complete these keys when the file points at the published schema;
@@ -13,16 +13,28 @@ see [Set up editor completions](../how-to/setup-editor-completions.md).
 
 ## Keys
 
-### `src`
+### `source.folder`
 
 | Type        | Default | Scope   |
 | ----------- | ------- | ------- |
 | string path | none    | project |
 
-Destination directory for the solution template, resolved from the project root.
+Directory that holds the solution source files, resolved from the project root.
 It is required when `template.enable = true`, must stay inside the project, must
 not pass through a symbolic link, must not target `.git` or `.neoj`, and must
-not overlap `template.folder`.
+not overlap `template.folder` or `testcase.folder`.
+
+### `source.default`
+
+| Type        | Default | Scope   |
+| ----------- | ------- | ------- |
+| string path | none    | project |
+
+Source file that `neoj test`, `neoj run`, and `neoj submit` use when no source is
+passed on the command line. It is resolved from the project root, must be a plain
+path that exists, and must be strictly inside `source.folder`. Pass a source path
+on the command line to override it for one run. The file is not derived from
+`source.folder`, so commands still fail with a hint when it is unset.
 
 ### `alias.<name>`
 
@@ -48,7 +60,7 @@ path:
 - An alias wins when the same name is also a file; use `./main` to test that
   file.
 - Only the positional argument of `neoj test` is matched against aliases.
-  `test.source` is always a literal path.
+  `source.default` is always a literal path.
 - Names must be non-empty and must not be `.`, `..`, or contain `/` or `\`.
 - Matching is exact and case-sensitive. Identical names in the global and
   project files resolve to the project value.
@@ -82,8 +94,8 @@ instead and tells you to run `neoj login <platform>`.
 Directory that receives downloaded samples and handmade test cases. The path is
 resolved from the project root (the directory containing the nearest
 `neoj.toml`). It must stay inside the project, must not pass through a symbolic
-link, and must not target `.git` or `.neoj`. It must also not overlap `src`:
-neither directory may contain the other.
+link, and must not target `.git` or `.neoj`. It must also not overlap
+`source.folder`: neither directory may contain the other.
 
 Each download replaces the whole directory, so files placed there by hand are
 removed.
@@ -185,16 +197,6 @@ Generate test cases in parallel. `--no-parallel` runs one case at a time.
 Print every downloaded sample's input and output after the files have been
 written successfully. When it is `false`, `download` only reports the number of
 samples and the destination directory.
-
-### `test.source`
-
-| Type        | Default | Scope             |
-| ----------- | ------- | ----------------- |
-| string path | none    | global or project |
-
-Source file that `neoj test` builds when no source is passed on the command line.
-It is resolved from the project root and must be a plain path that exists; globs
-are rejected. `neoj test <source>` overrides it for one run.
 
 ### `test.interactor.source`
 
@@ -640,8 +642,8 @@ themselves.
 
 Save the working files of the current problem before `download` replaces the
 test-case directory. `neoj` only writes the stash when the downloaded problem
-differs from the URL in `.neoj/problem.json`. The snapshot contains `src` when it
-is configured, plus `testcase.folder`.
+differs from the URL in `.neoj/problem.json`. The snapshot contains
+`source.folder` when it is configured, plus `testcase.folder`.
 
 ### `stash.auto_apply`
 
@@ -685,9 +687,9 @@ time.
 | ------- | ------- | ------- |
 | boolean | `false` | project |
 
-Apply the template to `src` after a download that changes the problem. Enabling
-it requires both `src` and `template.folder`. Downloading the same problem again
-refreshes the samples without reapplying the template.
+Apply the template to `source.folder` after a download that changes the problem.
+Enabling it requires both `source.folder` and `template.folder`. Downloading the
+same problem again refreshes the samples without reapplying the template.
 
 ### `template.folder`
 
@@ -698,8 +700,8 @@ refreshes the samples without reapplying the template.
 Directory holding the template files, resolved from the project root. It must
 exist when `template.enable = true`; an empty directory is allowed. The path
 must stay inside the project, must not target `.git` or `.neoj`, must not
-overlap `src`, and the tree must not contain symbolic links. Hidden files are
-copied like any other file.
+overlap `source.folder`, and the tree must not contain symbolic links. Hidden
+files are copied like any other file.
 
 ### `template.exclude`
 
@@ -707,11 +709,11 @@ copied like any other file.
 | ------------- | ------- | ------- |
 | array of glob | `[]`    | project |
 
-Globs for files in `template.folder` that must not be copied into `src`. A
-pattern is matched against the path relative to `template.folder` and against the
-entry name, so `*.md` also excludes Markdown files inside subdirectories. A
-matching directory is skipped with its contents. Use `**/` explicitly when a
-pattern should only match a nested path.
+Globs for files in `template.folder` that must not be copied into
+`source.folder`. A pattern is matched against the path relative to
+`template.folder` and against the entry name, so `*.md` also excludes Markdown
+files inside subdirectories. A matching directory is skipped with its contents.
+Use `**/` explicitly when a pattern should only match a nested path.
 
 ### `template.mode`
 
@@ -719,11 +721,11 @@ pattern should only match a nested path.
 | ---------------------- | --------- | ------- |
 | `overlay` or `replace` | `overlay` | project |
 
-How the template is applied to `src`:
+How the template is applied to `source.folder`:
 
-- `overlay` copies the template over `src`, replacing files that exist in both
-  places and keeping everything else.
-- `replace` removes the contents of `src` before copying the template.
+- `overlay` copies the template over `source.folder`, replacing files that exist
+  in both places and keeping everything else.
+- `replace` removes the contents of `source.folder` before copying the template.
 
 ### `update.enabled`
 
@@ -759,7 +761,9 @@ command.
 ## Example
 
 ```toml
-src = "src"
+[source]
+folder = "src"
+default = "src/main.cpp"
 
 [alias]
 main = "src/main.cpp"
@@ -785,7 +789,6 @@ timeout = 10
 parallel = true
 
 [test]
-source = "src/main.cpp"
 timeout = 10
 memory = 1024
 parallel = true

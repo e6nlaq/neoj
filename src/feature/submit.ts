@@ -804,10 +804,10 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
         );
     }
 
-    const spec = options.source ?? options.config.test.source;
+    const spec = options.source ?? options.config.source.default;
     if (spec === undefined || spec.trim() === "") {
         throw new Error(
-            'No source file to submit. Set test.source in neoj.toml or run "neoj submit <source>".',
+            'No source file to submit. Set source.default in neoj.toml or run "neoj submit <source>".',
         );
     }
 
@@ -1010,7 +1010,7 @@ export function createSubmitCommand(): Command<[string | undefined]> {
         .alias("s")
         .alias("submits")
         .description("Submit the solution for the current problem")
-        .argument("[source]", "Source file to submit (defaults to test.source)")
+        .argument("[source]", "Source file to submit (defaults to source.default)")
         .option("-l, --language <key>", "Language definition to use")
         .option("-p, --platform-language <id>", "Platform language ID to submit as")
         .option("--yes", "Skip the confirmation prompt")

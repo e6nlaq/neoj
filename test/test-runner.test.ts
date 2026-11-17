@@ -52,7 +52,7 @@ function createConfig(options: {
     run?: Partial<Config["run"]>;
 }): Config {
     return {
-        src: undefined,
+        source: options.source === undefined ? {} : { default: options.source },
         alias: options.alias ?? {},
         login: { open_browser: true, auto_login: true },
         submit: {
@@ -77,7 +77,6 @@ function createConfig(options: {
         },
         run: { silent: false, ...options.run },
         test: {
-            source: options.source,
             timeout: 10,
             memory: 1024,
             parallel: true,
@@ -330,7 +329,7 @@ describe("resolveTestSource", () => {
         ).rejects.toThrow("No aliases are defined in [alias].");
     });
 
-    it("does not expand test.source", async () => {
+    it("does not expand source.default", async () => {
         const { projectRoot } = await createAliasProject();
         const config = createConfig({ source: "main", alias: { main: "src/main.ts" } });
 
@@ -1188,7 +1187,7 @@ describe("runTests", () => {
         ).rejects.toThrow("must reference {outfile} or {outdir}");
     });
 
-    it("requires test.source or a positional source", async () => {
+    it("requires source.default or a positional source", async () => {
         testRoot = await mkdtemp(join(tmpdir(), "neoj-test-runner-"));
         const projectRoot = testRoot;
         await writeFile(join(projectRoot, "main.ts"), runnerScript);
@@ -1200,7 +1199,6 @@ describe("runTests", () => {
             runTests({
                 projectRoot,
                 config: createConfig({
-                    source: undefined,
                     languages: {
                         ts: { source: "main.ts", run: [process.execPath, "run", "main.ts"] },
                     },

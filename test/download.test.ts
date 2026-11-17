@@ -525,7 +525,7 @@ describe("downloadProblem", () => {
         await Bun.write(join(projectRoot, "src", "main.cpp"), "work");
         await Bun.write(
             join(projectRoot, "neoj.toml"),
-            'src = "src"\n[template]\nenable = true\nfolder = "template"\n',
+            '[source]\nfolder = "src"\n[template]\nenable = true\nfolder = "template"\n',
         );
         process.env.USERPROFILE = homeDirectory;
         process.env.HOME = homeDirectory;
@@ -560,7 +560,7 @@ describe("downloadProblem", () => {
         }
     });
 
-    it("rejects test-case folders that overlap src or the metadata directory", async () => {
+    it("rejects test-case folders that overlap source.folder or the metadata directory", async () => {
         const projectRoot = await createProject();
         const homeDirectory = join(projectRoot, "home");
         await mkdir(homeDirectory);
@@ -583,12 +583,12 @@ describe("downloadProblem", () => {
         });
         try {
             for (const [folder, message] of [
-                ["src", "testcase.folder and src must not overlap"],
+                ["src", "testcase.folder and source.folder must not overlap"],
                 [".neoj", "testcase.folder cannot target the neoj metadata directory"],
             ] as const) {
                 await Bun.write(
                     join(projectRoot, "neoj.toml"),
-                    `src = "src"\n[testcase]\nfolder = "${folder}"\n`,
+                    `[source]\nfolder = "src"\n[testcase]\nfolder = "${folder}"\n`,
                 );
                 await expect(
                     downloadProblem("https://atcoder.jp/contests/abc300/tasks/abc300_a"),
@@ -616,7 +616,7 @@ describe("downloadProblem", () => {
         process.chdir(projectRoot);
         await Bun.write(
             join(projectRoot, "neoj.toml"),
-            'src = "src"\n[testcase]\nfolder = "test"\n[template]\nenable = true\nfolder = "test/templates"\n',
+            '[source]\nfolder = "src"\n[testcase]\nfolder = "test"\n[template]\nenable = true\nfolder = "test/templates"\n',
         );
 
         let fetched = false;
@@ -684,7 +684,7 @@ describe("downloadProblem", () => {
 
             await Bun.write(
                 join(projectRoot, "neoj.toml"),
-                'src = "src"\n[template]\nenable = true\nfolder = "missing-template"\n',
+                '[source]\nfolder = "src"\n[template]\nenable = true\nfolder = "missing-template"\n',
             );
 
             await expect(downloadProblem(problemB)).rejects.toThrow("does not exist");
