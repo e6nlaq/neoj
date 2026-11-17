@@ -157,14 +157,12 @@ output; a case without an `.out` file shows the program's output instead. `-v`
 adds the same tables to passing cases.
 
 In the comparison table, expected lines are green and the program's lines are
-red. The parts that differ are bold and keep that color, while the whole line
-gets a very light green or red background: whole tokens when the two lines
-split into the same number of whitespace-separated tokens, whole characters when
-a single non-numeric token has the same length, and the entire line when the
-token counts or lengths differ. Matching parts of a differing line stay in the
-normal text color on the tinted background so they remain easy to read. Colors
-and backgrounds are omitted when the output is not a terminal or `NO_COLOR` is
-set.
+red. The parts that differ are bold and keep that color: whole tokens when the
+two lines split into the same number of whitespace-separated tokens, whole
+characters when a single non-numeric token has the same length, and the entire
+line when the token counts or lengths differ. Matching parts of a differing line
+stay in the normal text color so they remain easy to read. Colors are omitted
+when the output is not a terminal or `NO_COLOR` is set.
 
 Wide terminals show both outputs side by side in one table; narrow terminals,
 tabs, and long lines fall back to two stacked tables that keep their headers.

@@ -19,16 +19,11 @@ afterEach(() => {
 });
 
 describe("paint", () => {
-    it("combines bold, foreground, and background into one sequence", () => {
+    it("combines bold and a foreground color into one sequence", () => {
         const styles = createAnsiStyles(true);
 
-        expect(styles.paint("x", { fg: "green", bg: "green", bold: true })).toBe(
-            "\u001B[1;38;5;28;48;5;194mx\u001B[0m",
-        );
-        expect(styles.paint("x", { fg: "red", bg: "red" })).toBe(
-            "\u001B[38;5;124;48;5;224mx\u001B[0m",
-        );
-        expect(styles.paint("  ", { bg: "green" })).toBe("\u001B[48;5;194m  \u001B[0m");
+        expect(styles.paint("x", { fg: "green", bold: true })).toBe("\u001B[1;32mx\u001B[0m");
+        expect(styles.paint("x", { fg: "red" })).toBe("\u001B[31mx\u001B[0m");
     });
 
     it("leaves text untouched when styling is disabled or there is nothing to paint", () => {

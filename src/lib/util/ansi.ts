@@ -5,8 +5,6 @@ export type AnsiHighlightColor = "green" | "red";
 export interface AnsiPaintOptions {
     /** Highlight foreground; green marks expected output, red marks actual output. */
     fg?: AnsiHighlightColor;
-    /** Highlight background; green marks expected output, red marks actual output. */
-    bg?: AnsiHighlightColor;
     bold?: boolean;
 }
 
@@ -23,24 +21,17 @@ export interface AnsiStyles {
     /**
      * Apply one combined style in a single SGR sequence.
      *
-     * Nested `bold(red(...))` calls cannot be tinted afterwards: the inner
-     * reset also clears the background. Combining the codes here keeps a
-     * background continuous across marked and unmarked segments.
+     * Combining the codes keeps a bold marked segment from resetting the
+     * style of surrounding text before its own reset.
      */
     paint(text: string, options: AnsiPaintOptions): string;
 }
 
 const escape = "\u001B[";
 
-// 256-color palette entries that stay readable on both dark and light
-// terminals: a dark foreground on a very light background.
 const highlightForeground: Record<AnsiHighlightColor, readonly number[]> = {
-    green: [38, 5, 28],
-    red: [38, 5, 124],
-};
-const highlightBackground: Record<AnsiHighlightColor, readonly number[]> = {
-    green: [48, 5, 194],
-    red: [48, 5, 224],
+    green: [32],
+    red: [31],
 };
 
 function wrap(enabled: boolean, codes: readonly number[], text: string): string {
@@ -96,9 +87,6 @@ export function createAnsiStyles(enabled: boolean): AnsiStyles {
             }
             if (options.fg !== undefined) {
                 codes.push(...highlightForeground[options.fg]);
-            }
-            if (options.bg !== undefined) {
-                codes.push(...highlightBackground[options.bg]);
             }
             if (codes.length === 0) {
                 return text;

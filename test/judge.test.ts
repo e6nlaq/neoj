@@ -217,10 +217,8 @@ describe("formatComparison", () => {
         expect(lines.at(-1)).toContain("trailing newline");
     });
 
-    const expectedMark = "\u001B[1;38;5;28;48;5;194m";
-    const expectedTint = "\u001B[48;5;194m";
-    const actualMark = "\u001B[1;38;5;124;48;5;224m";
-    const actualTint = "\u001B[48;5;224m";
+    const expectedMark = "\u001B[1;32m";
+    const actualMark = "\u001B[1;31m";
     const reset = "\u001B[0m";
     const coloredStacked = {
         styles: createAnsiStyles(true),
@@ -230,17 +228,16 @@ describe("formatComparison", () => {
     };
     const coloredSideBySide = { ...coloredStacked, sideBySide: true };
 
-    it("highlights marked text and tints only the differing lines", () => {
+    it("highlights only the differing parts", () => {
         const colored = formatComparison(mismatched, coloredStacked);
 
         expect(colored[0]).toContain("Expected");
         expect(colored[1]).toBe("a");
         expect(colored[2]).toContain(`${expectedMark}b${reset}`);
-        expect(colored[2]).toContain(expectedTint);
+        expect(colored[2]).not.toContain("\u001B[48;");
         expect(colored[3]).toBe("c");
         expect(colored[5]).toContain("Output");
         expect(colored[7]).toContain(`${actualMark}x${reset}`);
-        expect(colored[7]).toContain(actualTint);
         expect(colored[8]).toBe("c");
     });
 
@@ -250,12 +247,8 @@ describe("formatComparison", () => {
             coloredStacked,
         );
 
-        expect(colored[1]).toContain(
-            `${expectedTint}1 ${reset}${expectedMark}2${reset}${expectedTint} 3${reset}`,
-        );
-        expect(colored[4]).toContain(
-            `${actualTint}1 ${reset}${actualMark}9${reset}${actualTint} 3${reset}`,
-        );
+        expect(colored[1]).toContain(`1 ${expectedMark}2${reset} 3`);
+        expect(colored[4]).toContain(`1 ${actualMark}9${reset} 3`);
     });
 
     it("marks the whole line when the token counts differ", () => {
@@ -271,12 +264,8 @@ describe("formatComparison", () => {
             coloredStacked,
         );
 
-        expect(colored[1]).toContain(
-            `${expectedTint}abc${reset}${expectedMark}X${reset}${expectedTint}def${reset}${expectedMark}Y${reset}`,
-        );
-        expect(colored[4]).toContain(
-            `${actualTint}abc${reset}${actualMark}Z${reset}${actualTint}def${reset}${actualMark}W${reset}`,
-        );
+        expect(colored[1]).toContain(`abc${expectedMark}X${reset}def${expectedMark}Y${reset}`);
+        expect(colored[4]).toContain(`abc${actualMark}Z${reset}def${actualMark}W${reset}`);
     });
 
     it("merges adjacent character differences into one mark", () => {
@@ -306,19 +295,15 @@ describe("formatComparison", () => {
         expect(colored[4]).toContain(`${actualMark}😁${reset}`);
     });
 
-    it("tints the missing cell when one side has no line", () => {
-        const colored = formatComparison(compareOutput("a\n", "a\nb\n", strict), coloredSideBySide);
+    it("keeps the line-number gutter dim on differing rows", () => {
+        const colored = formatComparison(compareOutput("a\nb\n", "a\nx\n", strict), {
+            ...coloredSideBySide,
+            lineNumbers: true,
+        });
 
-        // The left column is as wide as "Expected" (8 cells).
-        expect(colored[2]).toContain(`${expectedTint}        ${reset}`);
-        expect(colored[2]).toContain(`${actualMark}b${reset}`);
-    });
-
-    it("extends the tint to the column width in side-by-side mode", () => {
-        const colored = formatComparison(compareOutput("a\n", "abc\n", strict), coloredSideBySide);
-
-        expect(colored[1]).toContain(`${expectedMark}a${reset}${expectedTint}       ${reset}`);
-        expect(colored[1]).toContain(`${actualMark}abc${reset}${actualTint}   ${reset}`);
+        expect(colored[2]).toContain(`${expectedMark}b${reset}`);
+        expect(colored[2]).toContain(`${actualMark}x${reset}`);
+        expect(colored[2]).toContain(`\u001B[2m   2\u001B[0m`);
     });
 
     it("formats outputs with more lines than the spread argument limit", () => {

@@ -61,7 +61,7 @@ const lineNumberHeader = "Line";
 
 interface CellSegment {
     text: string;
-    /** Render with bold and the cell foreground; only used on a tinted row. */
+    /** Render with bold and the cell color. */
     marked?: boolean;
 }
 
@@ -70,8 +70,8 @@ interface TableCell {
     text: string;
     /** Rich rendering used by the comparison table. */
     segments?: readonly CellSegment[];
-    /** Tint the cell, padding included, and pick the marked foreground. */
-    background?: "green" | "red";
+    /** Color of the marked segments; green is expected, red is actual. */
+    color?: "green" | "red";
 }
 
 interface TableRow {
@@ -347,22 +347,24 @@ function padCell(text: string, width: number): string {
 }
 
 /**
- * Render a tinted comparison cell: marked segments are bold and colored, the
- * rest of the row keeps only the light background so the text stays readable.
+ * Render a comparison cell: marked segments are bold and colored, and the cell
+ * is padded to the column width so the table stays aligned.
  */
-function formatTintedCell(cell: TableCell, width: number, styles: AnsiStyles): string {
-    const background = cell.background!;
-    const segments = cell.segments ?? [{ text: cell.text }];
-    let rendered = "";
-    for (const segment of segments) {
-        rendered +=
-            segment.marked === true
-                ? styles.paint(segment.text, { fg: background, bg: background, bold: true })
-                : styles.paint(segment.text, { bg: background });
+function formatCell(cell: TableCell, width: number, last: boolean, styles: AnsiStyles): string {
+    if (cell.segments === undefined) {
+        return last ? cell.text : padCell(cell.text, width);
     }
 
-    const padding = " ".repeat(Math.max(0, width - displayWidth(cell.text)));
-    return rendered + styles.paint(padding, { bg: background });
+    const color = cell.color ?? "red";
+    let rendered = "";
+    for (const segment of cell.segments) {
+        rendered +=
+            segment.marked === true
+                ? styles.paint(segment.text, { fg: color, bold: true })
+                : segment.text;
+    }
+
+    return rendered + " ".repeat(Math.max(0, width - displayWidth(cell.text)));
 }
 
 function formatTableRow(
@@ -377,14 +379,7 @@ function formatTableRow(
         parts.push(styles.dim(number.padStart(numberWidth)));
     }
     for (const [index, cell] of cells.entries()) {
-        const width = widths[index] ?? 0;
-        if (cell.background !== undefined) {
-            // Tint to the full column width so a marked row reads as one band.
-            parts.push(formatTintedCell(cell, width, styles));
-        } else {
-            const last = index === cells.length - 1;
-            parts.push(last ? cell.text : padCell(cell.text, width));
-        }
+        parts.push(formatCell(cell, widths[index] ?? 0, index === cells.length - 1, styles));
     }
 
     return parts.join(` ${styles.dim("│")} `).trimEnd();
@@ -652,14 +647,14 @@ function comparisonCells(
 ): ComparisonCells {
     if (expected === undefined) {
         return {
-            expected: { text: "", background: "green" },
-            actual: { text: actual!, background: "red", segments: wholeLine(actual!) },
+            expected: { text: "" },
+            actual: { text: actual!, color: "red", segments: wholeLine(actual!) },
         };
     }
     if (actual === undefined) {
         return {
-            expected: { text: expected, background: "green", segments: wholeLine(expected) },
-            actual: { text: "", background: "red" },
+            expected: { text: expected, color: "green", segments: wholeLine(expected) },
+            actual: { text: "" },
         };
     }
     if (expected === actual) {
@@ -668,8 +663,8 @@ function comparisonCells(
 
     const diff = diffLine(expected, actual);
     return {
-        expected: { text: expected, background: "green", segments: diff.expected },
-        actual: { text: actual, background: "red", segments: diff.actual },
+        expected: { text: expected, color: "green", segments: diff.expected },
+        actual: { text: actual, color: "red", segments: diff.actual },
     };
 }
 
@@ -698,10 +693,16 @@ export function formatComparison(
     } else {
         const expectedRows: TableRow[] = pairs
             .slice(0, result.expectedLines.length)
-            .map((pair, index) => ({ number: index + 1, cells: [pair.expected] }));
+            .map((pair, index) => ({
+                number: index + 1,
+                cells: [pair.expected],
+            }));
         const actualRows: TableRow[] = pairs
             .slice(0, result.actualLines.length)
-            .map((pair, index) => ({ number: index + 1, cells: [pair.actual] }));
+            .map((pair, index) => ({
+                number: index + 1,
+                cells: [pair.actual],
+            }));
         lines.push(...formatTable(["Expected"], expectedRows, styles, lineNumbers));
         lines.push("");
         lines.push(...formatTable(["Output"], actualRows, styles, lineNumbers));
