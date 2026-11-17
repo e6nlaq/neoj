@@ -18,6 +18,11 @@ export interface ComparisonOptions {
 /** Range accepted by `neoj test --error` and `test.error`. */
 export const errorExponentBounds = { min: 0, max: 15 } as const;
 
+/** Background tint used by the comparison report. */
+export const diffBackgroundModes = ["dark", "light", "none"] as const;
+
+export type DiffBackgroundMode = (typeof diffBackgroundModes)[number];
+
 /** The pair of numeric tokens behind a tolerance failure, kept for the report. */
 export interface NumericMismatch {
     expected: string;
@@ -45,6 +50,8 @@ export interface ComparisonFormatOptions {
     sideBySide: boolean;
     /** Prefix every row with a right-aligned line number. */
     lineNumbers: boolean;
+    /** Tint differing rows for a dark or light terminal; defaults to no tint. */
+    background?: DiffBackgroundMode;
 }
 
 export interface LinesTableOptions {
@@ -59,9 +66,19 @@ export interface LinesTableOptions {
 
 const lineNumberHeader = "Line";
 
-interface TableCell {
+interface CellSegment {
     text: string;
-    color?: "red" | "green";
+    /** Render with bold and the cell color. */
+    marked?: boolean;
+}
+
+interface TableCell {
+    /** Visible text; `segments` must join into exactly this value. */
+    text: string;
+    /** Rich rendering used by the comparison table. */
+    segments?: readonly CellSegment[];
+    /** Color of the marked segments; green is expected, red is actual. */
+    color?: "green" | "red";
 }
 
 interface TableRow {
@@ -332,8 +349,57 @@ export function displayWidth(text: string): number {
     return width;
 }
 
-function padCell(text: string, width: number): string {
-    return text + " ".repeat(Math.max(0, width - displayWidth(text)));
+/**
+ * Render a comparison cell: marked segments are bold and colored, and the cell
+ * is padded to the column width so the table stays aligned.
+ */
+function formatCell(
+    cell: TableCell,
+    width: number,
+    last: boolean,
+    styles: AnsiStyles,
+    background: DiffBackgroundMode,
+): string {
+    const color = cell.color;
+    const theme = background === "none" ? undefined : background;
+    const tinted = theme !== undefined && color !== undefined;
+    const padding = " ".repeat(Math.max(0, width - displayWidth(cell.text)));
+
+    if (cell.segments === undefined) {
+        if (!tinted) {
+            return last ? cell.text : cell.text + padding;
+        }
+        return styles.paint(cell.text + padding, { bg: color, theme });
+    }
+
+    let rendered = "";
+    for (const segment of cell.segments) {
+        if (segment.marked === true) {
+            rendered += styles.paint(
+                segment.text,
+                tinted
+                    ? { fg: color, bg: color, theme, bold: true }
+                    : { fg: color ?? "red", bold: true },
+            );
+        } else {
+            rendered += tinted ? styles.paint(segment.text, { bg: color, theme }) : segment.text;
+        }
+    }
+
+    return tinted ? rendered + styles.paint(padding, { bg: color, theme }) : rendered + padding;
+}
+
+/** Tint the space around a `│` with the adjacent cell's background. */
+function separatorSpace(
+    color: "green" | "red" | undefined,
+    styles: AnsiStyles,
+    background: DiffBackgroundMode,
+): string {
+    if (color === undefined || background === "none") {
+        return " ";
+    }
+
+    return styles.paint(" ", { bg: color, theme: background });
 }
 
 function formatTableRow(
@@ -342,18 +408,36 @@ function formatTableRow(
     widths: readonly number[],
     numberWidth: number,
     styles: AnsiStyles,
+    background: DiffBackgroundMode,
 ): string {
-    const parts: string[] = [];
+    let line = "";
     if (number !== undefined) {
-        parts.push(styles.dim(number.padStart(numberWidth)));
-    }
-    for (const [index, cell] of cells.entries()) {
-        const padded =
-            index === cells.length - 1 ? cell.text : padCell(cell.text, widths[index] ?? 0);
-        parts.push(cell.color === undefined ? padded : styles[cell.color](padded));
+        line += styles.dim(number.padStart(numberWidth));
     }
 
-    return parts.join(` ${styles.dim("│")} `).trimEnd();
+    let previousTint: "green" | "red" | undefined;
+    for (const [index, cell] of cells.entries()) {
+        const tint = background === "none" ? undefined : cell.color;
+        if (index > 0 || number !== undefined) {
+            // The space before the bar belongs to the previous cell and the one
+            // after it to this cell, so a tinted row stays one continuous band
+            // while the bar itself stays dim. The gutter keeps its own plain
+            // margin, so the background starts after the bar.
+            line += separatorSpace(previousTint, styles, background);
+            line += styles.dim("│");
+            line += separatorSpace(tint, styles, background);
+        }
+        line += formatCell(
+            cell,
+            widths[index] ?? 0,
+            index === cells.length - 1,
+            styles,
+            background,
+        );
+        previousTint = tint;
+    }
+
+    return line.trimEnd();
 }
 
 /**
@@ -367,6 +451,7 @@ function formatTable(
     rows: readonly TableRow[],
     styles: AnsiStyles,
     lineNumbers: boolean,
+    background: DiffBackgroundMode,
 ): string[] {
     const numberWidth = lineNumbers
         ? Math.max(lineNumberHeader.length, String(rows.length).length)
@@ -386,6 +471,7 @@ function formatTable(
                 widths,
                 numberWidth,
                 styles,
+                background,
             ),
         ),
     ];
@@ -397,6 +483,7 @@ function formatTable(
                 widths,
                 numberWidth,
                 styles,
+                background,
             ),
         );
     }
@@ -437,46 +524,247 @@ function fitsSideBySide(result: ComparisonResult, columns: number, lineNumbers: 
     return gutterWidth + textWidth + reportIndentWidth <= columns;
 }
 
+/** A range of UTF-16 code units inside one output line. */
+interface CharacterSpan {
+    start: number;
+    end: number;
+}
+
+/** Code-unit ranges of each code point, so marks never split a surrogate pair. */
+function codePointSpans(text: string): CharacterSpan[] {
+    const spans: CharacterSpan[] = [];
+    let index = 0;
+    for (const character of text) {
+        spans.push({ start: index, end: index + character.length });
+        index += character.length;
+    }
+
+    return spans;
+}
+
+/** ASCII whitespace runs are separators, matching how judges split tokens. */
+function tokenSpans(text: string): CharacterSpan[] {
+    const spans: CharacterSpan[] = [];
+    let index = 0;
+    while (index < text.length) {
+        if (isTokenSeparator(text[index]!)) {
+            index += 1;
+            continue;
+        }
+
+        const start = index;
+        while (index < text.length && !isTokenSeparator(text[index]!)) {
+            index += 1;
+        }
+        spans.push({ start, end: index });
+    }
+
+    return spans;
+}
+
+/** Merge adjacent code-point ranges so one run of changes is one segment. */
+function mergeSpans(spans: readonly CharacterSpan[]): CharacterSpan[] {
+    const merged: CharacterSpan[] = [];
+    for (const span of spans) {
+        const last = merged.at(-1);
+        if (last !== undefined && last.end === span.start) {
+            last.end = span.end;
+        } else {
+            merged.push({ ...span });
+        }
+    }
+
+    return merged;
+}
+
+function segmentsFromSpans(text: string, marked: readonly CharacterSpan[]): CellSegment[] {
+    if (text === "") {
+        return [];
+    }
+    if (marked.length === 0) {
+        return [{ text }];
+    }
+
+    const segments: CellSegment[] = [];
+    let cursor = 0;
+    for (const span of marked) {
+        if (span.start > cursor) {
+            segments.push({ text: text.slice(cursor, span.start) });
+        }
+        segments.push({ text: text.slice(span.start, span.end), marked: true });
+        cursor = span.end;
+    }
+    if (cursor < text.length) {
+        segments.push({ text: text.slice(cursor) });
+    }
+
+    return segments;
+}
+
+function wholeLine(text: string): CellSegment[] {
+    return text === "" ? [] : [{ text, marked: true }];
+}
+
+function isSameSpanText(
+    left: string,
+    leftSpan: CharacterSpan,
+    right: string,
+    rightSpan: CharacterSpan,
+): boolean {
+    return left.slice(leftSpan.start, leftSpan.end) === right.slice(rightSpan.start, rightSpan.end);
+}
+
+interface LineComparison {
+    expected: readonly CellSegment[];
+    actual: readonly CellSegment[];
+}
+
+/** Compare one character at a time, never splitting a surrogate pair. */
+function diffCharacters(expected: string, actual: string): LineComparison | undefined {
+    const expectedSpans = codePointSpans(expected);
+    const actualSpans = codePointSpans(actual);
+    if (expectedSpans.length !== actualSpans.length) {
+        return undefined;
+    }
+
+    const expectedMarked: CharacterSpan[] = [];
+    const actualMarked: CharacterSpan[] = [];
+    for (let index = 0; index < expectedSpans.length; index += 1) {
+        const left = expectedSpans[index]!;
+        const right = actualSpans[index]!;
+        if (!isSameSpanText(expected, left, actual, right)) {
+            expectedMarked.push(left);
+            actualMarked.push(right);
+        }
+    }
+
+    return {
+        expected: segmentsFromSpans(expected, mergeSpans(expectedMarked)),
+        actual: segmentsFromSpans(actual, mergeSpans(actualMarked)),
+    };
+}
+
+/**
+ * Mark the smallest useful unit of two differing lines.
+ *
+ * Token counts are compared first; only a single non-numeric token falls back
+ * to a character-by-character comparison.
+ */
+function diffLine(expected: string, actual: string): LineComparison {
+    const expectedTokens = tokenSpans(expected);
+    const actualTokens = tokenSpans(actual);
+    if (expectedTokens.length !== actualTokens.length) {
+        return { expected: wholeLine(expected), actual: wholeLine(actual) };
+    }
+
+    const tokensMatch = expectedTokens.every((span, index) =>
+        isSameSpanText(expected, span, actual, actualTokens[index]!),
+    );
+    if (tokensMatch) {
+        // Only the whitespace differs, so there is no token to point at.
+        return { expected: wholeLine(expected), actual: wholeLine(actual) };
+    }
+
+    if (expectedTokens.length === 1) {
+        const token = expectedTokens[0]!;
+        if (!numericTokenPattern.test(expected.slice(token.start, token.end))) {
+            const characters = diffCharacters(expected, actual);
+            if (characters !== undefined) {
+                return characters;
+            }
+
+            return { expected: wholeLine(expected), actual: wholeLine(actual) };
+        }
+    }
+
+    const expectedMarked: CharacterSpan[] = [];
+    const actualMarked: CharacterSpan[] = [];
+    for (let index = 0; index < expectedTokens.length; index += 1) {
+        const left = expectedTokens[index]!;
+        const right = actualTokens[index]!;
+        if (!isSameSpanText(expected, left, actual, right)) {
+            expectedMarked.push(left);
+            actualMarked.push(right);
+        }
+    }
+
+    return {
+        expected: segmentsFromSpans(expected, expectedMarked),
+        actual: segmentsFromSpans(actual, actualMarked),
+    };
+}
+
+interface ComparisonCells {
+    expected: TableCell;
+    actual: TableCell;
+}
+
+function comparisonCells(
+    expected: string | undefined,
+    actual: string | undefined,
+): ComparisonCells {
+    if (expected === undefined) {
+        return {
+            expected: { text: "", color: "green" },
+            actual: { text: actual!, color: "red", segments: wholeLine(actual!) },
+        };
+    }
+    if (actual === undefined) {
+        return {
+            expected: { text: expected, color: "green", segments: wholeLine(expected) },
+            actual: { text: "", color: "red" },
+        };
+    }
+    if (expected === actual) {
+        return { expected: { text: expected }, actual: { text: actual } };
+    }
+
+    const diff = diffLine(expected, actual);
+    return {
+        expected: { text: expected, color: "green", segments: diff.expected },
+        actual: { text: actual, color: "red", segments: diff.actual },
+    };
+}
+
 /**
  * Render both outputs as a table: side by side when it fits, otherwise as two
- * stacked tables that keep the headers. Differing rows stay colored.
+ * stacked tables that keep the headers. Differing details stay highlighted.
  */
 export function formatComparison(
     result: ComparisonResult,
     options: ComparisonFormatOptions,
 ): string[] {
     const { styles, lineNumbers } = options;
+    const background = options.background ?? "none";
     const lines: string[] = [];
     const rowCount = Math.max(result.expectedLines.length, result.actualLines.length);
-    const mismatched = (index: number): boolean =>
-        result.expectedLines[index] !== result.actualLines[index];
+    const pairs: ComparisonCells[] = [];
+    for (let index = 0; index < rowCount; index += 1) {
+        pairs.push(comparisonCells(result.expectedLines[index], result.actualLines[index]));
+    }
 
     if (options.sideBySide && fitsSideBySide(result, options.columns, lineNumbers)) {
-        const rows: TableRow[] = [];
-        for (let index = 0; index < rowCount; index += 1) {
-            const expected = result.expectedLines[index];
-            const actual = result.actualLines[index];
-            rows.push({
-                number: index + 1,
-                cells: [
-                    { text: expected ?? "", color: mismatched(index) ? "green" : undefined },
-                    { text: actual ?? "", color: mismatched(index) ? "red" : undefined },
-                ],
-            });
-        }
-        lines.push(...formatTable(["Expected", "Output"], rows, styles, lineNumbers));
+        const rows: TableRow[] = pairs.map((pair, index) => ({
+            number: index + 1,
+            cells: [pair.expected, pair.actual],
+        }));
+        lines.push(...formatTable(["Expected", "Output"], rows, styles, lineNumbers, background));
     } else {
-        const expectedRows: TableRow[] = result.expectedLines.map((text, index) => ({
-            number: index + 1,
-            cells: [{ text, color: mismatched(index) ? "green" : undefined }],
-        }));
-        const actualRows: TableRow[] = result.actualLines.map((text, index) => ({
-            number: index + 1,
-            cells: [{ text, color: mismatched(index) ? "red" : undefined }],
-        }));
-        lines.push(...formatTable(["Expected"], expectedRows, styles, lineNumbers));
+        const expectedRows: TableRow[] = pairs
+            .slice(0, result.expectedLines.length)
+            .map((pair, index) => ({
+                number: index + 1,
+                cells: [pair.expected],
+            }));
+        const actualRows: TableRow[] = pairs
+            .slice(0, result.actualLines.length)
+            .map((pair, index) => ({
+                number: index + 1,
+                cells: [pair.actual],
+            }));
+        lines.push(...formatTable(["Expected"], expectedRows, styles, lineNumbers, background));
         lines.push("");
-        lines.push(...formatTable(["Output"], actualRows, styles, lineNumbers));
+        lines.push(...formatTable(["Output"], actualRows, styles, lineNumbers, background));
     }
 
     if (result.trailingNewlineOnly) {
@@ -499,6 +787,7 @@ export function formatLinesTable(lines: readonly string[], options: LinesTableOp
         toRows(lines),
         options.styles,
         options.lineNumbers,
+        "none",
     );
     const omitted = options.omitted ?? 0;
     if (omitted > 0) {

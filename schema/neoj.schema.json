@@ -277,6 +277,12 @@
                     "type": "boolean",
                     "description": "Prefix each line of the report's input and output tables with its line number.",
                     "default": true
+                },
+                "diff_background": {
+                    "enum": ["dark", "light", "none"],
+                    "type": "string",
+                    "description": "Tint rows in the comparison table that differ: \"dark\" and \"light\" match a dark or light terminal background, \"none\" disables the tint.",
+                    "default": "none"
                 }
             },
             "required": [],
@@ -291,7 +297,8 @@
                 "ignore_trailing_newline": false,
                 "show_stderr": "always",
                 "display_lines": 30,
-                "show_line_numbers": true
+                "show_line_numbers": true,
+                "diff_background": "none"
             }
         },
         "run": {

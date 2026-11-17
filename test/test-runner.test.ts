@@ -87,6 +87,7 @@ function createConfig(options: {
             show_stderr: "always",
             display_lines: 30,
             show_line_numbers: true,
+            diff_background: "none",
             ...options.test,
         },
         languages: options.languages ?? {},

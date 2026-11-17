@@ -217,20 +217,155 @@ describe("formatComparison", () => {
         expect(lines.at(-1)).toContain("trailing newline");
     });
 
-    it("colors only the differing rows", () => {
-        const colored = formatComparison(mismatched, {
-            styles: createAnsiStyles(true),
-            columns: 120,
-            sideBySide: false,
-            lineNumbers: false,
+    const expectedMark = "\u001B[1;32m";
+    const actualMark = "\u001B[1;31m";
+    const reset = "\u001B[0m";
+    const coloredStacked = {
+        styles: createAnsiStyles(true),
+        columns: 120,
+        sideBySide: false,
+        lineNumbers: false,
+    };
+    const coloredSideBySide = { ...coloredStacked, sideBySide: true };
+
+    it("highlights only the differing parts", () => {
+        const colored = formatComparison(mismatched, coloredStacked);
+
+        expect(colored[0]).toContain("Expected");
+        expect(colored[1]).toBe("a");
+        expect(colored[2]).toContain(`${expectedMark}b${reset}`);
+        expect(colored[2]).not.toContain("\u001B[48;");
+        expect(colored[3]).toBe("c");
+        expect(colored[5]).toContain("Output");
+        expect(colored[7]).toContain(`${actualMark}x${reset}`);
+        expect(colored[8]).toBe("c");
+    });
+
+    it("marks only the differing token when the token counts match", () => {
+        const colored = formatComparison(
+            compareOutput("1 2 3\n", "1 9 3\n", strict),
+            coloredStacked,
+        );
+
+        expect(colored[1]).toContain(`1 ${expectedMark}2${reset} 3`);
+        expect(colored[4]).toContain(`1 ${actualMark}9${reset} 3`);
+    });
+
+    it("marks the whole line when the token counts differ", () => {
+        const colored = formatComparison(compareOutput("1 2 3\n", "1 2\n", strict), coloredStacked);
+
+        expect(colored[1]).toContain(`${expectedMark}1 2 3${reset}`);
+        expect(colored[4]).toContain(`${actualMark}1 2${reset}`);
+    });
+
+    it("marks individual characters in a single non-numeric token of equal length", () => {
+        const colored = formatComparison(
+            compareOutput("abcXdefY\n", "abcZdefW\n", strict),
+            coloredStacked,
+        );
+
+        expect(colored[1]).toContain(`abc${expectedMark}X${reset}def${expectedMark}Y${reset}`);
+        expect(colored[4]).toContain(`abc${actualMark}Z${reset}def${actualMark}W${reset}`);
+    });
+
+    it("merges adjacent character differences into one mark", () => {
+        const colored = formatComparison(compareOutput("abXY\n", "abZW\n", strict), coloredStacked);
+
+        expect(colored[1]).toContain(`${expectedMark}XY${reset}`);
+    });
+
+    it("marks the whole line when a single token changes length", () => {
+        const colored = formatComparison(compareOutput("abc\n", "ab\n", strict), coloredStacked);
+
+        expect(colored[1]).toContain(`${expectedMark}abc${reset}`);
+        expect(colored[4]).toContain(`${actualMark}ab${reset}`);
+    });
+
+    it("marks the whole line when only whitespace differs", () => {
+        const colored = formatComparison(compareOutput("1  2\n", "1 2\n", strict), coloredStacked);
+
+        expect(colored[1]).toContain(`${expectedMark}1  2${reset}`);
+        expect(colored[4]).toContain(`${actualMark}1 2${reset}`);
+    });
+
+    it("never splits a surrogate pair", () => {
+        const colored = formatComparison(compareOutput("a😀b\n", "a😁b\n", strict), coloredStacked);
+
+        expect(colored[1]).toContain(`${expectedMark}😀${reset}`);
+        expect(colored[4]).toContain(`${actualMark}😁${reset}`);
+    });
+
+    it("tints differing rows with the light palette", () => {
+        const colored = formatComparison(compareOutput("1 2 3\n", "1 9 3\n", strict), {
+            ...coloredStacked,
+            background: "light",
         });
 
-        // The correct output stays green; the program's own output turns red.
-        expect(colored.filter((line) => line.includes("\u001B[32m"))).toHaveLength(1);
-        expect(colored.find((line) => line.includes("\u001B[32m"))).toContain("b");
-        expect(colored.filter((line) => line.includes("\u001B[31m"))).toHaveLength(1);
-        expect(colored.find((line) => line.includes("\u001B[31m"))).toContain("x");
-        expect(colored[1]).not.toContain("\u001B[");
+        expect(colored[1]).toContain(
+            "\u001B[48;5;194m1 \u001B[0m\u001B[1;38;5;28;48;5;194m2\u001B[0m\u001B[48;5;194m 3\u001B[0m",
+        );
+        expect(colored[4]).toContain(
+            "\u001B[48;5;224m1 \u001B[0m\u001B[1;38;5;124;48;5;224m9\u001B[0m\u001B[48;5;224m 3\u001B[0m",
+        );
+    });
+
+    it("tints differing rows with the dark palette", () => {
+        const colored = formatComparison(compareOutput("1 2 3\n", "1 9 3\n", strict), {
+            ...coloredStacked,
+            background: "dark",
+        });
+
+        expect(colored[1]).toContain(
+            "\u001B[48;2;18;45;28m1 \u001B[0m\u001B[1;38;2;150;200;160;48;2;18;45;28m2\u001B[0m\u001B[48;2;18;45;28m 3\u001B[0m",
+        );
+        expect(colored[4]).toContain(
+            "\u001B[48;2;50;22;22m1 \u001B[0m\u001B[1;38;2;220;160;160;48;2;50;22;22m9\u001B[0m\u001B[48;2;50;22;22m 3\u001B[0m",
+        );
+    });
+
+    it("extends the tint across the spaces around the column bar", () => {
+        const colored = formatComparison(compareOutput("a\n", "b\n", strict), {
+            ...coloredSideBySide,
+            background: "light",
+        });
+
+        expect(colored[1]).toContain(
+            "\u001B[48;5;194m \u001B[0m\u001B[2m│\u001B[0m\u001B[48;5;224m \u001B[0m",
+        );
+    });
+
+    it("keeps the gutter margin clear in the stacked layout", () => {
+        const colored = formatComparison(compareOutput("a\nb\n", "a\nx\n", strict), {
+            ...coloredStacked,
+            lineNumbers: true,
+            background: "light",
+        });
+
+        expect(colored[2]).toContain(
+            "\u001B[2m   2\u001B[0m \u001B[2m│\u001B[0m\u001B[48;5;194m \u001B[0m",
+        );
+    });
+
+    it("tints the missing cell when one side has no line", () => {
+        const colored = formatComparison(compareOutput("a\n", "a\nb\n", strict), {
+            ...coloredSideBySide,
+            background: "light",
+        });
+
+        // The left column is as wide as "Expected" (8 cells).
+        expect(colored[2]).toContain("\u001B[48;5;194m        \u001B[0m");
+        expect(colored[2]).toContain("\u001B[1;38;5;124;48;5;224mb\u001B[0m");
+    });
+
+    it("keeps the line-number gutter dim on differing rows", () => {
+        const colored = formatComparison(compareOutput("a\nb\n", "a\nx\n", strict), {
+            ...coloredSideBySide,
+            lineNumbers: true,
+        });
+
+        expect(colored[2]).toContain(`${expectedMark}b${reset}`);
+        expect(colored[2]).toContain(`${actualMark}x${reset}`);
+        expect(colored[2]).toContain(`\u001B[2m   2\u001B[0m`);
     });
 
     it("formats outputs with more lines than the spread argument limit", () => {

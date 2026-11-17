@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "bun:test";
 
-import { supportsColor } from "@/lib/util/ansi";
+import { createAnsiStyles, supportsColor } from "@/lib/util/ansi";
 
 const originalNoColor = process.env.NO_COLOR;
 const originalForceColor = process.env.FORCE_COLOR;
@@ -16,6 +16,35 @@ function restoreEnvironmentVariable(name: string, value: string | undefined): vo
 afterEach(() => {
     restoreEnvironmentVariable("NO_COLOR", originalNoColor);
     restoreEnvironmentVariable("FORCE_COLOR", originalForceColor);
+});
+
+describe("paint", () => {
+    it("combines bold and a foreground color into one sequence", () => {
+        const styles = createAnsiStyles(true);
+
+        expect(styles.paint("x", { fg: "green", bold: true })).toBe("\u001B[1;32mx\u001B[0m");
+        expect(styles.paint("x", { fg: "red" })).toBe("\u001B[31mx\u001B[0m");
+    });
+
+    it("uses the palette that matches the chosen terminal background", () => {
+        const styles = createAnsiStyles(true);
+
+        expect(styles.paint("x", { fg: "green", bg: "green", theme: "light", bold: true })).toBe(
+            "\u001B[1;38;5;28;48;5;194mx\u001B[0m",
+        );
+        expect(styles.paint("x", { fg: "red", bg: "red", theme: "dark" })).toBe(
+            "\u001B[38;2;220;160;160;48;2;50;22;22mx\u001B[0m",
+        );
+        expect(styles.paint("  ", { bg: "green", theme: "dark" })).toBe(
+            "\u001B[48;2;18;45;28m  \u001B[0m",
+        );
+    });
+
+    it("leaves text untouched when styling is disabled or there is nothing to paint", () => {
+        expect(createAnsiStyles(false).paint("x", { fg: "green", bold: true })).toBe("x");
+        expect(createAnsiStyles(true).paint("", { fg: "green" })).toBe("");
+        expect(createAnsiStyles(true).paint("x", {})).toBe("x");
+    });
 });
 
 describe("supportsColor", () => {

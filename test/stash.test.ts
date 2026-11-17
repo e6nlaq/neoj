@@ -94,6 +94,7 @@ function createConfig(options: { sourceFolder?: string; folder?: string } = {}):
             show_stderr: "always",
             display_lines: 30,
             show_line_numbers: true,
+            diff_background: "none",
         },
         languages: {},
         update: { enabled: true, interval: 259_200 },

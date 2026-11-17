@@ -13,6 +13,7 @@ import {
     type CaseVerdict,
     type ComparisonOptions,
     type ComparisonResult,
+    type DiffBackgroundMode,
 } from "@/lib/judge/judge";
 import { getBuildCacheDirectory } from "@/lib/project/build-cache";
 import type { Config, ShowStderrMode } from "@/lib/project/config";
@@ -1243,6 +1244,8 @@ interface CaseDetailOptions {
     showStderr: ShowStderrMode;
     /** Prefix the tables with line numbers. */
     lineNumbers: boolean;
+    /** Tint differing rows for the configured terminal background. */
+    diffBackground: DiffBackgroundMode;
     /** Rows shown per block before `… N more line(s)`. */
     displayLines: number;
 }
@@ -1407,6 +1410,7 @@ function verdictDetails(
                 columns,
                 sideBySide: styles.enabled && columns >= 100,
                 lineNumbers: options.lineNumbers,
+                background: options.diffBackground,
             }),
         );
     } else if (result.verdict === "UNJUDGED") {
@@ -2132,6 +2136,7 @@ export async function runTests(options: RunTestsOptions): Promise<RunTestsResult
             verbose: options.verbose === true,
             showStderr,
             lineNumbers: options.lineNumbers ?? options.config.test.show_line_numbers,
+            diffBackground: options.config.test.diff_background,
             displayLines: options.config.test.display_lines,
         };
         const printed =

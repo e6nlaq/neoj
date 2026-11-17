@@ -138,7 +138,7 @@ and the bar are skipped and only the final report is written.
 | Verdict    | Meaning                                                                       |
 | ---------- | ----------------------------------------------------------------------------- |
 | `AC`       | The output matched.                                                           |
-| `WA`       | The output differed; every line is printed with the differing ones colored.   |
+| `WA`       | The output differed; the comparison table highlights the differing parts.     |
 | `TLE`      | The time limit was exceeded and the program was stopped.                      |
 | `MLE`      | The peak memory usage exceeded the limit (checked after the run).             |
 | `RE`       | The program exited with a non-zero status, was killed, or flooded the output. |
@@ -155,6 +155,26 @@ because the memory column already holds the measured value.
 Every failure shows the input that produced it, then the expected and actual
 output; a case without an `.out` file shows the program's output instead. `-v`
 adds the same tables to passing cases.
+
+In the comparison table, expected lines are green and the program's lines are
+red. The parts that differ are bold and keep that color: whole tokens when the
+two lines split into the same number of whitespace-separated tokens, whole
+characters when a single non-numeric token has the same length, and the entire
+line when the token counts or lengths differ. Matching parts of a differing line
+stay in the normal text color so they remain easy to read.
+
+Set `test.diff_background` to match your terminal so a differing row also gets
+a readable tint over its whole width:
+
+```toml
+[test]
+diff_background = "dark"   # "dark", "light", or "none" (default)
+```
+
+`"dark"` uses dark green and red backgrounds for a dark terminal, while
+`"light"` uses pale ones for a light terminal; the text color adapts to the same
+palette. `"none"` leaves only the bold colored text. Colors and backgrounds are
+omitted when the output is not a terminal or `NO_COLOR` is set.
 
 Wide terminals show both outputs side by side in one table; narrow terminals,
 tabs, and long lines fall back to two stacked tables that keep their headers.

@@ -408,6 +408,23 @@ Prefix each row of the report's input and output tables with its line number. Th
 comparison adds the number once per row, next to `Expected` and `Output`.
 `--no-show-line-numbers` turns it off for one run.
 
+### `test.diff_background`
+
+| Type   | Default  | Scope             |
+| ------ | -------- | ----------------- |
+| string | `"none"` | global or project |
+
+Tint the comparison rows that differ. Set it to match the terminal's own
+background so the highlight stays readable:
+
+- `"dark"` — dark, muted backgrounds for a dark terminal.
+- `"light"` — pale backgrounds for a light terminal.
+- `"none"` — no background; differing parts keep their bold green or red text.
+
+The tint covers the whole differing row, including the parts that match, and the
+foreground color follows the same palette. Colors are still omitted when the
+output is not a terminal or `NO_COLOR` is set.
+
 ### `run.silent`
 
 | Type    | Default | Scope             |
