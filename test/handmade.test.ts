@@ -245,6 +245,22 @@ describe("createHandmadePrompt", () => {
         expect(output).toContain("Output (handmade-1.out)\n  1 │ 5\n");
         expect(await Bun.file(join(root, "test", "handmade-1.in")).text()).toBe("1 2\n3 4\n");
         expect(await Bun.file(join(root, "test", "handmade-1.out")).text()).toBe("5\n");
+        expect(source.isPaused()).toBe(true);
+    });
+
+    it("aborts on Ctrl-C and pauses the input", async () => {
+        const { source, sink } = createTerminal();
+        const session = createHandmadePrompt(source, sink);
+
+        try {
+            const run = readHandmadeBlock(session.prompt, (line) => `${line}> `);
+            source.write("\u0003");
+            await expect(run).rejects.toBeInstanceOf(HandmadeAbortError);
+        } finally {
+            session.close();
+        }
+
+        expect(source.isPaused()).toBe(true);
     });
 });
 

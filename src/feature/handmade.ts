@@ -203,6 +203,9 @@ export function createHandmadePrompt(
             source.off("end", onEnd);
             readline.close();
             input.end();
+            // process.stdin stays flowing after readline closes, which keeps
+            // the process alive until a second Ctrl-C.
+            source.pause();
         },
     };
 }
