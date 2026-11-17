@@ -3,6 +3,7 @@
 ```bash
 neoj handmade
 neoj h          # alias
+neoj handmade --input   # only the .in file
 ```
 
 `neoj handmade` asks you to type one test case, then writes it as an `.in` and an
@@ -13,24 +14,45 @@ not cover a case you want to check.
 
 ```text
 $ neoj handmade
-test/handmade-1.in and test/handmade-1.out will be created.
-input> 1 2
-input>
+Input (handmade-1.in)
+  1 │ 1 2
+  2 │ 3 4
+  3 │
 
-output> 3
-output>
+Output (handmade-1.out)
+  1 │ 3
+  2 │
 ✔ Created test/handmade-1.in and test/handmade-1.out.
 ```
 
-Type the input one line at a time and press Enter on an empty line to finish the
-block. Do the same for the expected output; a blank line separates the two
-blocks. To create an empty input or output, press Enter immediately.
+The block header is shown in bold, and each line is prompted with its line
+number like the `neoj test` report. Type the input one line at a time and press
+Enter on an empty line to finish the block. Do the same for the expected output;
+a blank line separates the two blocks. To create an empty input or output, press
+Enter immediately.
 
 The files are written only after both blocks are complete. Ctrl-C, or Ctrl-D
 (Ctrl-Z on Windows), cancels the command and leaves the directory untouched, so a
 mistyped case never leaves half a pair behind.
 
 The command needs an interactive terminal; piping input into it is rejected.
+
+## Add only the input
+
+`-i`/`--input` reads the input block and writes only the `.in` file, without
+asking for the expected output:
+
+```text
+$ neoj handmade --input
+Input (handmade-1.in)
+  1 │ 1 2
+  2 │
+✔ Created test/handmade-1.in.
+```
+
+The next free case number is still chosen from both `.in` and `.out` files, so
+an input-only case never collides with an existing pair. `neoj test` reports a
+case without an `.out` file as unjudged until the output is added.
 
 ## Run the new case
 

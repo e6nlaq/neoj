@@ -15,6 +15,7 @@ import {
 } from "@/lib/project/handmade";
 import { requireInitializedProject } from "@/lib/project/project";
 import { resolveTestcaseDirectory } from "@/lib/project/testcase";
+import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
 
 export interface RunHandmadeOptions {
     projectRoot: string;
@@ -25,10 +26,21 @@ export interface RunHandmadeOptions {
     /** File name pattern from `handmade.filename`. */
     filename: string;
     prompt: HandmadePrompt;
+    /** Create only the `.in` file and skip the expected output. */
+    inputOnly?: boolean;
+    /** Styling for the block headers and the line-number gutter. */
+    styles?: AnsiStyles;
 }
 
 function formatCasePath(folder: string, baseName: string, extension: string): string {
     return `${folder.split(/[\\/]/u).join("/")}/${baseName}${extension}`;
+}
+
+/** Number of columns reserved for the line number, matching the test report. */
+const lineNumberWidth = 3;
+
+function formatLinePrompt(lineNumber: number, styles: AnsiStyles): string {
+    return `${styles.dim(String(lineNumber).padStart(lineNumberWidth))} ${styles.dim("│")} `;
 }
 
 export async function runHandmade(options: RunHandmadeOptions): Promise<HandmadeTarget> {
@@ -40,12 +52,25 @@ export async function runHandmade(options: RunHandmadeOptions): Promise<Handmade
     const target = await findNextHandmadeTarget(directory, options.filename);
     const inputPath = formatCasePath(options.folder, target.baseName, ".in");
     const outputPath = formatCasePath(options.folder, target.baseName, ".out");
+    const styles = options.styles ?? createAnsiStyles(false);
 
-    consola.info(`${inputPath} and ${outputPath} will be created.`);
+    options.prompt.write(`${styles.bold(`Input (${target.baseName}.in)`)}\n`);
+    const input = await readHandmadeBlock(options.prompt, (lineNumber) =>
+        formatLinePrompt(lineNumber, styles),
+    );
 
-    const input = await readHandmadeBlock(options.prompt, "input");
+    if (options.inputOnly === true) {
+        await saveHandmadeCase(target, formatHandmadeContents(input));
+        consola.success(`Created ${inputPath}.`);
+
+        return target;
+    }
+
     options.prompt.write("\n");
-    const output = await readHandmadeBlock(options.prompt, "output");
+    options.prompt.write(`${styles.bold(`Output (${target.baseName}.out)`)}\n`);
+    const output = await readHandmadeBlock(options.prompt, (lineNumber) =>
+        formatLinePrompt(lineNumber, styles),
+    );
 
     await saveHandmadeCase(target, formatHandmadeContents(input), formatHandmadeContents(output));
     consola.success(`Created ${inputPath} and ${outputPath}.`);
@@ -57,7 +82,8 @@ export function createHandmadeCommand(): Command {
     return new Command("handmade")
         .alias("h")
         .description("Create a handmade test case from interactive input")
-        .action(async () => {
+        .option("-i, --input", "Create only the .in file and skip the expected output")
+        .action(async (options) => {
             let close = () => {};
             try {
                 if (!process.stdin.isTTY) {
@@ -84,6 +110,8 @@ export function createHandmadeCommand(): Command {
                     folder: config.testcase.folder,
                     sourceFolder: config.source.folder,
                     filename: config.handmade.filename,
+                    inputOnly: options.input,
+                    styles: createAnsiStyles(supportsColor(process.stdout)),
                     prompt: {
                         write: (text) => {
                             process.stdout.write(text);
