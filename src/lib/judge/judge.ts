@@ -421,9 +421,9 @@ function formatTableRow(
         if (index > 0 || number !== undefined) {
             // The space before the bar belongs to the previous cell and the one
             // after it to this cell, so a tinted row stays one continuous band
-            // while the bar itself stays dim. In the stacked layout, the first
-            // cell owns the space between the gutter and the bar.
-            line += separatorSpace(index === 0 ? tint : previousTint, styles, background);
+            // while the bar itself stays dim. The gutter keeps its own plain
+            // margin, so the background starts after the bar.
+            line += separatorSpace(previousTint, styles, background);
             line += styles.dim("│");
             line += separatorSpace(tint, styles, background);
         }

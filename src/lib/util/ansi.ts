@@ -55,7 +55,7 @@ const lightPalette: ThemePalette = {
 };
 const darkPalette: ThemePalette = {
     fg: { green: [38, 2, 150, 200, 160], red: [38, 2, 220, 160, 160] },
-    bg: { green: [48, 2, 24, 38, 30], red: [48, 2, 40, 26, 26] },
+    bg: { green: [48, 2, 18, 45, 28], red: [48, 2, 50, 22, 22] },
 };
 
 function wrap(enabled: boolean, codes: readonly number[], text: string): string {

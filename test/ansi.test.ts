@@ -33,10 +33,10 @@ describe("paint", () => {
             "\u001B[1;38;5;28;48;5;194mx\u001B[0m",
         );
         expect(styles.paint("x", { fg: "red", bg: "red", theme: "dark" })).toBe(
-            "\u001B[38;2;220;160;160;48;2;40;26;26mx\u001B[0m",
+            "\u001B[38;2;220;160;160;48;2;50;22;22mx\u001B[0m",
         );
         expect(styles.paint("  ", { bg: "green", theme: "dark" })).toBe(
-            "\u001B[48;2;24;38;30m  \u001B[0m",
+            "\u001B[48;2;18;45;28m  \u001B[0m",
         );
     });
 

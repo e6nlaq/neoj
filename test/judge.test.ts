@@ -316,10 +316,10 @@ describe("formatComparison", () => {
         });
 
         expect(colored[1]).toContain(
-            "\u001B[48;2;24;38;30m1 \u001B[0m\u001B[1;38;2;150;200;160;48;2;24;38;30m2\u001B[0m\u001B[48;2;24;38;30m 3\u001B[0m",
+            "\u001B[48;2;18;45;28m1 \u001B[0m\u001B[1;38;2;150;200;160;48;2;18;45;28m2\u001B[0m\u001B[48;2;18;45;28m 3\u001B[0m",
         );
         expect(colored[4]).toContain(
-            "\u001B[48;2;40;26;26m1 \u001B[0m\u001B[1;38;2;220;160;160;48;2;40;26;26m9\u001B[0m\u001B[48;2;40;26;26m 3\u001B[0m",
+            "\u001B[48;2;50;22;22m1 \u001B[0m\u001B[1;38;2;220;160;160;48;2;50;22;22m9\u001B[0m\u001B[48;2;50;22;22m 3\u001B[0m",
         );
     });
 
@@ -334,7 +334,7 @@ describe("formatComparison", () => {
         );
     });
 
-    it("tints the spaces around the bar in the stacked layout", () => {
+    it("keeps the gutter margin clear in the stacked layout", () => {
         const colored = formatComparison(compareOutput("a\nb\n", "a\nx\n", strict), {
             ...coloredStacked,
             lineNumbers: true,
@@ -342,7 +342,7 @@ describe("formatComparison", () => {
         });
 
         expect(colored[2]).toContain(
-            "\u001B[48;5;194m \u001B[0m\u001B[2m│\u001B[0m\u001B[48;5;194m \u001B[0m",
+            "\u001B[2m   2\u001B[0m \u001B[2m│\u001B[0m\u001B[48;5;194m \u001B[0m",
         );
     });
 
