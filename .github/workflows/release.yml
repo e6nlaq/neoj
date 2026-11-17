@@ -108,7 +108,7 @@ jobs:
                     - target: bun-windows-x64
                       platform: win32-x64
                       asset: windows-x64
-                      os: ubuntu-latest
+                      os: windows-latest
                       extension: ".exe"
         steps:
             - name: Check out the repository
