@@ -2,8 +2,9 @@ import { afterEach, describe, expect, it } from "bun:test";
 import { mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PassThrough } from "node:stream";
 
-import { runHandmade } from "@/feature/handmade";
+import { createHandmadePrompt, runHandmade } from "@/feature/handmade";
 import {
     findNextHandmadeTarget,
     formatHandmadeContents,
@@ -127,18 +128,25 @@ describe("readHandmadeBlock", () => {
     it("reads until a blank line and prompts before each line", async () => {
         const prompt = createPrompt(["1 2", "3 4", "", "5"]);
 
-        await expect(readHandmadeBlock(prompt, "input")).resolves.toEqual(["1 2", "3 4"]);
-        expect(prompt.prompts).toEqual(["input> ", "input> ", "input> "]);
+        await expect(readHandmadeBlock(prompt, (line) => `${line}> `)).resolves.toEqual([
+            "1 2",
+            "3 4",
+        ]);
+        expect(prompt.prompts).toEqual(["1> ", "2> ", "3> "]);
     });
 
     it("returns an empty block when the first line is blank", async () => {
-        await expect(readHandmadeBlock(createPrompt(["", "x"]), "output")).resolves.toEqual([]);
+        await expect(
+            readHandmadeBlock(createPrompt(["", "x"]), (line) => `${line}> `),
+        ).resolves.toEqual([]);
     });
 
     it("aborts when the input ends before the blank line", async () => {
         const prompt = createPrompt(["1 2", undefined]);
 
-        await expect(readHandmadeBlock(prompt, "input")).rejects.toBeInstanceOf(HandmadeAbortError);
+        await expect(readHandmadeBlock(prompt, (line) => `${line}> `)).rejects.toBeInstanceOf(
+            HandmadeAbortError,
+        );
     });
 });
 
@@ -152,6 +160,17 @@ describe("saveHandmadeCase", () => {
 
         expect(await Bun.file(target.inputPath).text()).toBe("1 2\n");
         expect(await Bun.file(target.outputPath).text()).toBe("3\n");
+    });
+
+    it("writes only the input when no output is given", async () => {
+        const root = await createRoot();
+        const directory = join(root, "test");
+        const target = await findNextHandmadeTarget(directory, "handmade-{}");
+
+        await saveHandmadeCase(target, "1 2\n");
+
+        expect(await Bun.file(target.inputPath).text()).toBe("1 2\n");
+        expect(await Bun.file(target.outputPath).exists()).toBe(false);
     });
 
     it("does not replace existing files", async () => {
@@ -181,6 +200,70 @@ describe("saveHandmadeCase", () => {
     });
 });
 
+function createTerminal() {
+    const source = new PassThrough() as PassThrough & {
+        isTTY: boolean;
+        setRawMode: () => void;
+    };
+    source.isTTY = true;
+    source.setRawMode = () => {};
+    const sink = new PassThrough() as PassThrough & { isTTY: boolean };
+    sink.isTTY = true;
+    const chunks: Buffer[] = [];
+    sink.on("data", (chunk: Buffer) => {
+        chunks.push(chunk);
+    });
+
+    return { source, sink, chunks };
+}
+
+describe("createHandmadePrompt", () => {
+    it("keeps the numbered gutter when a block is pasted at once", async () => {
+        const root = await createRoot();
+        const { source, sink, chunks } = createTerminal();
+        const session = createHandmadePrompt(source, sink);
+
+        try {
+            const run = runHandmade({
+                projectRoot: root,
+                folder: "test",
+                filename: "handmade-{}",
+                prompt: session.prompt,
+            });
+            source.write("1 2\r\n3 4\r\n\r\n5\r\n\r\n");
+            await run;
+        } finally {
+            session.close();
+        }
+
+        const output = Buffer.concat(chunks)
+            .toString("utf8")
+            .replace(/\r\n/gu, "\n")
+            // oxlint-disable-next-line no-control-regex -- terminal sequences start with ESC
+            .replace(/\u001B\[[0-9;?]*[ -/]*[@-~]/gu, "");
+        expect(output).toContain("Input (handmade-1.in)\n  1 │ 1 2\n  2 │ 3 4\n");
+        expect(output).toContain("Output (handmade-1.out)\n  1 │ 5\n");
+        expect(await Bun.file(join(root, "test", "handmade-1.in")).text()).toBe("1 2\n3 4\n");
+        expect(await Bun.file(join(root, "test", "handmade-1.out")).text()).toBe("5\n");
+        expect(source.isPaused()).toBe(true);
+    });
+
+    it("aborts on Ctrl-C and pauses the input", async () => {
+        const { source, sink } = createTerminal();
+        const session = createHandmadePrompt(source, sink);
+
+        try {
+            const run = readHandmadeBlock(session.prompt, (line) => `${line}> `);
+            source.write("\u0003");
+            await expect(run).rejects.toBeInstanceOf(HandmadeAbortError);
+        } finally {
+            session.close();
+        }
+
+        expect(source.isPaused()).toBe(true);
+    });
+});
+
 describe("runHandmade", () => {
     it("writes the case into the configured folder and pattern", async () => {
         const root = await createRoot();
@@ -196,8 +279,27 @@ describe("runHandmade", () => {
         expect(target.baseName).toBe("hand-1");
         expect(await Bun.file(join(root, "cases", "hand-1.in")).text()).toBe("1 2\n3 4\n");
         expect(await Bun.file(join(root, "cases", "hand-1.out")).text()).toBe("9\n");
-        expect(prompt.prompts).toEqual(["input> ", "input> ", "input> ", "output> ", "output> "]);
-        expect(prompt.writes).toEqual(["\n"]);
+        expect(prompt.prompts).toEqual(["  1 │ ", "  2 │ ", "  3 │ ", "  1 │ ", "  2 │ "]);
+        expect(prompt.writes).toEqual(["Input (hand-1.in)\n", "\n", "Output (hand-1.out)\n"]);
+    });
+
+    it("writes only the input file with inputOnly", async () => {
+        const root = await createRoot();
+        const prompt = createPrompt(["1 2", "3 4", ""]);
+
+        const target = await runHandmade({
+            projectRoot: root,
+            folder: "cases",
+            filename: "hand-{}",
+            inputOnly: true,
+            prompt,
+        });
+
+        expect(target.baseName).toBe("hand-1");
+        expect(await Bun.file(join(root, "cases", "hand-1.in")).text()).toBe("1 2\n3 4\n");
+        expect(await Bun.file(join(root, "cases", "hand-1.out")).exists()).toBe(false);
+        expect(prompt.prompts).toEqual(["  1 │ ", "  2 │ ", "  3 │ "]);
+        expect(prompt.writes).toEqual(["Input (hand-1.in)\n"]);
     });
 
     it("writes nothing when the output block is aborted", async () => {

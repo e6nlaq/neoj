@@ -103,15 +103,16 @@ function createExistsError(target: HandmadeTarget): Error {
 }
 
 /**
- * Write the `.in` and `.out` files of a case that was entered in full.
+ * Write the `.in` file and, when `output` is given, the `.out` file.
  *
- * Existing files are never replaced; when the `.out` write fails, the `.in`
- * file written by this call is removed so no half case is left behind.
+ * Passing `undefined` writes only the input, which `neoj handmade --input`
+ * uses. Existing files are never replaced; when the `.out` write fails, the
+ * `.in` file written by this call is removed so no half case is left behind.
  */
 export async function saveHandmadeCase(
     target: HandmadeTarget,
     input: string,
-    output: string,
+    output?: string,
 ): Promise<void> {
     await mkdir(target.directory, { recursive: true });
 
@@ -128,6 +129,10 @@ export async function saveHandmadeCase(
         throw error;
     }
 
+    if (output === undefined) {
+        return;
+    }
+
     try {
         await writeFile(target.outputPath, output, { encoding: "utf8", flag: "wx" });
     } catch (error) {
@@ -139,12 +144,20 @@ export async function saveHandmadeCase(
     }
 }
 
-/** Read lines until a blank line, which ends the block. */
-export async function readHandmadeBlock(prompt: HandmadePrompt, label: string): Promise<string[]> {
+/**
+ * Read lines until a blank line, which ends the block.
+ *
+ * `promptFor` receives the 1-based number of the line about to be read, so the
+ * caller can show a numbered gutter like the test report.
+ */
+export async function readHandmadeBlock(
+    prompt: HandmadePrompt,
+    promptFor: (lineNumber: number) => string,
+): Promise<string[]> {
     const lines: string[] = [];
 
     for (;;) {
-        const line = await prompt.readLine(`${label}> `);
+        const line = await prompt.readLine(promptFor(lines.length + 1));
         if (line === undefined) {
             throw new HandmadeAbortError();
         }

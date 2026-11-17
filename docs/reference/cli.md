@@ -83,20 +83,26 @@ Reads one test case from the terminal and writes it into the test-case directory
 
 ```text
 $ neoj handmade
-test/handmade-1.in and test/handmade-1.out will be created.
-input> 1 2
-input>
+Input (handmade-1.in)
+  1 │ 1 2
+  2 │ 3 4
+  3 │
 
-output> 3
-output>
+Output (handmade-1.out)
+  1 │ 3
+  2 │
 ✔ Created test/handmade-1.in and test/handmade-1.out.
 ```
 
-Enter the input line by line and finish the block with a blank line, then do the
-same for the expected output; a blank line separates the two blocks. Both files
-are written only after the output block has been closed, so an interrupted
-session leaves no files behind. Ctrl-C, or Ctrl-D (Ctrl-Z on Windows), cancels
-the command without writing.
+Each block starts with a bold header naming the file, and every line is prompted
+with its line number like the `neoj test` report. Enter the input line by line
+and finish the block with a blank line, then do the same for the expected output;
+a blank line separates the two blocks. Both files are written only after the
+output block has been closed, so an interrupted session leaves no files behind.
+Ctrl-C, or Ctrl-D (Ctrl-Z on Windows), cancels the command without writing.
+
+`-i`/`--input` reads only the input block and writes just the `.in` file;
+`neoj handmade --input` never asks for the expected output.
 
 The command takes the next free case number, so existing cases are never
 replaced. The directory comes from `testcase.folder` and the file names from

@@ -416,8 +416,10 @@ neoj handmade
 ```
 
 Type the input, finish it with a blank line, then type the expected output and
-finish it the same way. The files are written only after both blocks are
-complete. See [Create a test case by hand](create-handmade-tests.md).
+finish it the same way. Each block starts with a bold header naming the file,
+and the lines are numbered like the test report. The files are written only after
+both blocks are complete. `neoj handmade --input` writes only the `.in` file. See
+[Create a test case by hand](create-handmade-tests.md).
 
 ## Limits
 
