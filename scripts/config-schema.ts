@@ -17,8 +17,11 @@ const templateRequirement = {
     // "then" is a JSON Schema keyword here; this object is never awaited.
     // oxlint-disable-next-line unicorn/no-thenable
     then: {
-        properties: { template: { required: ["folder"] } },
-        required: ["src"],
+        properties: {
+            source: { required: ["folder"] },
+            template: { required: ["folder"] },
+        },
+        required: ["source"],
     },
 };
 
