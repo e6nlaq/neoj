@@ -1,4 +1,4 @@
 [tools]
-bun = "1.4.4"
+bun = "1.4.5"
 node = "26"
 npm = "latest"
