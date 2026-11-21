@@ -42,6 +42,25 @@ describe("config JSON Schema", () => {
         expect(schema.allOf).toBeArrayOfSize(1);
     });
 
+    it("requires source.folder and template.folder when the template is enabled", () => {
+        const schema = buildConfigJsonSchema() as {
+            allOf: Array<{
+                if: { properties: { template: { properties: { enable: { const: boolean } } } } };
+                then: {
+                    properties: Record<string, { required: string[] }>;
+                    required: string[];
+                };
+            }>;
+        };
+        const requirement = schema.allOf[0];
+
+        expect(requirement?.if.properties.template.properties.enable.const).toBe(true);
+        expect(requirement?.then.properties.source?.required).toEqual(["folder"]);
+        expect(requirement?.then.properties.template?.required).toEqual(["folder"]);
+        expect(requirement?.then.required).toEqual(["source"]);
+        expect(JSON.stringify(requirement)).not.toContain('"src"');
+    });
+
     it("points the bundled project template at the published schema", async () => {
         const template = await Bun.file(templatePath).text();
         const directive = template.split(/\r?\n/)[0];

@@ -627,11 +627,14 @@
             },
             "then": {
                 "properties": {
+                    "source": {
+                        "required": ["folder"]
+                    },
                     "template": {
                         "required": ["folder"]
                     }
                 },
-                "required": ["src"]
+                "required": ["source"]
             }
         }
     ]
