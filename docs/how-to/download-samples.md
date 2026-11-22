@@ -45,12 +45,17 @@ where `<id>` is the 22-character ID shown in the address bar, and the contest
 problem URL `https://www.share-oj.net/contests/<contest-id>/<label>` (for
 example `.../6hxOlRWKFEHO8PdlMXxVPN/A`), where `<label>` names the problem in
 contest order (`A`, `B`, ..., `Z`, `AA`, ...). Both forms share one stash key
-because they resolve to the same problem. The samples are
-fetched from the official public API, so only published problems can be
-downloaded and no login is needed. A contest problem cannot be resolved before
-the contest starts, or when the API hides the problem from anonymous viewers.
-Large samples that are published as files
-instead of inline text are downloaded and verified against their SHA-256 hash.
+because they resolve to the same problem. No login is needed.
+
+Published problems are read from the official public API. Large samples that are
+published as files instead of inline text are downloaded and verified against
+their SHA-256 hash. While a contest is running, its problems are not published,
+so the public sample endpoint returns 404; `neoj` then reads the samples from
+the contest statement instead. This means the test folder contains the samples
+that the statement actually shows. A problem whose samples appear only in the
+sample-check feature, not in the statement, is downloaded without sample files.
+A contest problem cannot be resolved before the contest starts, because the API
+hides its ID from anonymous viewers.
 
 ## Before you run it
 

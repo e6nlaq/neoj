@@ -666,6 +666,20 @@ async function createShareOjTarget(
             try {
                 submission = await post(accessToken);
             } catch (error) {
+                if (error instanceof ShareOjApiError && error.status === 409) {
+                    if (error.code === "contest_participation_required") {
+                        throw new Error(
+                            `Join the ShareOJ contest on the website before submitting: ${input.problemUrl}`,
+                            { cause: error },
+                        );
+                    }
+                    if (error.code === "tests_not_ready") {
+                        throw new Error(
+                            "ShareOJ has not finished preparing this problem's tests. Try again later.",
+                            { cause: error },
+                        );
+                    }
+                }
                 // The access token may have expired since it was read.
                 if (!(error instanceof ShareOjApiError) || error.status !== 401) {
                     throw error;

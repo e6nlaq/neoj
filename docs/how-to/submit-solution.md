@@ -224,8 +224,9 @@ not supported.
 
 ShareOJ submissions use the official API with the login from
 `neoj login shareoj`. A problem downloaded from a contest URL is submitted
-into that contest, and ShareOJ reports `contest_participation_required` when
-you have not joined it yet; join the contest on the website and submit again.
+into that contest. Join the contest on the website first; `neoj` stops with a
+message when ShareOJ reports that participation is required. If ShareOJ is
+still preparing the problem's tests, the command asks you to try again later.
 The command returns as soon as ShareOJ accepts the submission and prints the
 submission page URL; the URL of a contest submission is contest-specific.
 

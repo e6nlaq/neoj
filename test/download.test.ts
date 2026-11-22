@@ -367,6 +367,98 @@ describe("downloadProblem", () => {
         });
     });
 
+    it("reads ShareOJ contest samples from the statement while the problem is unpublished", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await Bun.write(join(projectRoot, "neoj.toml"), "");
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async (input: Parameters<typeof fetch>[0]) => {
+                const url = String(input);
+                if (
+                    url === "https://api.share-oj.net/contests/dc6fc9dd-4019-463a-a486-12c3fc10af59"
+                ) {
+                    return Response.json({
+                        id: "dc6fc9dd-4019-463a-a486-12c3fc10af59",
+                        problems: [{ id: "7f4a5126-a79a-47a0-a523-4f476156ba7e" }],
+                    });
+                }
+                if (
+                    url ===
+                    "https://api.share-oj.net/contests/dc6fc9dd-4019-463a-a486-12c3fc10af59/problems/7f4a5126-a79a-47a0-a523-4f476156ba7e"
+                ) {
+                    return Response.json({
+                        id: "x",
+                        title: "Welcome to ShareOJ!",
+                        markdown: [
+                            "## 問題文",
+                            "二つの整数の和を出力してください。",
+                            "## サンプル 1",
+                            "### 入力",
+                            "```text",
+                            "1 2",
+                            "```",
+                            "### 出力",
+                            "```text",
+                            "3",
+                            "```",
+                            "## サンプル 2",
+                            "### 入力",
+                            "```text",
+                            "4 5",
+                            "```",
+                            "### 出力",
+                            "```text",
+                            "9",
+                            "```",
+                        ].join("\n"),
+                    });
+                }
+                if (
+                    url ===
+                    "https://api.share-oj.net/problems/7f4a5126-a79a-47a0-a523-4f476156ba7e/samples"
+                ) {
+                    return Response.json({ error: "problem_not_found" }, { status: 404 });
+                }
+                throw new Error(`Unexpected fetch: ${url}`);
+            },
+        });
+        try {
+            await downloadProblem("https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A");
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
+
+        expect((await readdir(join(projectRoot, "test"))).sort()).toEqual([
+            "sample-1.in",
+            "sample-1.out",
+            "sample-2.in",
+            "sample-2.out",
+        ]);
+        await expect(Bun.file(join(projectRoot, "test", "sample-1.in")).text()).resolves.toBe(
+            "1 2\n",
+        );
+        await expect(Bun.file(join(projectRoot, "test", "sample-2.out")).text()).resolves.toBe(
+            "9\n",
+        );
+        await expect(readProblemMetadata(projectRoot)).resolves.toEqual({
+            url: "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A",
+            key: { platform: "shareoj", slug: "3sBzHki3excsv1h6ecBczO" },
+        });
+    });
+
     it("downloads yukicoder samples without storing a contest window", async () => {
         const projectRoot = await createProject();
         const homeDirectory = join(projectRoot, "home");
