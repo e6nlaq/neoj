@@ -274,7 +274,10 @@ Samples are either inline text or file references. A file must use HTTPS, and
 the downloaded bytes are checked against the reported `size` and `sha256`
 before they are decoded. Failures use `ShareOjSampleDownloadError`; API
 responses use `ShareOjApiError`, which exposes the server's error code when the
-body contains one.
+body contains one. The public sample endpoint only serves published problems.
+When a contest problem is still unpublished and the endpoint returns 404,
+`getProblem()` reads the samples from the contest statement markdown instead.
+A statement without sample headings yields an empty `samples` array.
 
 ### ShareOJ helpers
 
@@ -288,6 +291,7 @@ body contains one.
 | `encodeShareOjShortId(uuid)`                                 | Converts a UUID to a 22-character short ID.                  |
 | `parseShareOjProblemLabel(label)`                            | Converts `A`, `B`, ..., `AA` to a zero-based index.          |
 | `encodeShareOjProblemLabel(index)`                           | Converts a zero-based index to a contest label.              |
+| `parseShareOjMarkdownSamples(markdown)`                      | Reads statement samples from contest problem markdown.       |
 | `extractShareOjShortId(value)`                               | Returns the short ID of a validated problem URL.             |
 | `buildShareOjContestUrl(contestShortId)`                     | The contest page.                                            |
 | `buildShareOjProblemSubmissionsUrl(shortId)`                 | Your submissions for a problem.                              |

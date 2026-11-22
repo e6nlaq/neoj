@@ -993,6 +993,67 @@ describe("runSubmit", () => {
         }
     });
 
+    it("asks the user to join a ShareOJ contest before submitting", async () => {
+        const originalLocalAppData = process.env.LOCALAPPDATA;
+        const dataRoot = await mkdtemp(join(tmpdir(), "neoj-submit-shareoj-"));
+        process.env.LOCALAPPDATA = dataRoot;
+        const originalFetch = globalThis.fetch;
+        globalThis.fetch = Object.assign(
+            async (input: Parameters<typeof fetch>[0]) => {
+                const url = String(input);
+                if (url === "https://api.share-oj.net/my/submissions") {
+                    return new Response(
+                        JSON.stringify({ error: "contest_participation_required" }),
+                        { status: 409, headers: { "Content-Type": "application/json" } },
+                    );
+                }
+                throw new Error(`Unexpected fetch: ${url}`);
+            },
+            { preconnect: originalFetch.preconnect },
+        ) as typeof fetch;
+        try {
+            const { installMemoryAuthStore } = await import("./helpers/mock-auth-store");
+            const { saveAuth } = await import("@/lib/auth");
+            installMemoryAuthStore();
+            await saveAuth("shareoj", {
+                method: "password",
+                accessToken: "tok",
+                refreshToken: "ref",
+                expiresAt: Temporal.Instant.fromEpochMilliseconds(
+                    Date.now() + 3_600_000,
+                ).toString(),
+            });
+
+            const root = await createProject({
+                problemUrl: "https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A",
+                problemKey: {
+                    platform: "shareoj",
+                    slug: "3sBzHki3excsv1h6ecBczO",
+                },
+            });
+            const config = createConfig({ wait: 0, open: false });
+            setSubmitLanguages(config, { shareoj: "cpp23-gcc" });
+
+            await expect(
+                runSubmit({
+                    projectRoot: root,
+                    config,
+                    cwd: root,
+                    waitSeconds: 0,
+                    yes: true,
+                    stdout: createCapture().stream,
+                    stderr: createCapture().stream,
+                }),
+            ).rejects.toThrow(
+                "Join the ShareOJ contest on the website before submitting: https://www.share-oj.net/contests/6hxOlRWKFEHO8PdlMXxVPN/A",
+            );
+        } finally {
+            globalThis.fetch = originalFetch;
+            process.env.LOCALAPPDATA = originalLocalAppData;
+            await rm(dataRoot, { recursive: true, force: true, maxRetries: 3 });
+        }
+    });
+
     it("lists languages when the platform language is not configured", async () => {
         const root = await createProject({ problemUrl });
 

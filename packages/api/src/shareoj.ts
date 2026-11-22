@@ -197,6 +197,7 @@ export function extractShareOjShortId(value: string | URL): string {
 
 interface ShareOjProblemDetail {
     title?: string;
+    markdown?: string;
 }
 
 interface ShareOjDownload {
@@ -328,6 +329,161 @@ async function resolveSampleText(
 
 function normalizeSampleText(value: string): string {
     return value.replaceAll("\r\n", "\n").replace(/\n$/u, "");
+}
+
+/** A heading or fenced code block of a ShareOJ statement, in source order. */
+type ShareOjMarkdownToken =
+    | { type: "heading"; level: number; text: string }
+    | { type: "code"; content: string };
+
+/**
+ * Split a statement into headings and fenced code blocks.
+ *
+ * Only those two constructs matter for samples, and prose (including blank
+ * lines) merely separates them. An unclosed fence is dropped so a malformed
+ * statement cannot turn the rest of the text into a sample.
+ */
+function tokenizeShareOjMarkdown(markdown: string): ShareOjMarkdownToken[] {
+    const tokens: ShareOjMarkdownToken[] = [];
+    let fence: { marker: string; length: number; lines: string[] } | undefined;
+
+    for (const line of markdown.split(/\r?\n/u)) {
+        if (fence !== undefined) {
+            const close = /^\s*(`{3,}|~{3,})\s*$/u.exec(line);
+            if (
+                close?.[1] !== undefined &&
+                close[1].charAt(0) === fence.marker &&
+                close[1].length >= fence.length
+            ) {
+                tokens.push({ type: "code", content: fence.lines.join("\n") });
+                fence = undefined;
+            } else {
+                fence.lines.push(line);
+            }
+            continue;
+        }
+
+        const open = /^\s*(`{3,}|~{3,})/u.exec(line);
+        if (open?.[1] !== undefined) {
+            fence = { marker: open[1].charAt(0), length: open[1].length, lines: [] };
+            continue;
+        }
+
+        const heading = /^(#{1,6})\s+(.*?)\s*$/u.exec(line);
+        if (heading?.[1] !== undefined && heading[2] !== undefined) {
+            tokens.push({ type: "heading", level: heading[1].length, text: heading[2] });
+        }
+    }
+
+    return tokens;
+}
+
+interface ShareOjPartialSample {
+    input?: string;
+    output?: string;
+}
+
+/**
+ * Read the samples written in a ShareOJ statement.
+ *
+ * ShareOJ statements use either `## サンプル N` with `### 入力` / `### 出力`,
+ * or `### 入力例 N` / `### 出力例 N`; both may carry the site's
+ * `<!-- sample-begin: ... -->` markers. Only the first fenced block under a
+ * heading is a sample, so code in the explanation after it is ignored. This is
+ * a best-effort reader for the conventions authors use; the public API stays
+ * authoritative once the problem is published.
+ */
+export function parseShareOjMarkdownSamples(markdown: string): ProblemSample[] {
+    const tokens = tokenizeShareOjMarkdown(markdown);
+    const samples: ProblemSample[] = [];
+    const numbered = new Map<number, ShareOjPartialSample>();
+    let group: { level: number; sample: ShareOjPartialSample } | undefined;
+    let pending: { target: ShareOjPartialSample; side: "input" | "output" } | undefined;
+
+    const finishGroup = (): void => {
+        if (group !== undefined) {
+            const { input, output } = group.sample;
+            if (input !== undefined && output !== undefined) {
+                samples.push({
+                    input: normalizeSampleText(input),
+                    output: normalizeSampleText(output),
+                });
+            }
+        }
+        group = undefined;
+        pending = undefined;
+    };
+
+    const numberedSample = (number: number): ShareOjPartialSample => {
+        let sample = numbered.get(number);
+        if (sample === undefined) {
+            sample = {};
+            numbered.set(number, sample);
+        }
+
+        return sample;
+    };
+
+    for (const token of tokens) {
+        if (token.type === "code") {
+            if (pending !== undefined) {
+                pending.target[pending.side] ??= token.content;
+                pending = undefined;
+            }
+            continue;
+        }
+
+        const { level, text } = token;
+        if (group !== undefined && level <= group.level) {
+            finishGroup();
+        }
+
+        if (/^(?:サンプル|Sample)(?:\s*(\d+))?$/iu.test(text)) {
+            finishGroup();
+            group = { level, sample: {} };
+            continue;
+        }
+
+        const inputMatch = /^(?:入力(?:例)?|Input(?:\s+Example)?)(?:\s*(\d+))?$/iu.exec(text);
+        if (inputMatch !== null) {
+            if (inputMatch[1] !== undefined) {
+                pending = { target: numberedSample(Number(inputMatch[1])), side: "input" };
+            } else if (group !== undefined) {
+                pending = { target: group.sample, side: "input" };
+            } else {
+                pending = undefined;
+            }
+            continue;
+        }
+
+        const outputMatch = /^(?:出力(?:例)?|Output(?:\s+Example)?)(?:\s*(\d+))?$/iu.exec(text);
+        if (outputMatch !== null) {
+            if (outputMatch[1] !== undefined) {
+                pending = { target: numberedSample(Number(outputMatch[1])), side: "output" };
+            } else if (group !== undefined) {
+                pending = { target: group.sample, side: "output" };
+            } else {
+                pending = undefined;
+            }
+            continue;
+        }
+
+        pending = undefined;
+    }
+
+    finishGroup();
+
+    for (const number of [...numbered.keys()].sort((left, right) => left - right)) {
+        const { input, output } = numbered.get(number)!;
+        if (input !== undefined && output !== undefined) {
+            samples.push({
+                input: normalizeSampleText(input),
+                output: normalizeSampleText(output),
+            });
+        }
+    }
+
+    return samples;
 }
 
 /** A non-2xx response from the ShareOJ API, with its error code when present. */
@@ -500,6 +656,12 @@ interface ResolvedProblem {
     /** The API UUID of the problem itself. */
     problemId: string;
     title: string;
+    /**
+     * The statement markdown of a contest problem. The public sample endpoint
+     * refuses unpublished problems, so its samples are read from the statement
+     * while the contest is running.
+     */
+    markdown?: string;
 }
 
 /** ShareOJ API requests: problems, authentication, runtimes, and submissions. */
@@ -515,10 +677,8 @@ export class ShareOjClient {
         } catch {
             // Not a contest problem URL; fall back to a direct problem.
             const uuid = parseShareOjProblemId(url);
-            return {
-                problemId: uuid,
-                title: await this.fetchProblemTitle(uuid, `/problems/${uuid}`),
-            };
+            const detail = await this.fetchProblemDetail(`/problems/${uuid}`);
+            return { problemId: uuid, title: detail.title };
         }
 
         const contestId = decodeShareOjShortId(contestRoute.contestShortId);
@@ -536,16 +696,15 @@ export class ShareOjClient {
             );
         }
 
-        return {
-            problemId,
-            title: await this.fetchProblemTitle(
-                problemId,
-                `/contests/${contestId}/problems/${problemId}`,
-            ),
-        };
+        const detail = await this.fetchProblemDetail(
+            `/contests/${contestId}/problems/${problemId}`,
+        );
+        return { problemId, title: detail.title, markdown: detail.markdown };
     }
 
-    private async fetchProblemTitle(problemId: string, apiPath: string): Promise<string> {
+    private async fetchProblemDetail(
+        apiPath: string,
+    ): Promise<{ title: string; markdown?: string }> {
         const detail = await requestJson<ShareOjProblemDetail>(
             new URL(apiPath, API_ORIGIN),
             "ShareOJ problem response was malformed.",
@@ -555,7 +714,10 @@ export class ShareOjClient {
             throw new Error("ShareOJ problem title was not found in the response.");
         }
 
-        return title;
+        return {
+            title,
+            markdown: typeof detail.markdown === "string" ? detail.markdown : undefined,
+        };
     }
 
     /**
@@ -567,27 +729,46 @@ export class ShareOjClient {
      * synchronously.
      */
     async getProblem(url: string): Promise<ShareOjProblem> {
-        const { problemId, title } = await this.resolveProblem(url);
+        const { problemId, title, markdown } = await this.resolveProblem(url);
 
-        const samplesResponse = await requestJson<{ items?: RawShareOjSample[] }>(
-            new URL(`/problems/${problemId}/samples`, API_ORIGIN),
-            "ShareOJ samples response was malformed.",
-        );
-        const rawSamples = Array.isArray(samplesResponse.items) ? samplesResponse.items : [];
+        let samples: ShareOjResolvedSample[];
+        try {
+            const samplesResponse = await requestJson<{ items?: RawShareOjSample[] }>(
+                new URL(`/problems/${problemId}/samples`, API_ORIGIN),
+                "ShareOJ samples response was malformed.",
+            );
+            const rawSamples = Array.isArray(samplesResponse.items) ? samplesResponse.items : [];
 
-        const samples = await Promise.all(
-            rawSamples.map(async (raw, index): Promise<ShareOjResolvedSample> => {
-                const sampleName = typeof raw.name === "string" ? raw.name : `#${index + 1}`;
-                return {
-                    input: normalizeSampleText(
-                        await resolveSampleText(raw.input, raw.inputFile, "input", sampleName),
-                    ),
-                    output: normalizeSampleText(
-                        await resolveSampleText(raw.output, raw.outputFile, "output", sampleName),
-                    ),
-                };
-            }),
-        );
+            samples = await Promise.all(
+                rawSamples.map(async (raw, index): Promise<ShareOjResolvedSample> => {
+                    const sampleName = typeof raw.name === "string" ? raw.name : `#${index + 1}`;
+                    return {
+                        input: normalizeSampleText(
+                            await resolveSampleText(raw.input, raw.inputFile, "input", sampleName),
+                        ),
+                        output: normalizeSampleText(
+                            await resolveSampleText(
+                                raw.output,
+                                raw.outputFile,
+                                "output",
+                                sampleName,
+                            ),
+                        ),
+                    };
+                }),
+            );
+        } catch (error) {
+            // The public sample endpoint serves only published problems. While a
+            // contest is running, the statement is the only public sample source.
+            if (
+                markdown === undefined ||
+                !(error instanceof ShareOjApiError) ||
+                error.status !== 404
+            ) {
+                throw error;
+            }
+            samples = parseShareOjMarkdownSamples(markdown);
+        }
 
         return {
             url,
