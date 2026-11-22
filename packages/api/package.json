@@ -1,6 +1,6 @@
 {
     "name": "@neoj/api",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "API clients for the competitive programming platforms supported by neoj",
     "license": "MIT",
     "author": {
