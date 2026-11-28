@@ -124,6 +124,11 @@ export async function fetchSamples(
     return { directory: targetDirectory, problem };
 }
 
+/** Replace the test-case directory with an empty directory. */
+export async function clearTestcaseDirectory(directory: string): Promise<void> {
+    await replaceDirectory(directory, []);
+}
+
 export async function writeSamples(
     directory: string,
     problem: Problem,

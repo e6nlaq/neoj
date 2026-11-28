@@ -6,7 +6,7 @@ import { consola } from "consola";
 
 import { findProblemSource } from "@/feature/problem-sources";
 import { loadConfig } from "@/lib/project/config";
-import { readProblemMetadata } from "@/lib/project/problem-metadata";
+import { noRecordedProblemMessage, readProblemMetadata } from "@/lib/project/problem-metadata";
 import { requireInitializedProject } from "@/lib/project/project";
 import { resolveProjectDirectories } from "@/lib/project/project-path";
 import { applyProjectTemplate } from "@/lib/project/template-apply";
@@ -114,9 +114,7 @@ export async function resetWorkspace(
     if (testcaseRequested) {
         const metadata = await readProblemMetadata(projectRoot);
         if (metadata === undefined) {
-            throw new Error(
-                'No problem is recorded in this project. Run "neoj download <url>" first.',
-            );
+            throw new Error(noRecordedProblemMessage);
         }
         problemUrl = metadata.url;
     }

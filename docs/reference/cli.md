@@ -5,7 +5,7 @@
 | Command                                                    | Description                                                                                                                             |
 | ---------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | `neoj init [--force]`                                      | Copy the bundled templates into the current project.                                                                                    |
-| `neoj download <url>` (alias: `neoj d`)                    | Download a problem's sample tests into the test-case directory.                                                                         |
+| `neoj download <url\|blank>` (alias: `neoj d`)             | Download a problem's sample tests, or create an empty workspace with `blank`.                                                           |
 | `neoj open [options]` (alias: `neoj o`)                    | Open the current problem in the browser.                                                                                                |
 | `neoj handmade` (alias: `neoj h`)                          | Create a handmade test case from interactive input.                                                                                     |
 | `neoj generate` (alias: `neoj g`)                          | Create random test cases with a generator and a naive solution.                                                                         |
@@ -32,9 +32,9 @@ directory when none is found. The search stops at the repository root.
 
 ### `download`
 
-| Argument | Description                                                                                                                   |
-| -------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `<url>`  | An AtCoder, yukicoder, Aizu Online Judge, Codeforces, or ShareOJ problem URL (ShareOJ also accepts its contest problem URLs). |
+| Argument       | Description                                                                                                                                                                                   |
+| -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `<url\|blank>` | An AtCoder, yukicoder, Aizu Online Judge, Codeforces, or ShareOJ problem URL (ShareOJ also accepts its contest problem URLs), or `blank` for an empty workspace with no recorded problem URL. |
 
 Requires an initialized project. See
 [Download sample tests](../how-to/download-samples.md).
@@ -456,14 +456,14 @@ examples. PowerShell completion requires `pwsh` 7.2 or later.
 
 ## Files
 
-| Path                 | Description                                                                                                                        |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `<testcase.folder>/` | Sample and handmade inputs and outputs; `test/` by default.                                                                        |
-| `.neoj/build/`       | Compiled programs, one directory per cache key when `test.cache` is enabled; shared by `test` and `run`. Delete with `neoj prune`. |
-| `.neoj/problem.json` | URL of the last successful download. AtCoder also stores its contest window; yukicoder stores only the URL.                        |
-| `.neoj/stash/`       | Per-problem snapshots of `source.folder` and the test-case directory.                                                              |
-| `neoj.toml`          | Project configuration.                                                                                                             |
-| `~/.neoj.toml`       | Global configuration.                                                                                                              |
+| Path                 | Description                                                                                                                            |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `<testcase.folder>/` | Sample and handmade inputs and outputs; `test/` by default.                                                                            |
+| `.neoj/build/`       | Compiled programs, one directory per cache key when `test.cache` is enabled; shared by `test` and `run`. Delete with `neoj prune`.     |
+| `.neoj/problem.json` | URL of the last successful download. AtCoder also stores its contest window; yukicoder stores only the URL. `neoj d blank` removes it. |
+| `.neoj/stash/`       | Per-problem snapshots of `source.folder` and the test-case directory.                                                                  |
+| `neoj.toml`          | Project configuration.                                                                                                                 |
+| `~/.neoj.toml`       | Global configuration.                                                                                                                  |
 
 `neoj` does not download or update `neoj.toml`; it only reads it. See the
 [configuration reference](configuration.md) for keys and defaults.

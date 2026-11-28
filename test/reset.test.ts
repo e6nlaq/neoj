@@ -229,7 +229,7 @@ folder = "test"
         await expect(
             resetWorkspace({ testcase: true }, { confirm: confirmPrompt }),
         ).rejects.toThrow(
-            'No problem is recorded in this project. Run "neoj download <url>" first.',
+            'No problem URL is recorded. Run "neoj download <url>" first, or "neoj download blank" to start without a problem.',
         );
         expect(await readText(join(projectRoot, "test", "sample-1.in"))).toBe("old\n");
     });

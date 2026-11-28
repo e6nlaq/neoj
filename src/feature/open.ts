@@ -12,7 +12,7 @@ import { buildYukicoderSubmissionsUrl, fetchYukicoderContestUrl } from "@neoj/ap
 import { consola } from "consola";
 
 import { findProblemSource } from "@/feature/problem-sources";
-import { readProblemMetadata } from "@/lib/project/problem-metadata";
+import { noRecordedProblemMessage, readProblemMetadata } from "@/lib/project/problem-metadata";
 import { requireInitializedProject } from "@/lib/project/project";
 import { openInBrowser } from "@/lib/util/browser";
 import { copyToClipboard } from "@/lib/util/clipboard";
@@ -96,7 +96,7 @@ export async function openProblem(
     const projectRoot = await requireInitializedProject(process.cwd());
     const metadata = await readProblemMetadata(projectRoot);
     if (metadata === undefined) {
-        throw new Error('No problem is recorded. Run "neoj download <url>" first.');
+        throw new Error(noRecordedProblemMessage);
     }
 
     const url = await resolveOpenUrl(target, metadata.url, options);

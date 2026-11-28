@@ -8,6 +8,7 @@ import type { AtCoderProblem } from "@neoj/api/atcoder";
 import {
     parseProblemMetadata,
     readProblemMetadata,
+    removeProblemMetadata,
     saveProblemMetadata,
 } from "@/lib/project/problem-metadata";
 
@@ -141,5 +142,34 @@ describe("saveProblemMetadata", () => {
         await expect(saveProblemMetadata(projectRoot, createProblem())).rejects.toThrow(
             "is not a regular file",
         );
+    });
+});
+
+describe("removeProblemMetadata", () => {
+    it("removes the recorded problem and keeps other metadata files", async () => {
+        const projectRoot = await createProject();
+        const metadataDirectory = join(projectRoot, ".neoj");
+        await saveProblemMetadata(projectRoot, createProblem());
+        await Bun.write(join(metadataDirectory, "other.json"), '{"keep":true}');
+
+        await removeProblemMetadata(projectRoot);
+
+        await expect(readProblemMetadata(projectRoot)).resolves.toBeUndefined();
+        await expect(readdir(metadataDirectory)).resolves.toEqual(["other.json"]);
+    });
+
+    it("does nothing when no problem is recorded", async () => {
+        const projectRoot = await createProject();
+
+        await expect(removeProblemMetadata(projectRoot)).resolves.toBeUndefined();
+        await expect(readProblemMetadata(projectRoot)).resolves.toBeUndefined();
+    });
+
+    it("rejects a non-file problem.json path without deleting it", async () => {
+        const projectRoot = await createProject();
+        const metadataPath = join(projectRoot, ".neoj", "problem.json");
+        await mkdir(metadataPath, { recursive: true });
+
+        await expect(removeProblemMetadata(projectRoot)).rejects.toThrow("is not a regular file");
     });
 });

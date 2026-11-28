@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { openProblem, resolveOpenUrl } from "@/feature/open";
+import { noRecordedProblemMessage } from "@/lib/project/problem-metadata";
 
 const atCoderProblemUrl = "https://atcoder.jp/contests/abc300/tasks/abc300_a";
 const yukicoderProblemUrl = "https://yukicoder.me/problems/no/1";
@@ -262,7 +263,7 @@ describe("openProblem", () => {
         const { opened, openUrl } = captureOpenedUrls();
 
         await expect(openProblem("problem", "browser", { openUrl })).rejects.toThrow(
-            'No problem is recorded. Run "neoj download <url>" first.',
+            noRecordedProblemMessage,
         );
         expect(opened).toEqual([]);
     });
