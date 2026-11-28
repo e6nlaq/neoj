@@ -7,7 +7,7 @@ import type { AtCoderProblem } from "@neoj/api/atcoder";
 import { AtCoderProblemRequestError } from "@neoj/api/atcoder";
 
 import { downloadProblem, formatSamples, getProblemWithLoginHint } from "@/feature/download";
-import { readProblemMetadata } from "@/lib/project/problem-metadata";
+import { readProblemMetadata, saveProblemMetadata } from "@/lib/project/problem-metadata";
 import { downloadSamples } from "@/lib/project/testcase";
 import { createAnsiStyles } from "@/lib/util/ansi";
 
@@ -837,6 +837,138 @@ describe("downloadProblem", () => {
                 value: originalFetch,
             });
         }
+    });
+
+    it("creates an empty workspace without a problem URL", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await Bun.write(join(projectRoot, "neoj.toml"), "");
+        await mkdir(join(projectRoot, "test"));
+        await Bun.write(join(projectRoot, "test", "sample-1.in"), "old");
+        await saveProblemMetadata(projectRoot, {
+            url: "https://atcoder.jp/contests/abc300/tasks/abc300_a",
+        });
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        let fetched = false;
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async () => {
+                fetched = true;
+                throw new Error("The blank workspace must not use the network.");
+            },
+        });
+        try {
+            await downloadProblem("blank");
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
+
+        expect(fetched).toBe(false);
+        await expect(readdir(join(projectRoot, "test"))).resolves.toEqual([]);
+        await expect(readProblemMetadata(projectRoot)).resolves.toBeUndefined();
+    });
+
+    it("applies the template when creating a blank workspace", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await mkdir(join(projectRoot, "src"));
+        await mkdir(join(projectRoot, "template"));
+        await Bun.write(join(projectRoot, "template", "main.cpp"), "template");
+        await Bun.write(
+            join(projectRoot, "neoj.toml"),
+            '[source]\nfolder = "src"\n[template]\nenable = true\nfolder = "template"\n',
+        );
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        await downloadProblem("blank");
+
+        await expect(Bun.file(join(projectRoot, "src", "main.cpp")).text()).resolves.toBe(
+            "template",
+        );
+        await expect(readProblemMetadata(projectRoot)).resolves.toBeUndefined();
+    });
+
+    it("stashes the previous problem before creating a blank workspace", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await Bun.write(join(projectRoot, "neoj.toml"), "[stash]\nauto_stash = true\n");
+        await mkdir(join(projectRoot, "test"));
+        await Bun.write(join(projectRoot, "test", "sample-1.in"), "custom");
+        await saveProblemMetadata(projectRoot, {
+            url: "https://atcoder.jp/contests/abc300/tasks/abc300_a",
+        });
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        await downloadProblem("blank");
+
+        await expect(
+            Bun.file(
+                join(
+                    projectRoot,
+                    ".neoj",
+                    "stash",
+                    "atcoder",
+                    "abc300_a",
+                    "testcase",
+                    "sample-1.in",
+                ),
+            ).text(),
+        ).resolves.toBe("custom");
+        await expect(readdir(join(projectRoot, "test"))).resolves.toEqual([]);
+        await expect(readProblemMetadata(projectRoot)).resolves.toBeUndefined();
+    });
+
+    it("restores the previous files and metadata when the blank template fails", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await mkdir(join(projectRoot, "src"));
+        await Bun.write(
+            join(projectRoot, "neoj.toml"),
+            '[source]\nfolder = "src"\n[template]\nenable = true\nfolder = "missing-template"\n',
+        );
+        await mkdir(join(projectRoot, "test"));
+        await Bun.write(join(projectRoot, "test", "sample-1.in"), "keep");
+        const previous = {
+            url: "https://atcoder.jp/contests/abc300/tasks/abc300_a",
+        };
+        await saveProblemMetadata(projectRoot, previous);
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        await expect(downloadProblem("blank")).rejects.toThrow("does not exist");
+
+        await expect(Bun.file(join(projectRoot, "test", "sample-1.in")).text()).resolves.toBe(
+            "keep",
+        );
+        await expect(readProblemMetadata(projectRoot)).resolves.toEqual(previous);
+    });
+
+    it("treats only the exact lowercase blank argument as a blank workspace", async () => {
+        await expect(downloadProblem("BLANK")).rejects.toThrow(
+            "Expected a problem URL from a supported platform (AtCoder, yukicoder, Aizu Online Judge, Codeforces, ShareOJ).",
+        );
     });
 
     it("rejects unsupported problem URLs", async () => {

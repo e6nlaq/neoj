@@ -5,7 +5,7 @@ import { consola } from "consola";
 
 import type { Config } from "@/lib/project/config";
 import { loadConfig } from "@/lib/project/config";
-import { readProblemMetadata } from "@/lib/project/problem-metadata";
+import { noRecordedProblemMessage, readProblemMetadata } from "@/lib/project/problem-metadata";
 import { requireInitializedProject } from "@/lib/project/project";
 import {
     applyStash,
@@ -49,7 +49,7 @@ export async function loadCurrentProblem(): Promise<CurrentProblem> {
     const config = await loadConfig();
     const metadata = await readProblemMetadata(projectRoot);
     if (metadata === undefined) {
-        throw new Error('No problem is recorded. Run "neoj download <url>" first.');
+        throw new Error(noRecordedProblemMessage);
     }
 
     return {

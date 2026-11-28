@@ -35,7 +35,7 @@ import {
 import { isPlatformName, type PlatformName } from "@/lib/platform";
 import { loadConfig, type Config, type SubmitClipMode } from "@/lib/project/config";
 import type { ProblemMetadata } from "@/lib/project/problem-metadata";
-import { readProblemMetadata } from "@/lib/project/problem-metadata";
+import { noRecordedProblemMessage, readProblemMetadata } from "@/lib/project/problem-metadata";
 import { requireInitializedProject } from "@/lib/project/project";
 import { formatSourceLimit, sourceLimitBytes } from "@/lib/source-limit";
 import { createAnsiStyles, supportsColor, type AnsiStyles } from "@/lib/util/ansi";
@@ -806,7 +806,7 @@ export async function runSubmit(options: RunSubmitOptions): Promise<SubmitResult
 
     const metadata = await readProblemMetadata(options.projectRoot);
     if (metadata === undefined) {
-        throw new Error('No problem is recorded. Run "neoj download <url>" first.');
+        throw new Error(noRecordedProblemMessage);
     }
 
     const problemSource = findProblemSource(metadata.url);

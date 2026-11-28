@@ -7,7 +7,8 @@ neoj d <url>          # alias
 
 The command accepts an AtCoder, yukicoder, Aizu Online Judge, Codeforces, or
 ShareOJ problem URL and replaces the configured test-case directory with the
-problem's samples.
+problem's samples. It also accepts the reserved argument `blank`, which starts
+an empty workspace without contacting a platform.
 
 ```bash
 neoj d https://atcoder.jp/contests/abc300/tasks/abc300_a
@@ -57,6 +58,24 @@ sample-check feature, not in the statement, is downloaded without sample files.
 A contest problem cannot be resolved before the contest starts, because the API
 hides its ID from anonymous viewers.
 
+## Start without a problem
+
+```bash
+neoj d blank
+```
+
+`blank` is a reserved argument. It skips the network request, recreates the
+test-case directory (`test/` by default) as an empty directory, applies the
+template like a normal download, and removes `.neoj/problem.json`. The project
+then has no recorded problem URL, so `neoj open`, `neoj submit`,
+`neoj reset --testcase`, and `neoj stash` report that no problem URL is
+recorded. Use it to start from a clean workspace before adding handmade tests,
+or when you do not have a problem to download yet.
+
+With `stash.auto_stash = true`, the previous problem's working files are saved
+before the test-case directory is cleared. `stash.auto_apply` has no effect on a
+blank workspace because there is no problem key to match.
+
 ## Before you run it
 
 The command needs a project with a `neoj.toml`. Run [`neoj init`](../tutorial.md)
@@ -78,6 +97,9 @@ repository root, so you can run it from a subdirectory of the project.
    problem changed, and a stash exists.
 6. Records the problem URL in `.neoj/problem.json`. For AtCoder, the contest
    window is recorded as well; yukicoder problems store only the URL.
+
+`neoj d blank` skips the fetch and the stash restore, and removes
+`.neoj/problem.json` after the template has been applied.
 
 Re-downloading the same problem refreshes the test-case folder and reapplies the
 template, so files that exist in both `template.folder` and `source.folder` are
@@ -109,6 +131,8 @@ Long samples are printed in full rather than truncated.
 - A yukicoder URL that does not point to an existing problem is reported as a
   missing problem page, even though the site responds with HTTP 200.
 - A problem without samples recreates the test-case folder as an empty directory.
+- When `neoj d blank` fails while applying the template, the previous test cases
+  and `.neoj/problem.json` are restored.
 - AOJ URLs that do not follow one of the three supported forms are rejected with
   a message naming the expected forms.
 

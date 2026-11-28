@@ -6,6 +6,10 @@ import type { Problem, ProblemKey } from "@neoj/api/problem";
 
 import { hasErrorCode } from "@/lib/util/errors";
 
+/** The error shown by commands that need the problem recorded by `neoj download`. */
+export const noRecordedProblemMessage =
+    'No problem URL is recorded. Run "neoj download <url>" first, or "neoj download blank" to start without a problem.';
+
 export interface ProblemMetadata {
     url: string;
     /**
@@ -115,6 +119,39 @@ export async function readProblemMetadata(
     }
 
     return parseProblemMetadata(parsed, metadataPath);
+}
+
+/**
+ * Remove the recorded problem so the project no longer has a submission URL.
+ *
+ * A missing metadata directory or file is already the desired state, so both
+ * are ignored. Anything else at those paths is rejected instead of deleted.
+ */
+export async function removeProblemMetadata(projectRoot: string): Promise<void> {
+    const metadataDirectory = getMetadataDirectory(projectRoot);
+    try {
+        await assertMetadataDirectory(metadataDirectory);
+    } catch (error) {
+        if (hasErrorCode(error, "ENOENT")) {
+            return;
+        }
+        throw error;
+    }
+
+    const metadataPath = join(metadataDirectory, "problem.json");
+    try {
+        const metadataStat = await lstat(metadataPath);
+        if (metadataStat.isSymbolicLink() || !metadataStat.isFile()) {
+            throw new Error(`Problem metadata path "${metadataPath}" is not a regular file.`);
+        }
+    } catch (error) {
+        if (hasErrorCode(error, "ENOENT")) {
+            return;
+        }
+        throw error;
+    }
+
+    await rm(metadataPath);
 }
 
 export async function saveProblemMetadata(
