@@ -33,7 +33,7 @@ Build `neoj` as a modern, feature-rich alternative to `oj`, the competitive-prog
 ## Feature Design
 
 - Before implementing a user-facing feature, use the `grilling` skill(`./.agents/skills/grilling`) to clarify requirements, explore design decisions in rounds, and get explicit confirmation of the resulting specification. Do not start implementation until the user confirms.
-- Download template behavior: `neoj download` applies `template.folder` to `source.folder` with `template.mode` (`overlay` or `replace`) only when the downloaded problem differs from `.neoj/problem.json`. Re-downloading the same problem refreshes samples but must not reapply the template or a stash. `source.folder`, `template.folder`, and `testcase.folder` must not overlap, and none may target `.git` or `.neoj`.
+- Download template behavior: `neoj download` applies `template.folder` to `source.folder` with `template.mode` (`overlay` or `replace`) after every successful download, including a re-download of the same problem. When the problem is unchanged, warn that the template may have overwritten working files. Re-downloading the same problem must still not reapply a stash. `source.folder`, `template.folder`, and `testcase.folder` must not overlap, and none may target `.git` or `.neoj`.
 - Existing template assets are under `src/assets/template/`: `src/` contains the starter source file, and `template/` contains the problem solution template that `neoj download` applies. `neoj init` copies all bundled template files.
 
 ## Shell Completions
@@ -90,7 +90,7 @@ The Lefthook pre-commit hook runs formatting, lint, and typecheck. Commit messag
 - Project-relative directory rules live in `src/lib/project/project-path.ts`. Route new directory settings through `resolveProjectDirectory()`, and use `assertDirectoriesDoNotOverlap()` instead of reimplementing containment checks.
 - Whole-directory replacement must use `commitStagedDirectory()` (rename aside, swap, roll back). Never delete the destination before the replacement is ready.
 - Aggregate user-sized arrays with `maxValue()`, not `Math.max(...values)`; spread calls fail on large judge output.
-- Apply download-side effects (template, auto-stash, auto-apply) only when the problem changed, so re-downloading the same problem preserves working files.
+- Apply the automatic stash and its restore only when the problem changed; the template is reapplied on every download, so warn when a re-download overwrites working files.
 - When consolidating duplicated validation, search `test/` and `docs/` for the old error strings before changing messages.
 - When extending a shared helper with an optional parameter, pass the matching config from every call site (`download`, `test`, `build`, `handmade`); otherwise the safety check applies inconsistently.
 - After editing imports, verify that sibling type and value imports still exist; a single-line replacement can drop one.

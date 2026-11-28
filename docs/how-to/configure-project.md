@@ -99,8 +99,8 @@ mode = "overlay"
 ```
 
 With `enable = true`, both `source.folder` and `template.folder` are required.
-After a download that changes the problem, `neoj` copies the template into
-`source.folder`:
+After every successful download, including a re-download of the same problem,
+`neoj` copies the template into `source.folder`:
 
 - `template.exclude` lists globs for files that must not be copied. Patterns
   match the path relative to `template.folder` and the entry name, so `*.md`
@@ -113,8 +113,9 @@ After a download that changes the problem, `neoj` copies the template into
 
 Hidden files are included, symbolic links inside the template are rejected, and
 the two directories must not overlap. A missing template directory is an error;
-an empty one is allowed. Downloading the same problem again does not reapply the
-template, so it never overwrites edits in `source.folder`.
+an empty one is allowed. Downloading the same problem again reapplies the
+template, so it overwrites edits in `source.folder`; the command warns when this
+happens.
 
 ## Related
 

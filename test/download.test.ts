@@ -607,7 +607,7 @@ describe("downloadProblem", () => {
         }
     });
 
-    it("does not reapply the template when the problem has not changed", async () => {
+    it("reapplies the template when the same problem is downloaded again", async () => {
         const projectRoot = await createProject();
         const homeDirectory = join(projectRoot, "home");
         await mkdir(homeDirectory);
@@ -638,11 +638,56 @@ describe("downloadProblem", () => {
             );
 
             await Bun.write(join(projectRoot, "src", "main.cpp"), "work");
+            await Bun.write(join(projectRoot, "src", "notes.txt"), "keep");
             await downloadProblem(problemUrl);
 
             await expect(Bun.file(join(projectRoot, "src", "main.cpp")).text()).resolves.toBe(
-                "work",
+                "template",
             );
+            await expect(Bun.file(join(projectRoot, "src", "notes.txt")).text()).resolves.toBe(
+                "keep",
+            );
+        } finally {
+            Object.defineProperty(globalThis, "fetch", {
+                configurable: true,
+                writable: true,
+                value: originalFetch,
+            });
+        }
+    });
+
+    it("replaces source.folder again when the same problem is downloaded in replace mode", async () => {
+        const projectRoot = await createProject();
+        const homeDirectory = join(projectRoot, "home");
+        await mkdir(homeDirectory);
+        await mkdir(join(projectRoot, "src"));
+        await mkdir(join(projectRoot, "template"));
+        await Bun.write(join(projectRoot, "template", "main.cpp"), "template");
+        await Bun.write(
+            join(projectRoot, "neoj.toml"),
+            '[source]\nfolder = "src"\n[template]\nenable = true\nfolder = "template"\nmode = "replace"\n',
+        );
+        process.env.USERPROFILE = homeDirectory;
+        process.env.HOME = homeDirectory;
+        process.env.LOCALAPPDATA = join(projectRoot, "local-app-data");
+        process.chdir(projectRoot);
+
+        const problemUrl = "https://atcoder.jp/contests/abc300/tasks/abc300_a";
+        const originalFetch = globalThis.fetch;
+        Object.defineProperty(globalThis, "fetch", {
+            configurable: true,
+            writable: true,
+            value: async () => new Response(createAtCoderHtml("1 2", "3"), { status: 200 }),
+        });
+        try {
+            await downloadProblem(problemUrl);
+            await Bun.write(join(projectRoot, "src", "notes.txt"), "remove");
+            await downloadProblem(problemUrl);
+
+            await expect(Bun.file(join(projectRoot, "src", "main.cpp")).text()).resolves.toBe(
+                "template",
+            );
+            expect((await readdir(join(projectRoot, "src"))).sort()).toEqual(["main.cpp"]);
         } finally {
             Object.defineProperty(globalThis, "fetch", {
                 configurable: true,
