@@ -150,7 +150,7 @@ export async function downloadProblem(
     try {
         result = await writeSamples(fetched.directory, fetched.problem, config.testcase);
 
-        if (problemChanged && config.template.enable) {
+        if (config.template.enable) {
             const templateFolder = config.template.folder;
             const sourcePath = config.source.folder;
             if (templateFolder === undefined || sourcePath === undefined) {
@@ -165,6 +165,11 @@ export async function downloadProblem(
                 config.template.mode,
                 config.template.exclude,
             );
+            if (!problemChanged) {
+                consola.warn(
+                    `Re-applied the template to "${sourcePath}" (mode: ${config.template.mode}) because the same problem was downloaded again; working files in "source.folder" may have been overwritten or removed.`,
+                );
+            }
         }
 
         if (config.stash.auto_apply && problemChanged) {

@@ -704,9 +704,11 @@ time.
 | ------- | ------- | ------- |
 | boolean | `false` | project |
 
-Apply the template to `source.folder` after a download that changes the problem.
-Enabling it requires both `source.folder` and `template.folder`. Downloading the
-same problem again refreshes the samples without reapplying the template.
+Apply the template to `source.folder` after every successful download, including
+a re-download of the same problem. Enabling it requires both `source.folder` and
+`template.folder`. Reapplying the template overwrites working files according to
+`template.mode`, and `neoj download` warns when it does so for an unchanged
+problem.
 
 ### `template.folder`
 

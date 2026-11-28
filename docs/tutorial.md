@@ -23,7 +23,7 @@ neoj init
 | ------------------- | ---------------------------------------------------------- |
 | `neoj.toml`         | Project configuration.                                     |
 | `src/main.cpp`      | Starter source file.                                       |
-| `template/main.cpp` | Solution template that is applied after a problem change.  |
+| `template/main.cpp` | Solution template that is applied after each download.     |
 | `.gitignore`        | Ignores `test/`, `.neoj/`, and editor or dependency files. |
 
 The bundled configuration enables templates, so the next step also copies
